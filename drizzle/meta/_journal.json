@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789660848796,
+      "tag": "0000_empty_network",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789661314493,
+      "tag": "0001_jittery_midnight",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789665463686,
+      "tag": "0002_slim_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789734213360,
+      "tag": "0003_black_the_hunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789735089193,
+      "tag": "0004_lumpy_true_believers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789739281533,
+      "tag": "0005_add_branch_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789840932454,
+      "tag": "0006_add_staff_otp_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789842496719,
+      "tag": "0007_add_sms_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789843307867,
+      "tag": "0008_add_saas_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789899001519,
+      "tag": "0009_add_loyalty_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789899933224,
+      "tag": "0010_add_reservation_deposits",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789903943699,
+      "tag": "0011_add_map_space_types",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `branches` ADD `active` integer DEFAULT true NOT NULL;

@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { access, readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+const root=resolve(import.meta.dirname,"..");
+const workerPath=resolve(root,"dist/server/index.js");
+const manifest=JSON.parse(await readFile(resolve(root,"dist/.openai/hosting.json"),"utf8"));
+assert.equal(manifest.d1,"DB");
+await access(resolve(root,"dist/.openai/drizzle/0000_empty_network.sql"));
+await access(resolve(root,"dist/.openai/drizzle/0002_slim_black_cat.sql"));
+const worker=await import(pathToFileURL(workerPath));
+assert.equal(typeof worker.default?.fetch,"function");
+console.log("Artifact is valid ESM, includes D1 migrations, and exports default.fetch");

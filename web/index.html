@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171210">
+  <meta name="description" content="دموی سیستم رزرو میز اختصاصی کافه‌ها؛ انتخاب سریع تاریخ، ساعت و میز.">
+  <title>میزو — رزرو میز کافه</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23c88145'/%3E%3Ccircle cx='32' cy='29' r='15' fill='none' stroke='%23171210' stroke-width='6'/%3E%3Cpath d='M17 48h30M47 25h5a6 6 0 0 1 0 12h-4' fill='none' stroke='%23171210' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="صفحه اصلی میزو">
+      <span class="brand-mark">م</span><span>میزو</span>
+    </a>
+    <nav aria-label="ناوبری اصلی">
+      <a href="#experience">تجربه رزرو</a><a href="#features">برای کافه‌ها</a>
+    </nav>
+    <div class="top-actions"><button class="ghost-btn" id="openTracking">پیگیری رزرو</button><button class="ghost-btn" data-open-demo>پنل مدیر کافه</button></div>
+  </header>
+
+  <main>
+    <section class="hero" id="experience">
+      <img class="hero-photo" src="assets/cafe-hero.webp" alt="فضای گرم و مدرن یک کافه در تهران">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i> میزو · دموی تعاملی رزرو کافه</span>
+        <h1>میزت منتظرته.</h1>
+        <p>برای یک قرار دو نفره یا دورهمی دوستانه، بهترین میز کافه را در کمتر از یک دقیقه انتخاب کن.</p>
+        <div class="cafe-meta"><span>کافه روما</span><span>تهران، الهیه</span><span>۴٫۸ ★</span></div>
+      </div>
+
+      <section class="booking-card" aria-label="فرم رزرو میز">
+        <div class="booking-head">
+          <div><span class="step-label">رزرو آنلاین</span><h2>انتخاب زمان</h2></div>
+          <span class="booking-live">انتخاب میز روی نقشه</span>
+        </div>
+        <div class="progress"><span class="active"></span><span></span><span></span></div>
+        <div class="customer-notice" id="customerNoticeBanner" hidden></div>
+
+        <label class="field-label">تعداد مهمان‌ها</label>
+        <div class="guest-picker" role="group" aria-label="تعداد مهمان‌ها">
+          <button id="plus" aria-label="افزایش تعداد">+</button><strong id="guestCount">۲</strong><span>نفر</span><button id="minus" aria-label="کاهش تعداد">−</button>
+        </div>
+
+        <label class="field-label">روز مورد نظر</label>
+        <div class="dates" id="dates"></div>
+
+        <div class="time-title"><label class="field-label">ساعت ورود</label><span id="durationLabel">مدت رزرو: ۹۰ دقیقه</span></div>
+        <div class="times" id="times"></div>
+
+        <button class="primary-btn" id="continueBtn">ادامه و انتخاب میز <span>←</span></button>
+        <p class="microcopy">پس از ثبت، کد پیگیری رزرو دریافت می‌کنید.</p>
+      </section>
+    </section>
+
+    <section class="trust-strip" aria-label="مزایای رزرو">
+      <div><b>بدون کمیسیون</b><span>رزرو مستقیم با خود کافه</span></div>
+      <div><b>تأیید فوری</b><span>پیام تأیید همان لحظه</span></div>
+      <div><b>انتخاب واقعی میز</b><span>همان جایی که دوست داری</span></div>
+    </section>
+
+    <section class="product" id="features">
+      <div class="product-copy"><span class="eyebrow dark"><i></i> ساخته‌شده برای کافه‌های مستقل</span><h2>هر کافه، تجربه‌ای با امضای خودش.</h2><p>رنگ، عکس، ظرفیت، قوانین رزرو و نقشه میزها برای هر کافه کاملاً اختصاصی می‌شود. مشتری برند شما را می‌بیند، نه یک سامانه عمومی را.</p><button class="dark-btn" data-open-demo>ورود به پنل کافه</button></div>
+      <div class="dashboard-preview">
+        <div class="dash-top"><span>نمای نمونه پنل کافه</span><b>رزروهای امروز</b></div>
+        <div class="stat-row"><div><small>مهمان امروز</small><strong>۳۴</strong></div><div><small>ظرفیت پرشده</small><strong>۷۲٪</strong></div><div><small>لغوشده</small><strong>۱</strong></div></div>
+        <div class="reservations"><article><time>۱۹:۳۰</time><div><b>نیلوفر رضایی</b><span>۲ نفر · میز کنار پنجره</span></div><em>تأیید شده</em></article><article><time>۲۰:۰۰</time><div><b>امیرحسین عباسی</b><span>۴ نفر · سالن اصلی</span></div><em>تأیید شده</em></article><article><time>۲۰:۳۰</time><div><b>سارا کریمی</b><span>۳ نفر · تراس</span></div><em class="wait">در انتظار</em></article></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="tableDialog">
+    <button class="dialog-close back-btn" aria-label="بازگشت">→ بازگشت</button>
+    <div class="dialog-head"><span class="step-label">مرحله دوم</span><h2>میز دلخواهت را انتخاب کن</h2><p id="selectionSummary"></p></div>
+    <div class="customer-area-tabs" id="customerAreaTabs" aria-label="انتخاب فضای کافه"></div>
+    <p class="floor-swipe-hint">برای دیدن تمام میزها، نقشه را به چپ و راست بکشید.</p>
+    <div class="floor-viewport"><div class="floor-plan" id="customerFloorPlan" aria-label="نقشه میزها"></div></div>
+    <div class="legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-selected"></i>انتخاب شما</span><span><i class="lg-busy"></i>رزرو شده</span></div>
+    <button class="primary-btn" id="confirmBtn" disabled>یک میز را انتخاب کنید</button>
+  </dialog>
+
+  <dialog id="customerDialog" class="form-dialog"><button class="dialog-close back-btn" data-back-to="tableDialog" aria-label="بازگشت به انتخاب میز">→ بازگشت</button><span class="step-label">مرحله سوم</span><h2>اطلاعات رزرو</h2><p id="customerSummary"></p><form id="reservationForm"><label>نام و نام خانوادگی<input id="customerName" autocomplete="name" maxlength="70" required placeholder="مثلاً نیلوفر رضایی"></label><label>شماره موبایل<input id="customerMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><label>یادداشت برای کافه <small>اختیاری</small><textarea id="customerNotes" maxlength="240" placeholder="مثلاً میز نزدیک پنجره باشد"></textarea></label><p class="form-error" id="reservationError" hidden></p><button class="primary-btn" id="submitReservation" type="submit">ثبت نهایی رزرو</button></form></dialog>
+
+  <dialog id="successDialog" class="success-dialog"><div class="success-icon">✓</div><h2>میزت رزرو شد!</h2><p id="successText"></p><div class="booking-code"><span>کد پیگیری رزرو</span><strong id="successCode">—</strong></div><div id="depositPayment" class="deposit-payment" hidden><span>بیعانه قابل پرداخت</span><strong id="successDepositAmount">—</strong><small id="depositDeadline">—</small><p id="depositPolicy"></p><button class="primary-btn" id="payDeposit" type="button">پرداخت آزمایشی و تأیید رزرو</button></div><button class="primary-btn" id="doneBtn">بازگشت به صفحه اصلی</button></dialog>
+
+  <dialog id="trackingDialog" class="form-dialog"><button class="dialog-close back-btn" aria-label="بازگشت">→ بازگشت</button><span class="step-label">پیگیری رزرو</span><h2>وضعیت رزروت را ببین</h2><form id="trackingForm"><label>کد پیگیری<input id="trackingCode" maxlength="20" required placeholder="RMA-XXXXXX" dir="ltr"></label><label>شماره موبایل<input id="trackingMobile" inputmode="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><p class="form-error" id="trackingError" hidden></p><button class="primary-btn" type="submit">نمایش رزرو</button></form><div class="tracking-result" id="trackingResult" hidden></div></dialog>
+
+  <dialog id="setupDialog" class="setup-dialog">
+    <button class="dialog-close back-btn" aria-label="بازگشت به صفحه اصلی">→ بازگشت</button>
+    <div class="setup-head"><span class="setup-badge">راه‌اندازی اولیه</span><span id="setupStep">مرحله ۱ از ۳</span></div>
+    <h2 id="setupTitle">کافه‌ات را به میزو معرفی کن</h2>
+    <p>این اطلاعات پایه‌ی صفحه رزرو و پنل مدیریت تو می‌شود و بعداً قابل ویرایش است.</p>
+    <form id="setupForm">
+      <div class="setup-fields"><label>نام کافه<input id="setupCafeName" maxlength="80" required placeholder="مثلاً کافه آبان"></label><label>شهر<input id="setupCity" maxlength="60" required placeholder="مثلاً تهران"></label></div>
+      <fieldset class="structure-picker"><legend>ساختار کافه</legend><label><input type="radio" name="setupStructure" value="single" checked><span><b>تک‌شعبه</b><small>فقط یک شعبه دارم</small></span></label><label><input type="radio" name="setupStructure" value="multi"><span><b>چندشعبه</b><small>مدیریت چند شعبه</small></span></label></fieldset>
+      <div class="setup-fields"><label>نام شعبه<input id="setupBranchName" maxlength="80" required value="شعبه اصلی"></label><label>آدرس <small>اختیاری</small><input id="setupAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label></div>
+      <div class="setup-next"><span>۲</span><div><b>قدم بعدی: چیدمان میزها</b><small>بعد از ذخیره، نقشه آماده و قابل ویرایش است.</small></div></div>
+      <p class="form-error" id="setupError"></p><button class="primary-btn" id="saveSetup" type="submit">ساخت کافه و ورود به پنل</button>
+    </form>
+  </dialog>
+
+  <dialog id="authDialog" class="auth-dialog">
+    <button class="dialog-close back-btn" aria-label="بازگشت به صفحه اصلی">→ بازگشت</button><span class="auth-demo-badge">حالت آزمایشی</span><h2>ورود امن پرسنل</h2><p>شماره موبایلی را وارد کنید که مدیر کافه برای شما ثبت کرده است.</p>
+    <form id="otpRequestForm"><label>شماره موبایل<input id="authMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><button class="primary-btn" id="requestOtp" type="submit">دریافت کد ورود</button></form>
+    <form id="otpVerifyForm" hidden><label id="authNameRow" hidden>نام مدیر اصلی<input id="authName" maxlength="70" placeholder="نام و نام خانوادگی"></label><label>کد شش‌رقمی<input id="authCode" class="otp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="— — — — — —"></label><div class="demo-code" id="demoCodeBox" hidden><span>کد آزمایشی</span><strong id="demoCode">——</strong><small>در اتصال واقعی، این کد با کاوه‌نگار پیامک می‌شود.</small></div><button class="primary-btn" id="verifyOtp" type="submit">ورود به پنل</button><button class="auth-retry" id="retryOtp" type="button">تغییر شماره موبایل</button></form><p class="form-error" id="authError"></p>
+  </dialog>
+
+  <dialog id="adminDialog" class="admin-dialog"><button class="dialog-close back-btn" aria-label="بازگشت به دمو">→ بازگشت</button><span class="step-label">پنل مدیر کافه</span><h2>کنترل کامل تجربه رزرو</h2><p>وضعیت رزرو، قوانین پذیرش و چیدمان هر شعبه را از همین‌جا مدیریت کنید.</p><div class="manager-session" id="managerSession"><div><span>کاربر واردشده</span><b id="managerIdentity">—</b></div><button id="logoutManager">خروج</button></div><div class="cafe-context" id="cafeContext"><span class="brand-mark small">م</span><div><b id="adminCafeName">کافه روما</b><small id="adminCafeLocation">تهران · شعبه الهیه</small></div><button id="editCafeProfile" data-owner-only>ویرایش اطلاعات</button></div><div class="admin-grid"><button class="admin-feature featured" id="openOperations"><b>داشبورد عملیات امروز</b><span>رزروها، میزهای زنده و لیست انتظار</span><em>ورود به عملیات ←</em></button><button class="admin-feature reports-feature" id="openReports" data-permission="reports.read"><b>گزارش عملکرد</b><span>روند رزرو، مشتری برگشتی و عملکرد شعب</span><em>مشاهده گزارش‌ها ←</em></button><button class="admin-feature loyalty-feature" id="openLoyalty" data-permission="loyalty.read"><b>باشگاه مشتریان</b><span>امتیاز وفاداری، مراجعه‌ها و پاداش</span><em>مدیریت مشتریان ←</em></button><button class="admin-feature sms-feature" id="openSms" data-permission="messages.read"><b>پیامک تأیید و یادآوری</b><span>تنظیم ارسال‌ها و مشاهده وضعیت پیامک‌ها</span><em>مرکز پیامک ←</em></button><button class="admin-feature subscription-feature" id="openSubscription" data-owner-only><b>اشتراک کافه <small>اختیاری</small></b><span>هزینه هر شعبه، دوره آزمایشی و تمدید</span><em>مدیریت اشتراک ←</em></button><button class="admin-feature staff-feature" id="openStaff" data-owner-only><b>پرسنل و دسترسی‌ها</b><span>دعوت کارکنان و تعیین نقش هر نفر</span><em>مدیریت تیم ←</em></button><button class="admin-feature branch-feature" id="openBranches" data-owner-only><b>مدیریت شعب</b><span>افزودن، ویرایش و فعال‌سازی شعبه‌ها</span><em>مشاهده شعب ←</em></button><button class="admin-feature" id="openControlCenter" data-manage-only><b>مرکز کنترل کافه</b><span>قوانین رزرو و وضعیت پذیرش</span><em>مدیریت تنظیمات ←</em></button><button class="admin-feature" id="openMapEditor" data-manage-only><b>ویرایشگر نقشه</b><span>ساخت سالن و چیدمان میزها</span><em>ویرایش نقشه ←</em></button><button class="admin-feature" id="openSchedule" data-manage-only><b>ساعت کاری و تعطیلی</b><span>برنامه هفتگی و تعطیلی موقت</span><em>تنظیم تقویم ←</em></button></div><button class="primary-btn" id="adminClose">بازگشت به دمو</button></dialog>
+
+  <dialog id="staffDialog" class="staff-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="staff-head"><div><span class="step-label">تیم کافه</span><h2>پرسنل و دسترسی‌ها</h2><p>نقش هر نفر در سرور بررسی می‌شود و دسترسی او فقط به شعبه تعیین‌شده محدود است.</p></div><button id="addStaff" class="publish-btn">+ افزودن پرسنل</button></header><div class="role-guide"><span><b>مالک</b> تیم، شعب، تنظیمات و عملیات همه شعب</span><span><b>مدیر شعبه</b> تنظیمات و عملیات شعبه خودش</span><span><b>پذیرش</b> رزروها و لیست انتظار شعبه خودش</span><span><b>باریستا</b> مشاهده سالن و تغییر وضعیت میزها</span></div><div id="staffList" class="staff-list"></div><p class="form-error" id="staffError"></p></dialog>
+  <dialog id="staffFormDialog" class="staff-form-dialog"><button class="dialog-close back-btn" data-back-to="staffDialog" aria-label="بازگشت به پرسنل">→ بازگشت</button><span class="step-label">دسترسی پرسنل</span><h2 id="staffFormTitle">افزودن پرسنل</h2><form id="staffForm"><input type="hidden" id="staffId"><label>نام و نام خانوادگی<input id="staffName" maxlength="70" required></label><label>شماره موبایل<input id="staffMobile" inputmode="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><label>نقش<select id="staffRole"><option value="branch_manager">مدیر شعبه</option><option value="reception">پذیرش</option><option value="barista">باریستا</option><option value="owner">مالک</option></select></label><div id="staffPermissionPreview" class="permission-preview" aria-live="polite"></div><label id="staffBranchRow">شعبه<select id="staffBranch"></select></label><label class="branch-active-row" id="staffActiveRow"><span><b>دسترسی فعال باشد</b><small>کاربر غیرفعال امکان دریافت کد ورود ندارد و نشست قبلی او نیز معتبر نخواهد بود.</small></span><input id="staffIsActive" type="checkbox" checked></label><p class="form-error" id="staffFormError"></p><button class="primary-btn" id="saveStaff" type="submit">ذخیره پرسنل</button></form></dialog>
+
+  <dialog id="smsDialog" class="sms-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="sms-head"><div><span class="step-label">ارتباط با مشتری</span><h2>پیامک تأیید و یادآوری</h2><p>برای هر شعبه، تأیید رزرو و زمان یادآوری را جداگانه تنظیم کنید.</p></div><select id="smsBranch" aria-label="انتخاب شعبه"></select></header><div class="sms-mode" id="smsMode"><span></span><div><b>حالت آزمایشی</b><small>متن پیامک ثبت می‌شود اما پیام واقعی ارسال نمی‌شود.</small></div></div><section class="sms-settings" data-permission="messages.write"><label class="sms-toggle"><span><b>پیامک تأیید رزرو</b><small>بلافاصله پس از ثبت رزرو</small></span><input id="smsConfirmationEnabled" type="checkbox" checked></label><label class="sms-toggle"><span><b>یادآوری خودکار</b><small>پیش از زمان مراجعه مشتری</small></span><input id="smsReminderEnabled" type="checkbox" checked></label><label class="sms-time">زمان یادآوری<select id="smsReminderMinutes"><option value="60">۱ ساعت قبل</option><option value="120">۲ ساعت قبل</option><option value="180">۳ ساعت قبل</option><option value="360">۶ ساعت قبل</option><option value="1440">۱ روز قبل</option></select></label><div class="sms-actions"><button id="processSms" type="button">اجرای یادآوری‌های موعدرسیده</button><button id="saveSmsSettings" class="publish-btn" type="button">ذخیره تنظیمات</button></div></section><section class="sms-summary"><article><span>ارسال‌شده</span><strong id="smsSent">۰</strong></article><article><span>در صف</span><strong id="smsQueued">۰</strong></article><article><span>ناموفق</span><strong id="smsFailed">۰</strong></article></section><div class="sms-list-head"><h3>آخرین پیامک‌ها</h3><button id="refreshSms" type="button">↻ تازه‌سازی</button></div><div id="smsList" class="sms-list"></div><p id="smsError" class="form-error"></p></dialog>
+
+  <dialog id="subscriptionDialog" class="subscription-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><span class="step-label">اشتراک اختیاری</span><h2>اشتراک کامل میزو</h2><div id="subscriptionDisabled" class="subscription-optin"><span>۱۴ روز رایگان</span><h3>همه امکانات، بدون پلن‌های پیچیده</h3><p>اشتراک بر اساس تعداد شعب فعال محاسبه می‌شود. هزینه پیامک جدا و فقط بر اساس مصرف است؛ غیرفعال‌بودن این بخش در نسخه آزمایشی هیچ محدودیتی ایجاد نمی‌کند.</p><button id="enableSubscription" class="publish-btn">شروع دوره آزمایشی ۱۴ روزه</button></div><div id="subscriptionEnabled" hidden><div class="subscription-status"><div><span>وضعیت اشتراک</span><b id="subscriptionStatus">—</b></div><div><span>پایان دوره</span><b id="subscriptionPeriod">—</b></div></div><section class="subscription-pricing"><div class="subscription-pricing-head"><div><span>اشتراک کامل میزو</span><h3>همه امکانات برای همه شعب</h3></div><strong id="subscriptionMonthlyTotal">—</strong></div><div class="subscription-calculation"><span><b id="subscriptionBranchCount">—</b> شعبه فعال</span><i>×</i><span><b id="subscriptionUnitPrice">—</b> برای هر شعبه</span></div><ul><li>رزرو آنلاین، نقشه میزها و مدیریت شعب</li><li>پرسنل، دسترسی‌ها و پنل عملیات</li><li>هزینه پیامک جدا و بر اساس مصرف واقعی</li></ul></section><div class="subscription-actions"><button id="disableSubscription" type="button">غیرفعال‌کردن اشتراک</button><button id="renewSubscription" class="publish-btn" type="button">پرداخت آزمایشی و تمدید</button></div><div class="subscription-history"><h3>تاریخچه اشتراک</h3><div id="subscriptionEvents"></div></div></div><p id="subscriptionError" class="form-error"></p></dialog>
+
+  <dialog id="reportsDialog" class="reports-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="insight-head"><div><span class="step-label">تحلیل کافه</span><h2>گزارش عملکرد</h2><p>روند رزروها، نرخ مراجعه و مشتری‌های برگشتی.</p></div><div class="insight-filters"><select id="reportsBranch" aria-label="شعبه"></select><select id="reportsDays" aria-label="بازه گزارش"><option value="7">۷ روز اخیر</option><option value="30" selected>۳۰ روز اخیر</option><option value="90">۹۰ روز اخیر</option></select></div></header><section class="report-kpis"><article><span>کل رزرو</span><strong id="reportReservations">—</strong></article><article><span>تعداد مهمان</span><strong id="reportGuests">—</strong></article><article><span>نرخ تکمیل</span><strong id="reportCompletion">—</strong></article><article><span>مشتری برگشتی</span><strong id="reportRepeat">—</strong></article><article><span>عدم مراجعه</span><strong id="reportNoShow">—</strong></article></section><div class="report-grid"><section><h3>روند روزانه رزرو</h3><div id="reportChart" class="report-chart"></div></section><section><h3>ساعت‌های پرتردد</h3><div id="reportHours" class="report-bars"></div></section></div><section class="branch-performance"><h3>عملکرد شعب</h3><div id="reportBranches"></div></section><p id="reportsError" class="form-error"></p></dialog>
+
+  <dialog id="loyaltyDialog" class="loyalty-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="insight-head"><div><span class="step-label">مشتری وفادار</span><h2>باشگاه مشتریان</h2><p>با تکمیل هر مراجعه، ۱۰ امتیاز به مشتری اضافه می‌شود.</p></div><button id="refreshLoyalty" type="button">↻ تازه‌سازی</button></header><section class="loyalty-kpis"><article><span>کل مشتریان</span><strong id="loyaltyTotal">—</strong></article><article><span>مشتری برگشتی</span><strong id="loyaltyReturning">—</strong></article><article><span>امتیاز در گردش</span><strong id="loyaltyPoints">—</strong></article><article class="reward-rule"><span>پاداش پیشنهادی</span><strong>۱۰۰ امتیاز</strong><small>مثلاً یک نوشیدنی مهمان کافه</small></article></section><div class="loyalty-search"><input id="loyaltySearch" type="search" placeholder="جست‌وجوی نام یا موبایل"><button id="searchLoyalty" type="button">جست‌وجو</button></div><div id="loyaltyList" class="loyalty-list"></div><p id="loyaltyError" class="form-error"></p></dialog>
+
+  <dialog id="loyaltyAdjustDialog" class="loyalty-adjust-dialog"><button class="dialog-close back-btn" data-back-to="loyaltyDialog" aria-label="بازگشت به باشگاه مشتریان">→ بازگشت</button><span class="step-label">تغییر امتیاز</span><h2 id="loyaltyAdjustTitle">امتیاز مشتری</h2><form id="loyaltyAdjustForm"><input type="hidden" id="loyaltyCustomerId"><label>مقدار امتیاز<input id="loyaltyAdjustment" type="number" min="-500" max="500" required placeholder="مثلاً ۲۰ یا ۱۰۰-"></label><label>توضیح<input id="loyaltyNote" maxlength="120" placeholder="علت افزایش یا استفاده از پاداش"></label><small>عدد مثبت برای افزایش و عدد منفی برای کسر امتیاز است.</small><p id="loyaltyAdjustError" class="form-error"></p><button class="primary-btn" type="submit">ثبت تغییر امتیاز</button></form></dialog>
+
+  <dialog id="branchesDialog" class="branches-dialog">
+    <button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button>
+    <header class="branches-head"><div><span class="step-label">ساختار کافه</span><h2>مدیریت شعب</h2><p>هر شعبه نقشه، ساعت کاری و تنظیمات رزرو مستقل دارد.</p></div><button id="addBranch" class="publish-btn">+ افزودن شعبه</button></header>
+    <section class="branch-summary"><article><span>کل شعب</span><strong id="branchTotal">—</strong></article><article><span>فعال</span><strong id="branchActive">—</strong></article><article><span>غیرفعال</span><strong id="branchInactive">—</strong></article></section>
+    <div id="branchList" class="branch-list"></div><p class="form-error" id="branchesError"></p>
+  </dialog>
+
+  <dialog id="branchFormDialog" class="branch-form-dialog">
+    <button class="dialog-close back-btn" data-back-to="branchesDialog" aria-label="بازگشت به مدیریت شعب">→ بازگشت</button><span class="step-label">اطلاعات شعبه</span><h2 id="branchFormTitle">افزودن شعبه</h2>
+    <form id="branchForm"><input type="hidden" id="branchSlug"><label>نام شعبه<input id="branchName" required maxlength="80" placeholder="مثلاً شعبه سعادت‌آباد"></label><label>شهر<input id="branchCity" required maxlength="60" placeholder="مثلاً تهران"></label><label>آدرس<input id="branchAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label><label class="branch-active-row" id="branchActiveRow"><span><b>شعبه فعال باشد</b><small>شعبه غیرفعال در رزرو و عملیات نمایش داده نمی‌شود.</small></span><input id="branchIsActive" type="checkbox" checked></label><p class="form-error" id="branchFormError"></p><button class="primary-btn" id="saveBranch" type="submit">ذخیره شعبه</button></form>
+  </dialog>
+
+  <dialog id="controlDialog" class="control-dialog">
+    <button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button>
+    <div class="control-head"><div><span class="step-label">مرکز کنترل کافه</span><h2>تنظیمات رزرو</h2><p>تغییرات بلافاصله در صفحه مشتری اعمال می‌شوند.</p></div><select id="controlBranch" aria-label="انتخاب شعبه"><option value="elahiye">شعبه الهیه</option><option value="shahrak-gharb">شعبه شهرک غرب</option></select></div>
+    <div class="control-status-card"><div><span class="status-light" id="reservationStatusLight"></span><div><b id="reservationStatusTitle">رزرو آنلاین فعال است</b><small id="reservationStatusCaption">مشتری‌ها می‌توانند میز رزرو کنند</small></div></div><label class="toggle"><input type="checkbox" id="reservationsEnabled" checked><span></span></label></div>
+    <div class="control-grid">
+      <label class="control-item"><span>مدت هر رزرو</span><small>میز چه مدت برای مشتری نگه داشته شود؟</small><select id="reservationDuration"><option value="60">۶۰ دقیقه</option><option value="90">۹۰ دقیقه</option><option value="120">۱۲۰ دقیقه</option></select></label>
+      <label class="control-item"><span>فاصله بین رزروها</span><small>زمان آماده‌سازی میز بعد از هر رزرو</small><select id="bufferMinutes"><option value="0">بدون فاصله</option><option value="15">۱۵ دقیقه</option><option value="30">۳۰ دقیقه</option><option value="45">۴۵ دقیقه</option></select></label>
+      <label class="control-item"><span>حداکثر مهمان</span><small>سقف تعداد نفرات هر رزرو</small><div class="control-stepper"><button type="button" id="maxPartyMinus">−</button><strong id="maxPartyValue">۸</strong><button type="button" id="maxPartyPlus">+</button></div></label>
+      <label class="control-item wide"><div class="inline-setting"><div><span>تأیید خودکار رزرو</span><small>رزرو بدون بررسی مدیر تأیید شود</small></div><label class="toggle"><input type="checkbox" id="autoConfirm" checked><span></span></label></div></label>
+      <label class="control-item wide"><span>پیام برای مشتری‌ها</span><small>این پیام بالای فرم رزرو نمایش داده می‌شود.</small><textarea id="customerNotice" maxlength="140" placeholder="مثلاً: جمعه‌ها موسیقی زنده داریم."></textarea><em><span id="noticeCount">۰</span>/۱۴۰</em></label>
+    </div>
+    <div class="control-footer"><span id="controlSaveStatus">تنظیمات آماده است</span><button class="publish-btn" id="saveControls">ذخیره و اعمال تغییرات</button></div>
+  </dialog>
+
+  <dialog id="scheduleDialog" class="schedule-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><span class="step-label">تقویم شعبه</span><h2>ساعت کاری و تعطیلی‌ها</h2><p>زمان‌های قابل رزرو مستقیماً از این برنامه ساخته می‌شوند.</p><div class="week-hours" id="weekHours"></div><div class="closure-box"><b>تعطیلی موقت</b><div><label>از تاریخ<input type="text" id="closureStart" class="jalali-input" data-jalali aria-label="تاریخ شروع تعطیلی" readonly placeholder="انتخاب تاریخ شمسی"></label><label>تا تاریخ<input type="text" id="closureEnd" class="jalali-input" data-jalali aria-label="تاریخ پایان تعطیلی" readonly placeholder="انتخاب تاریخ شمسی"></label></div><label>دلیل تعطیلی<input id="closureReason" maxlength="100" placeholder="مثلاً تعمیرات سالانه"></label><button type="button" class="secondary-action" id="addClosure">افزودن تعطیلی</button><div id="closureList" class="closure-list"></div></div><p class="form-error" id="scheduleStatus"></p><button class="primary-btn" id="saveSchedule">ذخیره تقویم شعبه</button></dialog>
+
+  <dialog id="opsDialog" class="ops-dialog">
+    <header class="ops-header"><div class="ops-brand"><button id="opsExit" class="ops-back-btn" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><span class="brand-mark small">م</span><div><b>عملیات کافه روما</b><small id="opsSync">اطلاعات زنده شعبه</small></div></div><div class="ops-header-controls"><select id="opsBranch" aria-label="انتخاب شعبه"><option value="elahiye">شعبه الهیه</option><option value="shahrak-gharb">شعبه شهرک غرب</option></select><input type="text" id="opsDate" class="jalali-input compact" data-jalali aria-label="تاریخ عملیات" readonly><button id="opsRefresh" class="ops-icon-btn" aria-label="تازه‌سازی">↻</button><button id="opsMobileExit" class="ops-mobile-back" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><button id="addOperationalReservation" class="ops-primary" data-permission="reservations.write">+ رزرو جدید</button></div></header>
+    <main class="ops-shell">
+      <section class="ops-kpis" id="opsKpis"><article><span>رزرو امروز</span><strong>—</strong></article><article><span>مهمان‌ها</span><strong>—</strong></article><article><span>میزهای مشغول</span><strong>—</strong></article><article><span>ظرفیت باقی‌مانده</span><strong>—</strong></article><article class="alert"><span>نیازمند توجه</span><strong>—</strong></article></section>
+      <section class="ops-grid">
+        <article class="ops-card ops-reservation-card" data-permission="reservations.read"><header><div><span class="ops-live-dot"></span><div><h3>جریان رزروها</h3><small id="opsNextReservation">رزرو بعدی در حال محاسبه</small></div></div><button id="opsAddQuick" data-permission="reservations.write">+ ثبت تلفنی / حضوری</button></header><div class="ops-filters"><input id="opsSearch" type="search" placeholder="جست‌وجوی نام، موبایل یا کد رزرو"><select id="opsStatusFilter"><option value="all">همه وضعیت‌ها</option><option value="pending">در انتظار</option><option value="confirmed">تأیید شده</option><option value="arrived">حاضر</option><option value="completed">تکمیل شده</option><option value="cancelled">لغو شده</option><option value="no_show">عدم مراجعه</option></select></div><div class="ops-reservation-list" id="opsReservationList"></div></article>
+        <article class="ops-card ops-map-card"><header class="ops-map-head"><div><h3>کنترل سریع سالن</h3><small id="opsFloorHint">روی میز آزاد بزنید تا همان ساعت قفل شود</small></div><div class="ops-floor-time"><label>ساعت<input id="opsFloorTime" type="time" step="1800" aria-label="ساعت کنترل سالن"></label><button id="opsFloorNow" type="button">همین حالا</button></div></header><div class="ops-area-tabs" id="opsAreaTabs" aria-label="انتخاب بخش سالن"></div><div class="ops-quick-note"><span>قفل سریع فعال</span><small>میز سبز با یک لمس برای مشتری حضوری ثبت می‌شود.</small></div><div class="ops-floor" id="opsFloor"></div><div class="ops-map-legend"><span class="free">آزاد</span><span class="soon">رزرو آینده</span><span class="occupied">قفل‌شده</span><span class="dirty">نظافت</span></div></article>
+        <aside class="ops-card ops-wait-card" data-permission="waitlist.read"><header><div><h3>لیست انتظار</h3><small id="waitCount">بدون مشتری منتظر</small></div><button id="addWaitlist" data-permission="waitlist.write">+</button></header><div id="opsWaitlist" class="ops-waitlist"></div></aside>
+      </section>
+    </main>
+  </dialog>
+
+  <dialog id="opsReservationDialog" class="ops-form-dialog"><button class="dialog-close back-btn" aria-label="بازگشت به داشبورد عملیات">→ بازگشت</button><span class="step-label">مدیریت رزرو</span><h2 id="opsFormTitle">ثبت رزرو تلفنی یا حضوری</h2><form id="opsReservationForm"><input type="hidden" id="opsTrackingCode"><div class="ops-form-grid"><label>نام مشتری<input id="opsCustomerName" maxlength="70" required></label><label>موبایل <small>برای مراجعه حضوری اختیاری</small><input id="opsCustomerMobile" inputmode="tel" maxlength="14"></label><label>نوع ثبت<select id="opsSource"><option value="phone">تلفنی</option><option value="walk_in">حضوری</option></select></label><label>وضعیت<select id="opsReservationStatus"><option value="confirmed">تأیید شده</option><option value="pending">در انتظار</option><option value="arrived">مشتری رسیده</option><option value="completed">تکمیل شده</option><option value="cancelled">لغو شده</option><option value="no_show">عدم مراجعه</option></select></label><label>تاریخ<input type="text" id="opsReservationDate" class="jalali-input" data-jalali required readonly placeholder="انتخاب تاریخ شمسی"></label><label>ساعت<input type="time" id="opsReservationTime" required></label><label>تعداد مهمان<input type="number" id="opsPartySize" min="1" max="20" value="2" required></label><label>میز<select id="opsTableSelect" required></select></label><label class="wide">یادداشت مشتری<textarea id="opsCustomerNote" maxlength="240"></textarea></label><label class="wide">یادداشت داخلی تیم<textarea id="opsInternalNote" maxlength="500" placeholder="فقط برای تیم کافه نمایش داده می‌شود"></textarea></label></div><p class="form-error" id="opsFormError"></p><button type="submit" class="ops-primary" id="saveOperationalReservation">ذخیره رزرو</button></form></dialog>
+
+  <dialog id="waitlistDialog" class="ops-form-dialog small"><button class="dialog-close back-btn" aria-label="بازگشت به داشبورد عملیات">→ بازگشت</button><span class="step-label">لیست انتظار</span><h2>افزودن مشتری منتظر</h2><form id="waitlistForm"><label>نام مشتری<input id="waitCustomerName" required maxlength="70"></label><label>شماره موبایل<input id="waitCustomerMobile" inputmode="tel" maxlength="14"></label><div class="ops-form-grid"><label>تعداد نفرات<input id="waitPartySize" type="number" min="1" max="30" value="2" required></label><label>زمان تقریبی انتظار<input id="waitQuoted" type="number" min="0" max="180" value="20" required></label></div><label>یادداشت<textarea id="waitNotes" maxlength="240"></textarea></label><p class="form-error" id="waitFormError"></p><button class="ops-primary" type="submit">افزودن به لیست</button></form></dialog>
+
+  <dialog id="paymentsDialog" class="payments-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="insight-head"><div><span class="step-label">رزرو مطمئن</span><h2>پرداخت و بیعانه</h2><p>قوانین بیعانه هر شعبه و تراکنش‌ها را یک‌جا کنترل کنید.</p></div><select id="paymentsBranch" aria-label="انتخاب شعبه"></select></header><div class="payment-mode"><span></span><div><b>درگاه آزمایشی</b><small>جریان کامل پرداخت شبیه‌سازی می‌شود و پول واقعی جابه‌جا نمی‌شود.</small></div></div><section class="deposit-settings" data-permission="payments.write"><label class="sms-toggle"><span><b>دریافت بیعانه</b><small>رزرو تا پرداخت در انتظار می‌ماند</small></span><input id="depositEnabled" type="checkbox"></label><div class="deposit-grid"><label>نوع بیعانه<select id="depositMode"><option value="fixed">مبلغ ثابت</option><option value="per_person">به‌ازای هر نفر</option></select></label><label>مبلغ (تومان)<input id="depositAmount" type="number" min="10000" step="10000"></label><label>مهلت پرداخت<select id="paymentDeadline"><option value="10">۱۰ دقیقه</option><option value="15">۱۵ دقیقه</option><option value="30">۳۰ دقیقه</option></select></label><label class="sms-toggle compact"><span><b>فقط ساعات شلوغ</b></span><input id="depositPeakOnly" type="checkbox"></label><label>شروع ساعت شلوغ<input id="depositPeakStart" type="time"></label><label>پایان ساعت شلوغ<input id="depositPeakEnd" type="time"></label><label class="wide">قانون بازپرداخت<textarea id="refundPolicy" maxlength="240"></textarea></label></div><button id="savePaymentSettings" class="publish-btn" type="button">ذخیره قوانین بیعانه</button></section><section class="payment-kpis"><article><span>دریافت‌شده</span><strong id="paymentsPaid">—</strong></article><article><span>در انتظار</span><strong id="paymentsPending">—</strong></article><article><span>بازپرداخت</span><strong id="paymentsRefunded">—</strong></article></section><div class="payment-list-head"><h3>آخرین تراکنش‌ها</h3><button id="refreshPayments" type="button">↻ تازه‌سازی</button></div><div id="paymentsList" class="payments-list"></div><p id="paymentsError" class="form-error"></p></dialog>
+
+  <dialog id="mapEditorDialog" class="map-editor-dialog">
+    <header class="editor-header">
+      <div><button class="editor-exit editor-back-btn" id="editorExit" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><span class="brand-mark small">م</span><div><b>چیدمان کافه روما</b><small id="saveStatus">در حال اتصال به دیتابیس…</small></div><select id="branchSelect" class="branch-select" aria-label="انتخاب شعبه"><option value="elahiye">شعبه الهیه</option><option value="shahrak-gharb">شعبه شهرک غرب</option></select></div>
+      <div class="editor-actions"><button class="secondary-btn" id="resetMap">بازنشانی دمو</button><button class="publish-btn" id="publishMap">انتشار نقشه</button></div>
+    </header>
+    <div class="editor-shell">
+      <aside class="editor-sidebar">
+        <button class="sidebar-mobile-close" id="closeMapTools" type="button">بستن ابزارها ×</button>
+        <div class="sidebar-section compact"><div class="sidebar-label-row"><label>نوع فضای شعبه</label><small>برای مشتری نمایش داده می‌شود</small></div><div class="space-mode" role="group" aria-label="نوع فضای شعبه"><button type="button" data-space-mode="indoor">داخلی</button><button type="button" data-space-mode="outdoor">بیرونی</button><button type="button" data-space-mode="both">هر دو</button></div></div>
+        <div class="sidebar-section"><div class="sidebar-label-row"><label>بخش‌های نقشه</label><button class="area-add-toggle" id="areaAddToggle" type="button" aria-expanded="false">+ بخش جدید</button></div><div class="area-list" id="areaList"></div><div class="area-add-panel" id="areaAddPanel" hidden><select id="areaPreset" aria-label="انتخاب بخش"><option value="سالن اصلی|indoor">سالن اصلی</option><option value="سالن VIP|indoor">سالن VIP</option><option value="نیم‌طبقه|indoor">نیم‌طبقه</option><option value="تراس|outdoor">تراس</option><option value="حیاط|outdoor">حیاط</option><option value="روف‌گاردن|outdoor">روف‌گاردن</option><option value="custom|indoor">نام سفارشی…</option></select><div class="custom-area-fields" id="customAreaFields" hidden><input id="customAreaName" type="text" maxlength="60" placeholder="نام بخش"><select id="customAreaKind" aria-label="نوع بخش"><option value="indoor">داخلی</option><option value="outdoor">بیرونی</option></select></div><button class="add-area" id="addArea" type="button">افزودن به نقشه</button></div></div>
+        <div class="sidebar-section"><label>افزودن به نقشه</label><div class="object-tools"><button data-add-shape="round"><i class="shape-round"></i><span>میز گرد</span></button><button data-add-shape="square"><i class="shape-square"></i><span>میز مربع</span></button><button data-add-shape="rect"><i class="shape-rect"></i><span>میز گروهی</span></button></div></div>
+        <div class="sidebar-section image-import-entry"><button id="openImageImport" type="button">ساخت از تصویر <span>←</span></button><small>پلان یا عکس از بالا را به پیش‌نویس میزها تبدیل کنید.</small></div>
+        <div class="sidebar-tip"><b>راهنما</b><p>میزها را بکشید و در جای دلخواه رها کنید. برای ویرایش مشخصات، روی هر میز بزنید.</p></div>
+      </aside>
+      <main class="editor-main">
+        <div class="editor-toolbar"><div><button id="zoomOut" aria-label="کوچک‌نمایی">−</button><span id="zoomValue">۱۰۰٪</span><button id="zoomIn" aria-label="بزرگ‌نمایی">+</button></div><span class="editor-hint">برای جابه‌جایی، میز را بکشید</span><button class="map-tools-toggle" id="mapToolsToggle" type="button">فضاها و میزها</button><button class="editor-mobile-exit" id="editorMobileExit" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><button class="preview-toggle" id="previewMap">پیش‌نمایش مشتری</button></div>
+        <section id="imageImportPanel" class="image-import-panel" hidden aria-label="ساخت نقشه از تصویر">
+          <header><div><span>پیش‌نویس نقشه</span><h3>ساخت میزها از تصویر</h3></div><button id="closeImageImport" type="button" aria-label="بازگشت به ویرایشگر">→ بازگشت</button></header>
+          <p>برای بخش «<b id="importAreaName"></b>» یک پلان یا عکس واضح از بالا انتخاب کنید. میزهای شناسایی‌شده را بررسی و سپس به نقشه اضافه کنید.</p>
+          <label class="image-upload">انتخاب تصویر <input id="mapImageFile" type="file" accept="image/jpeg,image/webp,image/webp" aria-label="انتخاب پلان یا عکس کافه"><small>JPG، PNG یا WebP · حداکثر ۸ مگابایت</small></label>
+          <div id="imageImportPreview" class="image-import-preview" hidden><img id="mapImagePreview" alt="تصویر انتخاب‌شده از چیدمان کافه"><div id="importMarkers"></div></div>
+          <div id="imageImportStatus" class="image-import-status" role="status">تصویر را انتخاب کنید.</div>
+          <div class="image-import-actions"><button id="analyzeMapImage" type="button" disabled hidden>شناسایی میزها</button><button id="markMapImage" type="button" disabled>مشخص کردن میز با لمس عکس</button><button id="applyMapImage" type="button" disabled>افزودن میزهای انتخاب‌شده</button></div>
+        </section>
+        <div class="canvas-wrap"><div class="map-canvas" id="mapCanvas"><span class="canvas-window">پنجره سرتاسری</span><div class="canvas-bar">بار و صندوق</div><div class="canvas-door">ورودی</div></div></div>
+      </main>
+      <aside class="property-panel" id="propertyPanel">
+        <div class="empty-properties"><span>⌁</span><b>یک میز را انتخاب کنید</b><p>مشخصات میز انتخاب‌شده اینجا نمایش داده می‌شود.</p></div>
+        <div class="table-properties" hidden>
+          <div class="property-head"><b>مشخصات میز</b><button id="duplicateTable" title="کپی میز">⧉</button></div>
+          <label>نام میز<input id="tableName" type="text" maxlength="24"></label>
+          <label>تعداد صندلی<div class="capacity-control"><button id="capacityMinus">−</button><strong id="capacityValue">۲</strong><button id="capacityPlus">+</button></div></label>
+          <label>شکل میز<select id="tableShape"><option value="round">گرد</option><option value="square">مربع</option><option value="rect">گروهی</option></select></label>
+          <label class="switch-row"><span><b>قابل رزرو</b><small>مشتری می‌تواند این میز را انتخاب کند</small></span><input id="tableReservable" type="checkbox" checked></label>
+          <button class="delete-table" id="deleteTable">حذف میز</button>
+        </div>
+      </aside>
+    </div>
+    <div class="editor-toast" id="editorToast">نقشه با موفقیت منتشر شد</div>
+  </dialog>
+  <dialog id="jalaliPicker" class="jalali-picker"><header><button type="button" id="jalaliNext" aria-label="ماه بعد">‹</button><strong id="jalaliMonthTitle"></strong><button type="button" id="jalaliPrev" aria-label="ماه قبل">›</button></header><div class="jalali-weekdays"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div><div class="jalali-days" id="jalaliDays"></div><footer><button type="button" id="jalaliToday">امروز</button><button type="button" id="jalaliCancel">→ بازگشت</button></footer></dialog>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#15110f">
+  <meta name="robots" content="noindex,nofollow">
+  <title>کنسول مدیریت میزو</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2315110f'/%3E%3Cpath d='M18 42V22h7l7 10 7-10h7v20' fill='none' stroke='%23e7ad78' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/saas-admin.css">
+</head>
+<body>
+  <header class="console-header">
+    <div class="console-brand"><span>م</span><div><b>میزو</b><small>کنسول مالک پلتفرم</small></div></div>
+    <button id="refreshSaas" type="button">↻ تازه‌سازی</button>
+  </header>
+  <main>
+    <section class="console-title"><span>مدیریت SaaS</span><h1>کافه‌ها و اشتراک‌ها</h1><p>این فضای داخلی فقط برای مدیریت مشتریان، وضعیت اشتراک و درآمد میزو است.</p></section>
+    <section class="saas-kpis" aria-label="نمای کلی کسب‌وکار">
+      <article><span>کل کافه‌ها</span><strong id="saasCafeCount">—</strong></article>
+      <article><span>اشتراک روشن</span><strong id="saasEnabledCount">—</strong></article>
+      <article><span>دوره آزمایشی</span><strong id="saasTrialCount">—</strong></article>
+      <article><span>اشتراک فعال</span><strong id="saasActiveCount">—</strong></article>
+      <article class="revenue"><span>درآمد ماهانه</span><strong id="saasMrr">—</strong></article>
+    </section>
+    <section class="customers"><div class="section-head"><div><span>مشتریان میزو</span><h2>مدیریت حساب کافه‌ها</h2></div><small>۴۹۰ هزار تومان برای هر شعبه فعال</small></div><div id="saasCafeList" class="saas-cafe-list"><div class="loading">در حال دریافت اطلاعات…</div></div></section>
+    <p id="saasError" class="form-error" role="alert"></p>
+  </main>
+  <script src="/saas-admin.js" defer></script>
+</body>
+</html>
