@@ -1,10 +1,10 @@
-# Mizo — Café Table Reservation
+# Mizo — Café Table Reservation (English Edition)
 
-A Persian, right-to-left table reservation experience for cafés, built as a Cloudflare Worker with D1 persistence. The project combines a customer booking flow, a branch-specific floor map editor, and a café operations dashboard.
+An English, left-to-right edition of an Iran-focused table reservation experience for cafés, built as a Cloudflare Worker with D1 persistence. The project combines a customer booking flow, a branch-specific floor map editor, and a café operations dashboard.
 
 ## Highlights
 
-- Customer flow: Jalali dates, available time slots, table selection, tracking and cancellation.
+- Customer flow: Gregorian dates, available time slots, table selection, tracking and cancellation.
 - Café operations: reservations, walk-in table locks, waitlist, branch settings and opening hours.
 - Floor editor: indoor and outdoor areas, draggable tables, image-based manual tracing, and a reviewable draft before publication.
 - Team roles: owner, branch manager, reception and barista with branch-scoped access.
@@ -35,8 +35,12 @@ Optional runtime secrets: `KAVENEGAR_API_KEY`, `KAVENEGAR_TEMPLATE`, `KAVENEGAR_
 
 ## Demo scope
 
-The OTP flow displays a code when Kavenegar is not configured, and payment actions are simulated. Do not expose management routes as a public production service with demo OTP enabled. The automatic image analysis button appears only when an OpenAI key is configured.
+Mobile input uses Iranian numbers in this demo. The OTP flow displays a code when Kavenegar is not configured, and payment actions are simulated. Do not expose management routes as a public production service with demo OTP enabled. The automatic image analysis button appears only when an OpenAI key is configured.
 
 ## Notes
 
-The café owner reviews the map before publication. Existing reservation history prevents deletion of referenced tables. Dates in the UI use the Persian calendar; stored dates remain ISO formatted.
+The café owner reviews the map before publication. Existing reservation history prevents deletion of referenced tables. Dates in the UI use the Gregorian calendar; stored dates remain ISO formatted.
+
+## Language editions
+
+This is an independent English edition for international portfolio demos. The original Persian version remains unchanged on the `main` branch. Deploy the editions with separate databases so settings and guest records do not mix.
