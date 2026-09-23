@@ -43,3 +43,6 @@ body { font-family: "DM Sans", system-ui, sans-serif; }
 dialog input, dialog textarea, dialog select { direction: ltr; text-align: left; }
 .booking-card { justify-self: end; }
 @media (max-width: 750px) { .hero-copy { padding-right: 0; } .booking-card { justify-self: stretch; } }
+
+.date small { white-space: nowrap; } .booking-card .date, .booking-card .time { min-width: 0; }
+@media (max-width: 600px) { .admin-dialog h2 { padding-left: 0; padding-right: 87px; } .trust-strip { gap: 0; } }
