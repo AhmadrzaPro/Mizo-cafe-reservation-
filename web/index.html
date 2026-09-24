@@ -89,7 +89,18 @@
 
   <dialog id="successDialog" class="success-dialog"><div class="success-icon">✓</div><h2>Your table is booked!</h2><p id="successText"></p><div class="booking-code"><span>Booking reference</span><strong id="successCode">—</strong></div><div id="depositPayment" class="deposit-payment" hidden><span>Deposit due</span><strong id="successDepositAmount">—</strong><small id="depositDeadline">—</small><p id="depositPolicy"></p><button class="primary-btn" id="payDeposit" type="button">Simulate payment and confirm</button></div><button class="primary-btn" id="doneBtn">Back to home</button></dialog>
 
-  <dialog id="trackingDialog" class="form-dialog"><button class="dialog-close back-btn" aria-label="Back">← Back</button><span class="step-label">Track booking</span><h2>Check your booking</h2><form id="trackingForm"><label>Booking reference<input id="trackingCode" maxlength="20" required placeholder="RMA-XXXXXX" dir="ltr"></label><label>Iranian mobile number<input id="trackingMobile" inputmode="tel" maxlength="14" required placeholder="0912 123 4567"></label><p class="form-error" id="trackingError" hidden></p><button class="primary-btn" type="submit">View booking</button></form><div class="tracking-result" id="trackingResult" hidden></div></dialog>
+  <dialog id="trackingDialog" class="form-dialog tracking-dialog">
+    <div class="tracking-top"><button class="dialog-close back-btn" aria-label="Back to home">← Back</button><span class="step-label">BOOKING LOOKUP</span></div>
+    <h2>Find your booking</h2>
+    <p>Enter the reference you received and the mobile number used to book.</p>
+    <form id="trackingForm">
+      <label>Booking reference<input id="trackingCode" maxlength="20" required placeholder="RMA-XXXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <label>Iranian mobile number<input id="trackingMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="0912 123 4567"></label>
+      <p class="form-error" id="trackingError" role="alert" hidden></p>
+      <button class="primary-btn" type="submit">Find booking</button>
+    </form>
+    <div class="tracking-result" id="trackingResult" aria-live="polite" hidden></div>
+  </dialog>
 
   <dialog id="setupDialog" class="setup-dialog">
     <button class="dialog-close back-btn" aria-label="Back to home">← Back</button>

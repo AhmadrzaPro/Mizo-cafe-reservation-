@@ -156,3 +156,65 @@ dialog input,dialog textarea,dialog select{max-width:100%;min-width:0}
   .trust-strip{grid-template-columns:1fr}
   .trust-strip div{border-left:0;border-bottom:1px solid #59493c}
 }
+
+/* Tracking has its own header, so Back never sits on the title. */
+.tracking-dialog{
+  width:min(92vw,520px);
+  padding:26px;
+}
+.tracking-dialog .tracking-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:40px;
+}
+.tracking-dialog .dialog-close,
+.tracking-dialog .dialog-close.back-btn{
+  position:static;
+  float:none;
+  inset:auto;
+  margin:0;
+  flex:none;
+}
+.tracking-dialog>h2{
+  margin:22px 0 7px;
+  padding:0;
+  font-size:clamp(1.45rem,4vw,1.9rem);
+  line-height:1.25;
+}
+.tracking-dialog>p{
+  margin:0;
+  max-width:38ch;
+  line-height:1.55;
+  font-size:.9rem;
+}
+.tracking-dialog form{margin-top:22px}
+.tracking-dialog form label{font-size:.85rem;line-height:1.4}
+.tracking-dialog form input{min-height:48px;font-size:1rem}
+.tracking-dialog form .primary-btn{margin-top:6px}
+.tracking-dialog .tracking-result{
+  min-width:0;
+  overflow-wrap:anywhere;
+  padding:18px;
+}
+.tracking-dialog .tracking-result p{font-size:.85rem;line-height:1.55}
+.tracking-dialog .tracking-result .tracking-payment{
+  display:grid;
+  gap:10px;
+  min-width:0;
+}
+.tracking-dialog .tracking-result .primary-btn{margin-top:0}
+.tracking-dialog .tracking-result .danger-action{min-height:42px}
+@media(max-width:520px){
+  .tracking-dialog{
+    width:calc(100vw - 24px);
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .tracking-dialog .tracking-top{padding:0}
+  .tracking-dialog>h2{
+    padding:0;
+    margin-top:22px;
+    font-size:1.5rem;
+  }
+}
