@@ -19,7 +19,7 @@
       <span class="brand-mark">م</span><span>میزو</span>
     </a>
     <nav aria-label="ناوبری اصلی">
-      <a href="#experience">تجربه رزرو</a><a href="#features">برای کافه‌ها</a>
+      <a href="#experience">تجربه رزرو</a><a href="#features">برای کافه‌ها</a><a href="/?new=1">راه‌اندازی کافه جدید</a>
     </nav>
     <div class="top-actions"><button class="ghost-btn" id="openTracking">پیگیری رزرو</button><button class="ghost-btn" data-open-demo>پنل مدیر کافه</button></div>
   </header>
@@ -97,6 +97,7 @@
     <h2 id="setupTitle">کافه‌ات را به میزو معرفی کن</h2>
     <p>این اطلاعات پایه‌ی صفحه رزرو و پنل مدیریت تو می‌شود و بعداً قابل ویرایش است.</p>
     <form id="setupForm">
+      <div class="setup-fields" id="setupOwnerFields"><label>نام مالک<input id="setupOwnerName" maxlength="70" autocomplete="name"></label><label>موبایل مالک<input id="setupOwnerMobile" inputmode="tel" autocomplete="tel" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"><small>ورود مدیریت فقط با کد این شماره انجام می‌شود.</small></label></div>
       <div class="setup-fields"><label>نام کافه<input id="setupCafeName" maxlength="80" required placeholder="مثلاً کافه آبان"></label><label>شهر<input id="setupCity" maxlength="60" required placeholder="مثلاً تهران"></label></div>
       <fieldset class="structure-picker"><legend>ساختار کافه</legend><label><input type="radio" name="setupStructure" value="single" checked><span><b>تک‌شعبه</b><small>فقط یک شعبه دارم</small></span></label><label><input type="radio" name="setupStructure" value="multi"><span><b>چندشعبه</b><small>مدیریت چند شعبه</small></span></label></fieldset>
       <div class="setup-fields"><label>نام شعبه<input id="setupBranchName" maxlength="80" required value="شعبه اصلی"></label><label>آدرس <small>اختیاری</small><input id="setupAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label></div>
