@@ -1,0 +1,8 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
+function fn(name){const start=source.indexOf('function '+name+'('),end=source.indexOf('\nfunction ',start+1);return source.slice(start,end)}
+test('furniture has exactly one visual seat per capacity for every supported shape',()=>{const c=vm.createContext({});vm.runInContext(fn('tableFurniture'),c);for(const shape of ['round','square','rect'])for(const capacity of [1,2,4,6,8,20]){const markup=c.tableFurniture({shape,capacity});assert.equal((markup.match(/class="furniture-chair"/g)||[]).length,capacity);assert.ok(!markup.includes('NaN'))}});
+test('undo restores table identity, coordinates and areas; a new edit drops redo',()=>{const controls={};const c=vm.createContext({mapHistory:[],mapHistoryIndex:-1,cafeMap:{areas:[{id:'main'}],tables:[{id:'existing-booked-table',x:20,y:30}]},activeArea:'main',selectedId:null,dirty:false,document:{querySelector:key=>controls[key]??=( {})},visibleAreas:()=>[{id:'main'}],renderEditor:()=>{}});for(const name of ['resetMapHistory','recordMapHistory','syncHistoryButtons','travelMapHistory'])vm.runInContext(fn(name),c);c.resetMapHistory();c.cafeMap.tables[0].x=300;c.recordMapHistory();c.travelMapHistory(-1);assert.equal(c.cafeMap.tables[0].x,20);assert.equal(c.cafeMap.tables[0].id,'existing-booked-table');c.travelMapHistory(1);assert.equal(c.cafeMap.tables[0].x,300);c.travelMapHistory(-1);c.cafeMap.tables[0].y=90;c.recordMapHistory();assert.equal(c.mapHistory.length,2);assert.equal(controls['#mapRedo'].disabled,true)});

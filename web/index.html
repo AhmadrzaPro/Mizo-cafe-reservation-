@@ -192,14 +192,14 @@
         <section id="imageImportPanel" class="image-import-panel" hidden aria-label="ساخت نقشه از تصویر">
           <header><div><span>پیش‌نویس نقشه</span><h3>ساخت میزها از تصویر</h3></div><button id="closeImageImport" type="button" aria-label="بازگشت به ویرایشگر">→ بازگشت</button></header>
           <p>برای بخش «<b id="importAreaName"></b>» یک پلان یا عکس واضح از بالا انتخاب کنید. میزهای شناسایی‌شده را بررسی و سپس به نقشه اضافه کنید.</p>
-          <label class="image-upload">انتخاب تصویر <input id="mapImageFile" type="file" accept="image/jpeg,image/webp,image/webp" aria-label="انتخاب پلان یا عکس کافه"><small>JPG، PNG یا WebP · حداکثر ۸ مگابایت</small></label>
+          <label class="image-upload">انتخاب تصویر <input id="mapImageFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="انتخاب پلان یا عکس کافه"><small>JPG، PNG یا WebP · حداکثر ۸ مگابایت</small></label>
           <div id="imageImportPreview" class="image-import-preview" hidden><img id="mapImagePreview" alt="تصویر انتخاب‌شده از چیدمان کافه"><div id="importMarkers"></div></div>
           <div id="imageImportStatus" class="image-import-status" role="status">تصویر را انتخاب کنید.</div>
           <div class="image-import-actions"><button id="analyzeMapImage" type="button" disabled hidden>شناسایی میزها</button><button id="markMapImage" type="button" disabled>مشخص کردن میز با لمس عکس</button><button id="applyMapImage" type="button" disabled>افزودن میزهای انتخاب‌شده</button></div>
         </section>
-        <div class="canvas-wrap"><div class="map-canvas" id="mapCanvas"><span class="canvas-window">پنجره سرتاسری</span><div class="canvas-bar">بار و صندوق</div><div class="canvas-door">ورودی</div></div></div>
+        <div class="studio-caption"><div><small>استودیوی چیدمان</small><h3 id="studioAreaName">سالن اصلی</h3></div><span id="studioCounts"></span></div><div class="studio-tools"><button id="mapUndo" title="برگشت تغییر" disabled>↶</button><button id="mapRedo" title="انجام دوباره" disabled>↷</button><button id="fitMap">نمایش کامل</button><button id="snapMap" aria-pressed="true">تراز شبکه</button><button id="materialMap" aria-pressed="true">نمای واقعی</button><button id="editSelectedTable" disabled>مشخصات میز</button></div><div class="canvas-wrap"><div id="mapStage"><div class="map-canvas" id="mapCanvas"><span class="canvas-window">پنجره سرتاسری</span><div class="canvas-bar">بار و صندوق</div><div class="canvas-door">ورودی</div></div></div></div>
       </main>
-      <aside class="property-panel" id="propertyPanel">
+      <aside class="property-panel" id="propertyPanel"><button id="closeInspector" type="button" class="close-inspector">بستن مشخصات ×</button>
         <div class="empty-properties"><span>⌁</span><b>یک میز را انتخاب کنید</b><p>مشخصات میز انتخاب‌شده اینجا نمایش داده می‌شود.</p></div>
         <div class="table-properties" hidden>
           <div class="property-head"><b>مشخصات میز</b><button id="duplicateTable" title="کپی میز">⧉</button></div>
