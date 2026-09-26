@@ -85,6 +85,13 @@
       "when": 1789903943699,
       "tag": "0011_add_map_space_types",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790413200000,
+      "tag": "0012_tenant_booking_integrity",
+      "breakpoints": true
     }
   ]
 }
