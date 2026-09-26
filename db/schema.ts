@@ -100,6 +100,7 @@ export const staffMembers = sqliteTable("staff_members", {
 }, (table) => [uniqueIndex("idx_staff_cafe_mobile").on(table.cafeId, table.mobile), index("idx_staff_branch_id").on(table.branchId)]);
 
 export const otpChallenges = sqliteTable("otp_challenges", {
+  cafeId: text("cafe_id").references(() => cafes.id, { onDelete: "cascade" }),
   id: text("id").primaryKey(),
   mobile: text("mobile").notNull(),
   salt: text("salt").notNull(),
@@ -108,7 +109,7 @@ export const otpChallenges = sqliteTable("otp_challenges", {
   attempts: integer("attempts").notNull().default(0),
   consumedAt: integer("consumed_at"),
   createdAt: integer("created_at").notNull(),
-}, (table) => [index("idx_otp_mobile_created").on(table.mobile, table.createdAt)]);
+}, (table) => [index("idx_otp_mobile_created").on(table.mobile, table.createdAt), index("idx_otp_cafe_mobile_created").on(table.cafeId, table.mobile, table.createdAt)]);
 
 export const staffSessions = sqliteTable("staff_sessions", {
   id: text("id").primaryKey(),
@@ -168,7 +169,7 @@ export const reservations = sqliteTable("reservations", {
   paidAt: text("paid_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-}, (table) => [uniqueIndex("idx_reservations_tracking_code").on(table.trackingCode), index("idx_reservations_branch_reserved_at").on(table.branchId, table.reservedAt), index("idx_reservations_mobile").on(table.mobile)]);
+}, (table) => [uniqueIndex("idx_reservations_tracking_code").on(table.trackingCode), index("idx_reservations_branch_reserved_at").on(table.branchId, table.reservedAt), index("idx_reservations_mobile").on(table.mobile), index("idx_reservations_active_interval").on(table.branchId, table.status, table.reservedAt)]);
 
 export const loyaltyTransactions = sqliteTable("loyalty_transactions", {
   id: text("id").primaryKey(),

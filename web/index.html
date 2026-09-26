@@ -19,7 +19,7 @@
       <span class="brand-mark">M</span><span>Mizo</span>
     </a>
     <nav aria-label="Main navigation">
-      <a href="#experience">Book a table</a><a href="#features">For cafés</a>
+      <a href="#experience">Book a table</a><a href="#features">For cafés</a><a href="/?new=1">Set up a café</a>
     </nav>
     <div class="top-actions"><button class="ghost-btn" id="openTracking">Track booking</button><button class="ghost-btn" data-open-demo>Café dashboard</button></div>
   </header>
@@ -108,6 +108,7 @@
     <h2 id="setupTitle">Set up your café</h2>
     <p>These details power your booking page and dashboard. You can change them later.</p>
     <form id="setupForm">
+      <div class="setup-fields" id="setupOwnerFields"><label>Owner name<input id="setupOwnerName" maxlength="70" autocomplete="name"></label><label>Owner mobile<input id="setupOwnerMobile" inputmode="tel" autocomplete="tel" required placeholder="09121234567"><small>Management sign-in requires a code sent to this number.</small></label></div>
       <div class="setup-fields"><label>Café name<input id="setupCafeName" maxlength="80" required placeholder="e.g. Aban Café"></label><label>City<input id="setupCity" maxlength="60" required placeholder="e.g. London"></label></div>
       <fieldset class="structure-picker"><legend>Café structure</legend><label><input type="radio" name="setupStructure" value="single" checked><span><b>Single location</b><small>I have one location</small></span></label><label><input type="radio" name="setupStructure" value="multi"><span><b>Multiple locations</b><small>Manage all locations</small></span></label></fieldset>
       <div class="setup-fields"><label>Branch name<input id="setupBranchName" maxlength="80" required value="Main branch"></label><label>Address <small>optional</small><input id="setupAddress" maxlength="180" placeholder="Neighborhood, street, and number"></label></div>
