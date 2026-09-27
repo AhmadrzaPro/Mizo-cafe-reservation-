@@ -146,3 +146,22 @@ dialog.ops-dialog[open],dialog.map-editor-dialog[open]{display:flex;flex-directi
 .studio-table .furniture-chair,.ops-table .furniture-chair{width:18px;height:18px;border-top-width:4px}
 .studio-table .table-surface{background:#f4e5d0}.studio-table.selected .table-surface{outline:3px solid #bd763b;outline-offset:4px;background:#f2d4b8}.studio-table.reserved{filter:grayscale(.9)}
 .ops-table .table-surface{background:#edf6ef;border-color:#72a78b;color:#234b35}.ops-table .table-surface small{color:inherit}.ops-table.reserved .table-surface{background:#fff0d7;border-color:#c49248;color:#775017}.ops-table.occupied .table-surface,.ops-table.arrived .table-surface{background:#f4dfd8;border-color:#ba796c;color:#713f36}.ops-table.cleaning .table-surface,.ops-table.dirty .table-surface{background:#e7e7ef;border-color:#9b98b8;color:#545071}.ops-table.blocked .table-surface,.ops-table.inactive .table-surface{background:#e1e4e2;border-color:#a5aaa7;color:#535c56}
+/* Independent room extents, with a scrollable camera instead of compressed tables. */
+.map-editor-dialog .canvas-wrap,#customerMapViewport,#opsMapViewport{touch-action:none;cursor:grab;overscroll-behavior:contain;overflow:auto;direction:ltr}
+.floor-panning{cursor:grabbing!important}
+#customerMapViewport,#opsMapViewport{height:360px;max-height:52dvh;padding:20px;background:#e9eeeb;border-radius:14px;position:relative;margin:12px 0}
+#customerMapStage,#opsMapStage{position:relative;margin:0 auto;flex-shrink:0}
+#customerFloorPlan,#opsFloor{position:relative;flex-shrink:0;transform-origin:top left;margin:0!important;max-width:none;min-width:0;overflow:visible!important}
+#opsFloor{height:520px;background:#f2f3ed}
+#customerFloorPlan{background-color:#f3ede2}
+#mapCanvas,#customerFloorPlan,#opsFloor{transition:none!important}
+.floor-overview .furniture-chair,.floor-overview .table-surface small{display:none}
+.floor-overview .table-surface b{visibility:hidden}
+.floor-navigation{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.floor-navigation button{border:1px solid #c5d3c9;border-radius:9px;background:#fff;color:#284436;min-height:44px;min-width:44px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
+.floor-navigation small{font-size:12px;color:#556c5d;flex:1;min-width:140px}
+.area-dimensions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:12px 20px;background:#fbfcfb;border-block:1px solid #d6e0d9;flex-shrink:0}
+.area-dimensions[hidden]{display:none!important}.area-dimensions label{flex:1;min-width:100px;font-size:13px;color:#324b3c}.area-dimensions input{display:block;width:100%;max-width:160px;margin-top:5px;border:1px solid #bdcfc1;border-radius:8px;padding:9px;font:inherit;font-size:16px;direction:ltr;min-height:44px}.area-dimensions button{background:#264d3e;color:white;border:0;border-radius:9px;min-height:44px;padding:9px 14px;font:inherit}.area-dimensions p{width:100%;margin:0;color:#973e32;font-size:13px}.area-dimensions p:empty{display:none}
+#studioCounts:after{content:attr(data-dimensions);display:block;direction:ltr;margin-top:6px;color:#597364;font-size:12px;text-align:right}
+#mapCanvas .editor-table{touch-action:none}
+@media(max-width:600px){.area-dimensions{padding:10px 12px;gap:8px}.area-dimensions button{width:100%}#customerMapViewport,#opsMapViewport{height:320px;max-height:45dvh}}

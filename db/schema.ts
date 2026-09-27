@@ -234,6 +234,8 @@ export const areas = sqliteTable("areas", {
   branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   kind: text("kind").notNull().default("indoor"),
+  width: integer("width").notNull().default(820),
+  height: integer("height").notNull().default(520),
   sortOrder: integer("sort_order").notNull().default(0),
 }, (table) => [index("idx_areas_branch_id").on(table.branchId)]);
 

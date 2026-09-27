@@ -92,6 +92,13 @@
       "when": 1790413200000,
       "tag": "0012_tenant_booking_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1790453279553,
+      "tag": "0013_area_dimensions",
+      "breakpoints": true
     }
   ]
 }
