@@ -81,3 +81,11 @@ npm run validate
 ```
 
 The 26 API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. They cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
+
+## Floor studio and large areas
+
+The English floor editor now includes capacity-aware chairs, material/plan views, grid snapping, undo/redo and explicit mobile table details. Each area has independent width and height, between 5 and 100 metres per side (40 coordinate units/metre). Migration `0013_area_dimensions.sql` preserves existing floors at 820 × 520 units and keeps table and reservation IDs unchanged. Resize requests that put a table outside its area are rejected.
+
+Editor, guest selection and live operations support panning, zoom controls and pinch gestures. `/?studio=1` opens an isolated interactive floor demo with publishing disabled; it does not change café records. The backend currently supports up to 20 areas and 200 tables per branch.
+
+Validation: 33 automated tests pass. Browser/iPhone visual verification and real SMS/payment integration testing remain outstanding.
