@@ -77,6 +77,24 @@ With `DEMO_MODE` absent, missing Kavenegar configuration returns a clear error i
 3. Cafés that already have owners keep them. For a legacy café without staff, provision its verified owner's mobile in `staff_members` through a trusted administrative migration; public login deliberately cannot claim it.
 4. Distribute the explicit café URL, and configure Kavenegar or isolated demo mode as appropriate. No implicit global-café fallback remains.
 5. Do not mix an older Worker with the new triggers. The English-edition branch is separate and must receive the same backend/contract changes before its deployment is upgraded.
+6. Apply `0014_rate_limits.sql` before serving a Worker with abuse protection. It only adds the `rate_limits` table and does not change existing data.
+
+### Abuse protection
+
+Limits are counted in the `rate_limits` table with one atomic upsert per check, so concurrent requests cannot both take the last slot. Blocked requests return `429` with `{error:"rate_limited", message:"…"}`. The active-reservation cap returns `429` with `error:"active_reservation_limit"`. Every value below can be overridden with the env variable; a missing or invalid value uses the default.
+
+| Env variable | Default | Applies to |
+| --- | --- | --- |
+| `RATE_LIMIT_OTP_PER_IP_HOUR` | `10` | `POST /api/auth/request` per client IP per hour, in addition to the per-mobile OTP limits |
+| `RATE_LIMIT_SETUP_PER_IP_DAY` | `5` | `POST /api/setup` (new café) per client IP per day |
+| `RATE_LIMIT_RESERVATIONS_PER_IP_HOUR` | `10` | Public reservation create per client IP per café per hour |
+| `MAX_ACTIVE_RESERVATIONS_PER_MOBILE` | `3` | Active (pending or confirmed) future public reservations per mobile per branch. Staff-created reservations are not capped |
+| `SMS_DAILY_CAP_PER_CAFE` | `300` | Reservation SMS (confirmation and reminder) per café per day. Past the cap the booking still succeeds, and the message is logged with status `skipped` and error `daily_cap` |
+| `CLIENT_IP_HEADER` | `CF-Connecting-IP` | Request header holding the client IP |
+
+Days start at midnight Tehran time (UTC+03:30). Expired windows are deleted by the `scheduled` handler and, at most every ten minutes per isolate, on requests to `/api/cafes/…`.
+
+`CLIENT_IP_HEADER` must name a header that the proxy in front of the app sets and overwrites. Otherwise clients can choose their own IP. For a comma-separated list such as `X-Forwarded-For`, the right-most entry is used. Requests with a missing or malformed IP share one `unknown` client, so they are limited together rather than skipped.
 
 ### Regression tests
 
@@ -87,4 +105,4 @@ npm test
 npm run validate
 ```
 
-The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
+The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. `tests/abuse-protection.test.mjs` covers the limits above, concurrency at each limit's edge, and applying `0014` to an existing database. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
