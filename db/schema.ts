@@ -264,3 +264,9 @@ export const waitlistEntries = sqliteTable("waitlist_entries", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [index("idx_waitlist_branch_status_created").on(table.branchId, table.status, table.createdAt)]);
+
+export const rateLimits = sqliteTable("rate_limits", {
+  key: text("key").notNull(),
+  windowStart: integer("window_start").notNull(),
+  count: integer("count").notNull().default(0),
+}, (table) => [primaryKey({ columns: [table.key, table.windowStart] }), index("idx_rate_limits_window_start").on(table.windowStart)]);

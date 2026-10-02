@@ -24,6 +24,7 @@ import {
   updateWaitlist,
 } from "./operations.js";
 import { payReservationDemo, readPayments, refundPayment } from "./payments.js";
+import { cleanupRateLimits, cleanupRateLimitsOccasionally } from "./rate-limit.js";
 import { readReports } from "./reports.js";
 import {
   cancelReservation,
@@ -395,6 +396,7 @@ export default {
     if (url.pathname.startsWith("/api/")) {
       if (request.method === "GET" && url.pathname.startsWith("/api/cafes/")) {
         ctx.waitUntil(processDueReminders(env));
+        ctx.waitUntil(cleanupRateLimitsOccasionally(env.DB));
       }
       return handleApi(request, env, url);
     }
@@ -402,6 +404,12 @@ export default {
   },
   async scheduled(controller, env, ctx) {
     void controller;
-    ctx.waitUntil(Promise.all([processDueReminders(env), expireUnpaidReservations(env.DB)]));
+    ctx.waitUntil(
+      Promise.all([
+        processDueReminders(env),
+        expireUnpaidReservations(env.DB),
+        cleanupRateLimits(env.DB),
+      ]),
+    );
   },
 };

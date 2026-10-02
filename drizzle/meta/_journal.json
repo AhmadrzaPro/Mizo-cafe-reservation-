@@ -99,6 +99,13 @@
       "when": 1790453279553,
       "tag": "0013_area_dimensions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790959548691,
+      "tag": "0014_rate_limits",
+      "breakpoints": true
     }
   ]
 }
