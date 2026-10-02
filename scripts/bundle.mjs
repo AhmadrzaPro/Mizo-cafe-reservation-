@@ -20,7 +20,6 @@ await build({
   bundle: true,
   format: "esm",
   platform: "neutral",
-  target: "es2022",
   plugins: [siteContentExternal],
   logLevel: "warning",
 });

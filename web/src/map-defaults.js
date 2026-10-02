@@ -1,0 +1,72 @@
+export const defaultMap = {
+  spaceMode: "both",
+  areas: [
+    { id: "main", name: "سالن اصلی", kind: "indoor" },
+    { id: "terrace", name: "تراس", kind: "outdoor" },
+  ],
+  tables: [
+    {
+      id: "t1",
+      area: "main",
+      name: "میز ۱",
+      shape: "round",
+      capacity: 2,
+      x: 655,
+      y: 62,
+      reservable: true,
+    },
+    {
+      id: "t2",
+      area: "main",
+      name: "میز ۲",
+      shape: "round",
+      capacity: 2,
+      x: 505,
+      y: 60,
+      reservable: false,
+    },
+    {
+      id: "t3",
+      area: "main",
+      name: "میز ۳",
+      shape: "rect",
+      capacity: 4,
+      x: 345,
+      y: 68,
+      reservable: true,
+    },
+    {
+      id: "t4",
+      area: "main",
+      name: "میز ۴",
+      shape: "square",
+      capacity: 2,
+      x: 620,
+      y: 230,
+      reservable: true,
+    },
+    {
+      id: "t5",
+      area: "main",
+      name: "میز ۵",
+      shape: "round",
+      capacity: 2,
+      x: 430,
+      y: 235,
+      reservable: false,
+    },
+    {
+      id: "t6",
+      area: "terrace",
+      name: "تراس ۱",
+      shape: "round",
+      capacity: 2,
+      x: 620,
+      y: 95,
+      reservable: true,
+    },
+  ],
+};
+export function cloneDefault() {
+  return JSON.parse(JSON.stringify(defaultMap));
+}

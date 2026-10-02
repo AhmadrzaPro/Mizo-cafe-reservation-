@@ -6,7 +6,7 @@
     "build": "bash scripts/build.sh",
     "validate": "node scripts/validate-artifact.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "format": "prettier --write worker web tests scripts"
+    "format": "prettier --write worker/src web/src \"web/*.css\""
   },
   "engines": {
     "node": ">=22.13.0"
