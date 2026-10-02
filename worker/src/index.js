@@ -1,31 +1,42 @@
-import {
-  appJs,
-  editorCss,
-  heroBase64,
-  page,
-  paymentsCss,
-  saasCss,
-  saasJs,
-  saasPage,
-  stylesCss,
-} from "./site-content.js";
 import { requestOtp, verifyOtp } from "./auth/otp.js";
-import { canUseBranch, hasPermission, sessionStaff, staffSessionPublic } from "./auth/session.js";
+import {
+  canUseBranch,
+  hasPermission,
+  logout,
+  sessionStaff,
+  staffSessionPublic,
+} from "./auth/session.js";
 import { availability } from "./availability.js";
 import { branchRow, createBranch, updateBranch } from "./branches.js";
-import { reply, replyWithHeaders } from "./http.js";
+import { reply } from "./http.js";
 import { adjustLoyalty, readLoyalty } from "./loyalty.js";
 import { analyzeMapImage, readMap, writeMap } from "./map.js";
-import { processDueReminders, readNotifications, writeNotificationSettings } from "./notifications.js";
-import { createWaitlist, readOperations, updateOperationalReservation, updateWaitlist } from "./operations.js";
+import {
+  processDueReminders,
+  readNotifications,
+  writeNotificationSettings,
+} from "./notifications.js";
+import {
+  createWaitlist,
+  readOperations,
+  updateOperationalReservation,
+  updateTableStatus,
+  updateWaitlist,
+} from "./operations.js";
 import { payReservationDemo, readPayments, refundPayment } from "./payments.js";
 import { readReports } from "./reports.js";
-import { createReservation, expireUnpaidReservations, lookupReservation, publicReservation } from "./reservations.js";
+import {
+  cancelReservation,
+  createReservation,
+  expireUnpaidReservations,
+  lookupReservation,
+  publicReservation,
+} from "./reservations.js";
 import { readSaasOverview, requireSaasAdmin, updateSaasAccount } from "./saas-admin.js";
 import { readSchedule, readSettings, writeSchedule, writeSettings } from "./settings.js";
 import { readSetup, writeSetup } from "./setup.js";
 import { listStaff, saveStaff } from "./staff.js";
-import { decodeBase64, textTypes } from "./static.js";
+import { serveStatic } from "./static.js";
 import { readSubscription, renewSubscriptionDemo, updateSubscription } from "./subscription.js";
 import { tehranNow, validDate, validTime } from "./util/dates.js";
 import { isDemo } from "./util/env.js";
@@ -100,16 +111,8 @@ async function handleApi(request, env, url) {
           : { authenticated: false },
       );
     }
-    if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-      const session = await sessionStaff(env.DB, request);
-      if (session)
-        await env.DB.prepare("DELETE FROM staff_sessions WHERE id=?")
-          .bind(session.session_id)
-          .run();
-      return replyWithHeaders({ authenticated: false }, 200, {
-        "set-cookie": "mizo_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
-      });
-    }
+    if (url.pathname === "/api/auth/logout" && request.method === "POST")
+      return logout(env, request);
     if (url.pathname === "/api/reports" && request.method === "GET") {
       const session = await sessionStaff(env.DB, request);
       if (!session)
@@ -299,18 +302,7 @@ async function handleApi(request, env, url) {
       if (section === "tables" && request.method === "PATCH" && itemId) {
         if (!hasPermission(session, "tables.write"))
           return reply({ error: "forbidden", message: "اجازه تغییر وضعیت میزها را ندارید." }, 403);
-        const body = await request.json(),
-          allowed = ["available", "dirty", "inactive"],
-          status = body.status;
-        if (!allowed.includes(status)) return reply({ error: "invalid_status" }, 400);
-        const result = await env.DB.prepare(
-          "UPDATE cafe_tables SET operational_status=?,updated_at=? WHERE id=? AND id IN (SELECT t.id FROM cafe_tables t JOIN areas a ON a.id=t.area_id WHERE a.branch_id=?)",
-        )
-          .bind(status, new Date().toISOString(), decodeURIComponent(itemId), branch.id)
-          .run();
-        return result.meta?.changes
-          ? reply({ id: decodeURIComponent(itemId), status })
-          : reply({ error: "table_not_found" }, 404);
+        return updateTableStatus(env.DB, branch, itemId, await request.json());
       }
       return reply({ error: "method_not_allowed" }, 405);
     }
@@ -381,23 +373,8 @@ async function handleApi(request, env, url) {
           404,
         );
       if (action === "pay" && request.method === "POST") return payReservationDemo(env, row);
-      if (action === "cancel" && request.method === "POST") {
-        if (!["pending", "confirmed"].includes(row.status))
-          return reply({ error: "cannot_cancel", message: "این رزرو قابل لغو نیست." }, 409);
-        const result = await env.DB.batch([
-          env.DB.prepare(
-            "UPDATE reservations SET status='cancelled',updated_at=? WHERE id=? AND status IN ('pending','confirmed')",
-          ).bind(new Date().toISOString(), row.id),
-          env.DB.prepare(
-            "DELETE FROM reservation_locks WHERE reservation_id=? AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
-          ).bind(row.id, row.id),
-          env.DB.prepare(
-            "UPDATE sms_messages SET status='cancelled' WHERE reservation_id=? AND status='queued' AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
-          ).bind(row.id, row.id),
-        ]);
-        if (!result[0].meta?.changes) return reply({ error: "cannot_cancel" }, 409);
-        return reply(publicReservation(await lookupReservation(env.DB, code, body.mobile)));
-      }
+      if (action === "cancel" && request.method === "POST")
+        return cancelReservation(env.DB, row, code, body.mobile);
       return reply({ error: "method_not_allowed" }, 405);
     }
     return reply({ error: "not_found" }, 404);
@@ -421,47 +398,7 @@ export default {
       }
       return handleApi(request, env, url);
     }
-    if (url.pathname === "/saas-admin") {
-      if (!env.DB || !(await requireSaasAdmin(env.DB, request)))
-        return new Response("دسترسی به این بخش مجاز نیست.", {
-          status: 403,
-          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-        });
-      return new Response(saasPage, {
-        headers: {
-          "content-type": textTypes["/saas-admin"],
-          "cache-control": "no-store",
-          "x-content-type-options": "nosniff",
-          "referrer-policy": "no-referrer",
-        },
-      });
-    }
-    if (url.pathname === "/assets/cafe-hero.png")
-      return new Response(decodeBase64(heroBase64), {
-        headers: { "content-type": "image/png", "cache-control": "public, max-age=604800" },
-      });
-    const content =
-      url.pathname === "/" || url.pathname === "/index.html"
-        ? page
-        : url.pathname === "/styles.css"
-          ? stylesCss
-          : url.pathname === "/editor.css"
-            ? editorCss
-            : url.pathname === "/app.js"
-              ? appJs
-              : url.pathname === "/saas-admin.css"
-                ? saasCss
-                : url.pathname === "/saas-admin.js"
-                  ? saasJs
-                  : null;
-    if (content === null) return new Response("Not found", { status: 404 });
-    return new Response(content, {
-      headers: {
-        "content-type": textTypes[url.pathname] || textTypes["/"],
-        "x-content-type-options": "nosniff",
-        "referrer-policy": "strict-origin-when-cross-origin",
-      },
-    });
+    return serveStatic(request, env, url);
   },
   async scheduled(controller, env, ctx) {
     void controller;

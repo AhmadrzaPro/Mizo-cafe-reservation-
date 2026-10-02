@@ -271,3 +271,26 @@ export function publicReservation(row) {
     },
   };
 }
+export async function cancelReservation(db, row, code, mobile) {
+  if (!["pending", "confirmed"].includes(row.status))
+    return reply({ error: "cannot_cancel", message: "این رزرو قابل لغو نیست." }, 409);
+  const result = await db.batch([
+    db
+      .prepare(
+        "UPDATE reservations SET status='cancelled',updated_at=? WHERE id=? AND status IN ('pending','confirmed')",
+      )
+      .bind(new Date().toISOString(), row.id),
+    db
+      .prepare(
+        "DELETE FROM reservation_locks WHERE reservation_id=? AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
+      )
+      .bind(row.id, row.id),
+    db
+      .prepare(
+        "UPDATE sms_messages SET status='cancelled' WHERE reservation_id=? AND status='queued' AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
+      )
+      .bind(row.id, row.id),
+  ]);
+  if (!result[0].meta?.changes) return reply({ error: "cannot_cancel" }, 409);
+  return reply(publicReservation(await lookupReservation(db, code, mobile)));
+}

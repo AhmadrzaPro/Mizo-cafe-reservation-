@@ -1,7 +1,8 @@
 import { branchRow } from "./branches.js";
 import { reply } from "./http.js";
 import { idPart } from "./util/ids.js";
-export const outdoorAreaName = (name) => /(تراس|حیاط|روف|باغ|بالکن|فضای باز)/.test(String(name || ""));
+export const outdoorAreaName = (name) =>
+  /(تراس|حیاط|روف|باغ|بالکن|فضای باز)/.test(String(name || ""));
 export function normalizeMap(input) {
   const areas = Array.isArray(input?.areas) ? input.areas.slice(0, 20) : [],
     tables = Array.isArray(input?.tables) ? input.tables.slice(0, 200) : [];

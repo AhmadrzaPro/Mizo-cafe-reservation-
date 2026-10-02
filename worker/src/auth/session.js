@@ -1,4 +1,4 @@
-import { cookieValue } from "../http.js";
+import { cookieValue, replyWithHeaders } from "../http.js";
 import { sha256 } from "../util/ids.js";
 export async function sessionStaff(db, request) {
   const token = cookieValue(request, "mizo_session");
@@ -103,4 +103,12 @@ export function canUseBranch(staff, branch) {
     staff.cafe_id === branch.cafe_id &&
     (staff.role === "owner" || staff.branch_id === branch.id),
   );
+}
+export async function logout(env, request) {
+  const session = await sessionStaff(env.DB, request);
+  if (session)
+    await env.DB.prepare("DELETE FROM staff_sessions WHERE id=?").bind(session.session_id).run();
+  return replyWithHeaders({ authenticated: false }, 200, {
+    "set-cookie": "mizo_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
+  });
 }

@@ -378,3 +378,17 @@ export async function updateWaitlist(db, branch, id, body) {
     .run();
   return result.meta?.changes ? reply({ id, status }) : reply({ error: "waitlist_not_found" }, 404);
 }
+export async function updateTableStatus(db, branch, itemId, body) {
+  const allowed = ["available", "dirty", "inactive"],
+    status = body.status;
+  if (!allowed.includes(status)) return reply({ error: "invalid_status" }, 400);
+  const result = await db
+    .prepare(
+      "UPDATE cafe_tables SET operational_status=?,updated_at=? WHERE id=? AND id IN (SELECT t.id FROM cafe_tables t JOIN areas a ON a.id=t.area_id WHERE a.branch_id=?)",
+    )
+    .bind(status, new Date().toISOString(), decodeURIComponent(itemId), branch.id)
+    .run();
+  return result.meta?.changes
+    ? reply({ id: decodeURIComponent(itemId), status })
+    : reply({ error: "table_not_found" }, 404);
+}

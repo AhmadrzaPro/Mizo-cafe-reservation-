@@ -1,4 +1,3 @@
-import { branchRow } from "./branches.js";
 import { reply } from "./http.js";
 import { randomId } from "./util/ids.js";
 export const subscriptionUnitPriceRials = 4900000;

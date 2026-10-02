@@ -1,5 +1,4 @@
 import { isDemo } from "./util/env.js";
-import { trackingCode } from "./util/ids.js";
 export async function sendReservationSms(env, kind, mobile, trackingCode, time, branchName) {
   const template =
     kind === "confirmation" ? env.KAVENEGAR_CONFIRMATION_TEMPLATE : env.KAVENEGAR_REMINDER_TEMPLATE;
