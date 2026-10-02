@@ -8,7 +8,7 @@ import {
 } from "./auth/session.js";
 import { availability } from "./availability.js";
 import { branchRow, createBranch, updateBranch } from "./branches.js";
-import { reply } from "./http.js";
+import { clientIp, reply } from "./http.js";
 import { adjustLoyalty, readLoyalty } from "./loyalty.js";
 import { analyzeMapImage, readMap, writeMap } from "./map.js";
 import {
@@ -24,7 +24,13 @@ import {
   updateWaitlist,
 } from "./operations.js";
 import { payReservationDemo, readPayments, refundPayment } from "./payments.js";
-import { cleanupRateLimits, cleanupRateLimitsOccasionally } from "./rate-limit.js";
+import {
+  cleanupRateLimits,
+  cleanupRateLimitsOccasionally,
+  consumeLimit,
+  limits,
+  rateLimitedReply,
+} from "./rate-limit.js";
 import { readReports } from "./reports.js";
 import {
   cancelReservation,
@@ -82,8 +88,11 @@ async function handleBranchApi(request, env, url, cafeSlug, branchSlug, resource
     return reply(await availability(env.DB, branch, date, partySize, settings));
   }
   if (resource === "reservations") {
-    if (request.method === "POST")
+    if (request.method === "POST") {
+      const subject = `reservation:${branch.cafe_id}:ip:${clientIp(request, env)}`;
+      if (!(await consumeLimit(env, limits.reservationsPerIp, subject))) return rateLimitedReply();
       return createReservation(env, branch, await request.json(), settings);
+    }
     if (request.method === "GET") {
       const date = url.searchParams.get("date");
       if (!validDate(date)) return reply({ error: "invalid_date" }, 400);
@@ -100,8 +109,11 @@ async function handleBranchApi(request, env, url, cafeSlug, branchSlug, resource
 async function handleApi(request, env, url) {
   if (!env.DB) return reply({ error: "database_unavailable" }, 503);
   try {
-    if (url.pathname === "/api/auth/request" && request.method === "POST")
+    if (url.pathname === "/api/auth/request" && request.method === "POST") {
+      if (!(await consumeLimit(env, limits.otpPerIp, `otp:ip:${clientIp(request, env)}`)))
+        return rateLimitedReply();
       return requestOtp(env, await request.json());
+    }
     if (url.pathname === "/api/auth/verify" && request.method === "POST")
       return verifyOtp(env, await request.json());
     if (url.pathname === "/api/auth/session" && request.method === "GET") {
@@ -189,7 +201,11 @@ async function handleApi(request, env, url) {
             await sessionStaff(env.DB, request),
           ),
         );
-      if (request.method === "POST") return writeSetup(env.DB, await request.json());
+      if (request.method === "POST") {
+        if (!(await consumeLimit(env, limits.setupPerIp, `setup:ip:${clientIp(request, env)}`)))
+          return rateLimitedReply();
+        return writeSetup(env.DB, await request.json());
+      }
       if (request.method === "PATCH") {
         const session = await sessionStaff(env.DB, request);
         if (!session || session.role !== "owner")

@@ -1,8 +1,9 @@
 import { bookingTimeError, lockTimes } from "./availability.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
+import { limitValue } from "./rate-limit.js";
 import { dayRules, defaultSettings } from "./settings.js";
-import { minutes, validDate, validTime } from "./util/dates.js";
+import { minutes, tehranNow, validDate, validTime } from "./util/dates.js";
 import { isDemo } from "./util/env.js";
 import { randomId, trackingCode } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
@@ -131,21 +132,33 @@ export async function createReservation(env, branch, body, settings, operational
       settings.bufferMinutes,
       settings.slotInterval,
     ),
-    statements = [];
+    statements = [],
+    // Public bookings are capped per mobile and branch. The cap is evaluated inside the booking
+    // batch, so concurrent requests cannot both pass it; a capped booking writes nothing.
+    activeCap = operational ? null : limitValue(env, "MAX_ACTIVE_RESERVATIONS_PER_MOBILE", 3),
+    underActiveCap = [
+      "(SELECT COUNT(*) FROM reservations WHERE branch_id=? AND mobile=? AND status IN ('pending','confirmed') AND reserved_at>=?)<?",
+      [branch.id, mobile, tehranNow().key, activeCap],
+    ],
+    reservationInserted = ["EXISTS (SELECT 1 FROM reservations WHERE id=?)", [reservationId]],
+    insert = (sql, args, [condition, conditionArgs]) =>
+      activeCap
+        ? db
+            .prepare(sql.replace(/ VALUES \(([?,]+)\)/, ` SELECT $1 WHERE ${condition}`))
+            .bind(...args, ...conditionArgs)
+        : db.prepare(sql).bind(...args);
   if (customerId)
     statements.push(
-      db
-        .prepare(
-          "INSERT INTO customers (id,cafe_id,mobile,name,last_seen_at,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(cafe_id,mobile) DO UPDATE SET name=excluded.name,last_seen_at=excluded.last_seen_at",
-        )
-        .bind(customerId, branch.cafe_id, mobile, name, now, now),
+      insert(
+        "INSERT INTO customers (id,cafe_id,mobile,name,last_seen_at,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(cafe_id,mobile) DO UPDATE SET name=excluded.name,last_seen_at=excluded.last_seen_at",
+        [customerId, branch.cafe_id, mobile, name, now, now],
+        underActiveCap,
+      ),
     );
   statements.push(
-    db
-      .prepare(
-        "INSERT INTO reservations (id,branch_id,customer_id,tracking_code,customer_name,mobile,party_size,reserved_at,duration_minutes,buffer_minutes,status,source,notes,internal_notes,deposit_amount_rials,payment_status,payment_due_at,paid_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-      )
-      .bind(
+    insert(
+      "INSERT INTO reservations (id,branch_id,customer_id,tracking_code,customer_name,mobile,party_size,reserved_at,duration_minutes,buffer_minutes,status,source,notes,internal_notes,deposit_amount_rials,payment_status,payment_due_at,paid_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      [
         reservationId,
         branch.id,
         customerId,
@@ -170,25 +183,30 @@ export async function createReservation(env, branch, body, settings, operational
         null,
         now,
         now,
-      ),
+      ],
+      underActiveCap,
+    ),
   );
   for (const t of tables)
     statements.push(
-      db
-        .prepare("INSERT INTO reservation_tables (reservation_id,table_id) VALUES (?,?)")
-        .bind(reservationId, t.id),
+      insert(
+        "INSERT INTO reservation_tables (reservation_id,table_id) VALUES (?,?)",
+        [reservationId, t.id],
+        reservationInserted,
+      ),
     );
   for (const t of tables)
     for (const lock of locks)
       statements.push(
-        db
-          .prepare(
-            "INSERT INTO reservation_locks (id,reservation_id,table_id,lock_start) VALUES (?,?,?,?)",
-          )
-          .bind(`${t.id}:${lock}`, reservationId, t.id, lock),
+        insert(
+          "INSERT INTO reservation_locks (id,reservation_id,table_id,lock_start) VALUES (?,?,?,?)",
+          [`${t.id}:${lock}`, reservationId, t.id, lock],
+          reservationInserted,
+        ),
       );
+  let results;
   try {
-    await db.batch(statements);
+    results = await db.batch(statements);
   } catch (error) {
     console.error("reservation_conflict", error);
     return reply(
@@ -199,6 +217,14 @@ export async function createReservation(env, branch, body, settings, operational
       409,
     );
   }
+  if (activeCap && !results[customerId ? 1 : 0].meta?.changes)
+    return reply(
+      {
+        error: "active_reservation_limit",
+        message: "تعداد رزروهای فعال این شماره در این شعبه به سقف رسیده است.",
+      },
+      429,
+    );
   const reservation = {
     id: reservationId,
     trackingCode: code,

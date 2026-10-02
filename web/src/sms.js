@@ -17,6 +17,7 @@ export function smsStatusLabel(status) {
       sending: "در حال ارسال",
       failed: "ناموفق",
       cancelled: "لغوشده",
+      skipped: "ارسال‌نشده (سقف روزانه)",
     }[status] || status
   );
 }

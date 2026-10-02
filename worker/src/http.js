@@ -14,3 +14,14 @@ export function cookieValue(request, name) {
   }
   return "";
 }
+// Client IP as reported by the trusted proxy in front of the app. The header name is configurable
+// (CLIENT_IP_HEADER, default CF-Connecting-IP) so hosting can change. For a list such as
+// X-Forwarded-For the right-most entry, added by the nearest proxy, is used. A missing or malformed
+// value returns "unknown", which is limited as one shared client rather than skipped.
+export function clientIp(request, env) {
+  const values = String(
+      request.headers.get(env?.CLIENT_IP_HEADER || "CF-Connecting-IP") || "",
+    ).split(","),
+    ip = values[values.length - 1].trim();
+  return /^[0-9A-Fa-f:.]{2,45}$/.test(ip) ? ip : "unknown";
+}

@@ -35,6 +35,7 @@ export async function queueReservationMessages(env, branch, reservation, setting
         tracking_code: reservation.trackingCode,
         reserved_at: `${reservation.date}T${reservation.time}`,
         branch_name: branch.name,
+        cafe_id: branch.cafe_id,
       })
     ).status;
   }
@@ -67,7 +68,7 @@ export async function queueReservationMessages(env, branch, reservation, setting
 export async function processDueReminders(env, branchId = null) {
   const now = tehranNow().key,
     condition = branchId ? "AND m.branch_id=?" : "",
-    query = `SELECT m.id,m.kind,m.mobile,r.tracking_code,r.reserved_at,b.name AS branch_name FROM sms_messages m JOIN reservations r ON r.id=m.reservation_id JOIN branches b ON b.id=m.branch_id WHERE m.kind='reminder' AND m.status='queued' AND m.scheduled_at<=? AND r.status NOT IN ('cancelled','completed','no_show') ${condition} ORDER BY m.scheduled_at LIMIT 25`,
+    query = `SELECT m.id,m.kind,m.mobile,r.tracking_code,r.reserved_at,b.name AS branch_name,b.cafe_id FROM sms_messages m JOIN reservations r ON r.id=m.reservation_id JOIN branches b ON b.id=m.branch_id WHERE m.kind='reminder' AND m.status='queued' AND m.scheduled_at<=? AND r.status NOT IN ('cancelled','completed','no_show') ${condition} ORDER BY m.scheduled_at LIMIT 25`,
     statement = env.DB.prepare(query),
     result = branchId ? await statement.bind(now, branchId).all() : await statement.bind(now).all(),
     rows = result.results || [];

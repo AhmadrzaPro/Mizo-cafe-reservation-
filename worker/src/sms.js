@@ -1,3 +1,4 @@
+import { consumeLimit, limits } from "./rate-limit.js";
 import { isDemo } from "./util/env.js";
 export async function sendReservationSms(env, kind, mobile, trackingCode, time, branchName) {
   const template =
@@ -19,6 +20,14 @@ export function smsText(kind, reservation, branch) {
     : `یادآوری رزرو ${reservation.trackingCode}: ${reservation.date} ساعت ${reservation.time} در ${branch.name} منتظر شما هستیم.`;
 }
 export async function deliverSmsMessage(env, row) {
+  // A bug or an attack must not spend the whole SMS credit: past the café's daily cap the message
+  // is recorded as skipped and the reservation itself is unaffected.
+  if (!(await consumeLimit(env, limits.smsPerCafe, `sms:cafe:${row.cafe_id}`))) {
+    await env.DB.prepare("UPDATE sms_messages SET status='skipped',error='daily_cap' WHERE id=?")
+      .bind(row.id)
+      .run();
+    return { status: "skipped", provider: "none" };
+  }
   try {
     const delivery = await sendReservationSms(
         env,
