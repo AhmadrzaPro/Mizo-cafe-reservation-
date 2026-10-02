@@ -15,21 +15,34 @@ A Persian, right-to-left table reservation experience for cafés, built as a Clo
 
 | Path | Purpose |
 | --- | --- |
-| `web/` | RTL customer experience and management UI |
-| `worker/` | API, access checks and Worker entry point |
+| `web/index.html`, `web/*.css`, `web/assets/` | Page markup, styles and images |
+| `web/src/` | Frontend ES modules; `main.js` wires the page and calls `initializeApp()` |
+| `web/src/state.js` | Shared frontend state: the booking `state` and the mutable `store` |
+| `web/src/floor/` | Floor studio: furniture, undo/redo history, geometry, zoom and gestures |
+| `web/saas-admin.*` | SaaS admin page (served as-is) |
+| `worker/src/` | Worker modules grouped by domain (auth, setup, branches, map, availability, reservations, operations, payments, loyalty, subscription, SMS, notifications, SaaS admin, static assets) |
+| `worker/src/index.js` | Worker entry: `fetch` (API router) and `scheduled` |
+| `worker/src/util/` | Dates, mobile normalization, IDs/hashing, runtime-mode helpers |
 | `db/`, `drizzle/` | Schema and D1 migrations |
-| `scripts/` | Asset embedding and build validation |
+| `scripts/` | Bundling, asset embedding and build validation |
+| `tests/` | API regression tests (built Worker) and floor-studio unit tests |
 
 ## Build
 
-Requires Node.js 22.13 or newer (Node 24 recommended).
+Requires Node.js 22.13 or newer (Node 24 recommended). Run `npm install` once to get the dev dependencies (esbuild, Prettier).
 
 ```bash
 npm run build
 npm run validate
 ```
 
-The build emits `dist/server/index.js` and embeds the web assets. For hosting with Sites, create your own Site and replace `YOUR_SITE_PROJECT_ID` in `.openai/hosting.json`. The logical D1 binding is `DB`. Runtime credentials must be set as host secrets, never committed.
+The build emits `dist/server/index.js` and embeds the web assets:
+
+1. `scripts/embed-assets.mjs` bundles `web/src/main.js` with esbuild into a single IIFE script (served as `/app.js`, the only script on the page). It writes that bundle, the HTML, the CSS and the hero image into `dist/server/site-content.js`.
+2. `scripts/bundle.mjs` bundles `worker/src/index.js` with esbuild into a single ESM file at `dist/server/index.js`. `./site-content.js` stays an external import.
+3. `scripts/build.sh` copies the hosting manifest and migrations into `dist/.openai/`.
+
+`npm run format` formats the sources with Prettier. For hosting with Sites, create your own Site and replace `YOUR_SITE_PROJECT_ID` in `.openai/hosting.json`. The logical D1 binding is `DB`. Runtime credentials must be set as host secrets, never committed.
 
 Optional runtime secrets: `KAVENEGAR_API_KEY`, `KAVENEGAR_TEMPLATE`, `KAVENEGAR_CONFIRMATION_TEMPLATE`, `KAVENEGAR_REMINDER_TEMPLATE`, and `OPENAI_API_KEY`. The image model may be overridden with `MAP_VISION_MODEL`.
 
@@ -74,4 +87,4 @@ npm test
 npm run validate
 ```
 
-The 25 API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. They cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
+The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
