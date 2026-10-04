@@ -42,9 +42,9 @@ export async function serveStatic(request, env, url) {
       },
     });
   }
-  if (url.pathname === "/assets/cafe-hero.png")
+  if (url.pathname === "/assets/cafe-hero.webp")
     return new Response(decodeBase64(heroBase64), {
-      headers: { "content-type": "image/png", "cache-control": "public, max-age=604800" },
+      headers: { "content-type": "image/webp", "cache-control": "public, max-age=604800" },
     });
   const content =
     url.pathname === "/" || url.pathname === "/index.html"
