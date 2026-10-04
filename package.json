@@ -5,9 +5,14 @@
   "scripts": {
     "build": "bash scripts/build.sh",
     "validate": "node scripts/validate-artifact.mjs",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "format": "prettier --write worker/src web/src \"web/*.css\""
   },
   "engines": {
     "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "prettier": "3.9.9"
   }
 }

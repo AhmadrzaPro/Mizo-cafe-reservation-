@@ -1,0 +1,17 @@
+export const adminDialog = document.querySelector("#adminDialog"),
+  setupDialog = document.querySelector("#setupDialog"),
+  authDialog = document.querySelector("#authDialog"),
+  staffDialog = document.querySelector("#staffDialog"),
+  staffFormDialog = document.querySelector("#staffFormDialog"),
+  smsDialog = document.querySelector("#smsDialog"),
+  subscriptionDialog = document.querySelector("#subscriptionDialog"),
+  reportsDialog = document.querySelector("#reportsDialog"),
+  loyaltyDialog = document.querySelector("#loyaltyDialog"),
+  loyaltyAdjustDialog = document.querySelector("#loyaltyAdjustDialog"),
+  paymentsDialog = document.querySelector("#paymentsDialog"),
+  branchesDialog = document.querySelector("#branchesDialog"),
+  branchFormDialog = document.querySelector("#branchFormDialog"),
+  editor = document.querySelector("#mapEditorDialog"),
+  controlDialog = document.querySelector("#controlDialog"),
+  scheduleDialog = document.querySelector("#scheduleDialog");
+export const paymentsCard = document.createElement("button");
