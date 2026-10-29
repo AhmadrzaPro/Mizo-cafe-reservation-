@@ -1,3 +1,4 @@
+// @ts-check
 import { apiUrl, readableError, safeResponseJson, settingsUrl } from "./api.js";
 import { renderCustomerMap } from "./booking.js";
 import { renderControls } from "./controls.js";
@@ -31,7 +32,7 @@ export function syncBranchSelectors() {
   const branches = activeBranches(),
     single = branches.length === 1;
   ["branchSelect", "controlBranch", "opsBranch", "smsBranch", "paymentsBranch"].forEach((id) => {
-    const select = document.querySelector(`#${id}`);
+    const select = /** @type {HTMLSelectElement} */ (document.querySelector(`#${id}`));
     if (!select) return;
     select.innerHTML = "";
     branches.forEach((branch) => {
@@ -85,8 +86,8 @@ export async function loadCafeProfile() {
   }
 }
 export function applySettingsToCustomer() {
-  const notice = document.querySelector("#customerNoticeBanner"),
-    continueBtn = document.querySelector("#continueBtn");
+  const notice = /** @type {HTMLElement} */ (document.querySelector("#customerNoticeBanner")),
+    continueBtn = /** @type {HTMLButtonElement} */ (document.querySelector("#continueBtn"));
   notice.textContent = store.cafeSettings.customerNotice;
   notice.hidden = !store.cafeSettings.customerNotice;
   document.querySelector("#durationLabel").textContent =

@@ -1,3 +1,4 @@
+// @ts-check
 import { fetchAvailability, renderCustomerMap, times } from "./booking.js";
 import { editor } from "./dialogs.js";
 import { renderEditor } from "./editor.js";
@@ -39,16 +40,16 @@ export async function initializeApp() {
     ];
     resetMapHistory();
     renderEditor();
-    document.querySelector("#publishMap").disabled = true;
+    /** @type {HTMLButtonElement} */ (document.querySelector("#publishMap")).disabled = true;
     document.querySelector("#saveStatus").textContent = "دموی تعاملی · بدون تغییر اطلاعات کافه";
-    document.querySelector("#branchSelect").disabled = true;
+    /** @type {HTMLSelectElement} */ (document.querySelector("#branchSelect")).disabled = true;
     editor.showModal();
     requestAnimationFrame(fitMap);
     return;
   }
   const profile = await loadCafeProfile();
   if (!profile.configured || !profile.branches?.length) {
-    document.querySelector("#continueBtn").disabled = true;
+    /** @type {HTMLButtonElement} */ (document.querySelector("#continueBtn")).disabled = true;
     times.textContent =
       "برای رزرو، لینک اختصاصی کافه را باز کنید. برای راه‌اندازی، مدیریت کافه را انتخاب کنید.";
     return;

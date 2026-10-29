@@ -1,3 +1,4 @@
+// @ts-check
 import { state, store } from "./state.js";
 
 export const readableError = (error, fallback) =>

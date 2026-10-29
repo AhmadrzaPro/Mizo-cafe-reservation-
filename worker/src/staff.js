@@ -22,6 +22,12 @@ export async function listStaff(db, session) {
     })),
   });
 }
+/**
+ * @param {D1Database} db
+ * @param {import("./types").Staff} session
+ * @param {Record<string, any>} body
+ * @param {string | null} [id]
+ */
 export async function saveStaff(db, session, body, id = null) {
   if (session.role !== "owner")
     return reply(

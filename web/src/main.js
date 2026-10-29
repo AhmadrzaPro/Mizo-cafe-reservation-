@@ -1,3 +1,4 @@
+// @ts-check
 import { wireModal } from "./modal.js";
 import { wireJalaliPicker } from "./jalali-picker.js";
 import { wireBooking } from "./booking.js";

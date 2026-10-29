@@ -1,3 +1,4 @@
+// @ts-check
 export const defaultMap = {
   spaceMode: "both",
   areas: [

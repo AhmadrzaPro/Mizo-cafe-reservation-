@@ -426,3 +426,42 @@ test("an unexpected failure returns 500 internal_error", async (t) => {
   assert.equal(r.status, 500);
   assert.equal(r.data.error, "internal_error");
 });
+
+test("public bodies with wrong types or oversized fields return 400 invalid_request", async () => {
+  const { a, book, call } = await fixture();
+  for (const [path, body, field] of [
+    [a.base + "/reservations", { customerName: { x: 1 } }, "customerName"],
+    [a.base + "/reservations", { tableIds: "t1" }, "tableIds"],
+    [a.base + "/reservations", { tableIds: Array(11).fill("t") }, "tableIds"],
+    [a.base + "/reservations", { notes: "x".repeat(1001) }, "notes"],
+    ["/api/auth/request", { cafeSlug: a.slug, mobile: ["0912"] }, "mobile"],
+    ["/api/auth/verify", { cafeSlug: a.slug, code: true }, "code"],
+    ["/api/setup", { cafeName: "x".repeat(201) }, "cafeName"],
+    ["/api/reservations/RMA-AAAAAA/cancel", { mobile: { x: 1 } }, "mobile"],
+  ]) {
+    const r = await call(path, { method: "POST", body, ip: "198.51.100.9" });
+    assert.equal(r.status, 400, path);
+    assert.equal(r.data.error, "invalid_request", path);
+    assert.ok(r.data.fields.includes(field), `${path} ${r.data.fields}`);
+    assert.match(r.data.message, /[؀-ۿ]/);
+  }
+  // Business errors keep their specific codes, and a valid booking still succeeds.
+  const missingName = await call(a.base + "/reservations", {
+    method: "POST",
+    body: { mobile: "09121110000" },
+  });
+  assert.equal(missingName.data.error, "name_required");
+  assert.equal((await book(a, 3)).status, 201);
+});
+
+test("an unsupported method on an existing route returns 405", async () => {
+  const { a, call } = await fixture();
+  for (const [path, method] of [
+    [a.base + "/availability?date=2090-01-02", "POST"],
+    [a.base + "/map", "DELETE"],
+    ["/api/setup", "DELETE"],
+    ["/api/reservations/RMA-AAAAAA", "PATCH"],
+  ])
+    assert.equal((await call(path, { method, body: {} })).status, 405, `${method} ${path}`);
+  assert.equal((await call("/api/nope")).status, 404);
+});

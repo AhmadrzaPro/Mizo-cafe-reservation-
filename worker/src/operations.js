@@ -65,7 +65,7 @@ export async function readOperations(db, branch, date, session, viewTime, settin
     );
   const tables = tableRows.map((table) => {
     let liveStatus = table.operational_status || "available",
-      reservation = null;
+      reservation = /** @type {(typeof reservations)[number] | null} */ (null);
     const canQuickLock = Boolean(
       table.reservable && liveStatus === "available" && freeIds.has(table.id),
     );
@@ -304,13 +304,7 @@ export async function updateOperationalReservation(db, branch, code, body, setti
     );
   if (!["cancelled", "completed", "no_show"].includes(status)) {
     for (const table of tables)
-      for (const lock of lockTimes(
-        date,
-        time,
-        row.duration_minutes,
-        row.buffer_minutes,
-        settings.slotInterval,
-      ))
+      for (const lock of lockTimes(date, time))
         statements.push(
           db
             .prepare(

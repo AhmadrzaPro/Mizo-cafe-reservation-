@@ -1,3 +1,4 @@
+// @ts-check
 import { visibleAreas } from "../map-model.js";
 import { store } from "../state.js";
 
@@ -17,8 +18,10 @@ export function recordMapHistory(root = document) {
   syncHistoryButtons(root);
 }
 export function syncHistoryButtons(root = document) {
-  root.querySelector("#mapUndo").disabled = store.mapHistoryIndex <= 0;
-  root.querySelector("#mapRedo").disabled = store.mapHistoryIndex >= store.mapHistory.length - 1;
+  /** @type {HTMLButtonElement} */ (root.querySelector("#mapUndo")).disabled =
+    store.mapHistoryIndex <= 0;
+  /** @type {HTMLButtonElement} */ (root.querySelector("#mapRedo")).disabled =
+    store.mapHistoryIndex >= store.mapHistory.length - 1;
 }
 export function travelMapHistory(delta, render, root = document) {
   const index = store.mapHistoryIndex + delta;

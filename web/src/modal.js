@@ -1,3 +1,4 @@
+// @ts-check
 import { store } from "./state.js";
 
 // Keep the page behind native dialogs completely still, including on iOS.

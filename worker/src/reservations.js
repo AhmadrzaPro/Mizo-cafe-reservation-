@@ -19,6 +19,7 @@ export function depositFor(settings, time, partySize) {
     ? settings.depositAmountRials * partySize
     : settings.depositAmountRials;
 }
+/** @param {D1Database} db @param {string | null} [branchId] */
 export async function expireUnpaidReservations(db, branchId = null) {
   const now = new Date().toISOString();
   const result = await db.batch([
@@ -124,22 +125,19 @@ export async function createReservation(env, branch, body, settings, operational
             ? "confirmed"
             : "pending",
     reservedAt = `${date}T${time}`,
-    locks = lockTimes(
-      date,
-      time,
-      settings.reservationDuration,
-      settings.bufferMinutes,
-      settings.slotInterval,
-    ),
+    locks = lockTimes(date, time),
     statements = [],
     // Public bookings are capped per mobile and branch. The cap is evaluated inside the booking
     // batch, so concurrent requests cannot both pass it; a capped booking writes nothing.
     activeCap = operational ? null : limitValue(env, "MAX_ACTIVE_RESERVATIONS_PER_MOBILE", 3),
-    underActiveCap = [
+    underActiveCap = /** @type {[string, unknown[]]} */ ([
       "(SELECT COUNT(*) FROM reservations WHERE branch_id=? AND mobile=? AND status IN ('pending','confirmed') AND reserved_at>=?)<?",
       [branch.id, mobile, tehranNow().key, activeCap],
-    ],
-    reservationInserted = ["EXISTS (SELECT 1 FROM reservations WHERE id=?)", [reservationId]],
+    ]),
+    reservationInserted = /** @type {[string, unknown[]]} */ ([
+      "EXISTS (SELECT 1 FROM reservations WHERE id=?)",
+      [reservationId],
+    ]),
     insert = (sql, args, [condition, conditionArgs]) =>
       activeCap
         ? db

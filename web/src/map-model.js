@@ -1,3 +1,4 @@
+// @ts-check
 import { store } from "./state.js";
 
 export const areaKindLabel = (kind) => (kind === "outdoor" ? "بیرونی" : "داخلی");

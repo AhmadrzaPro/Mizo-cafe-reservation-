@@ -21,7 +21,9 @@ A Persian, right-to-left table reservation experience for cafés, built as a Clo
 | `web/src/floor/` | Floor studio: furniture, undo/redo history, geometry, zoom and gestures |
 | `web/saas-admin.*` | SaaS admin page (served as-is) |
 | `worker/src/` | Worker modules grouped by domain (auth, setup, branches, map, availability, reservations, operations, payments, loyalty, subscription, SMS, notifications, SaaS admin, static assets) |
-| `worker/src/index.js` | Worker entry: `fetch` (API router) and `scheduled` |
+| `worker/src/index.js` | Worker entry: Hono API router with auth/permission middleware, `fetch` and `scheduled` |
+| `worker/src/schemas.js` | Zod (`zod/mini`) request-body schemas for the public endpoints |
+| `worker/src/types.d.ts` | `Env`, `Staff` and `Branch` types for JSDoc annotations |
 | `worker/src/util/` | Dates, mobile normalization, IDs/hashing, runtime-mode helpers |
 | `db/`, `drizzle/` | Schema and D1 migrations |
 | `scripts/` | Bundling, asset embedding and build validation |
@@ -42,7 +44,7 @@ The build emits `dist/server/index.js` and embeds the web assets:
 2. `scripts/bundle.mjs` bundles `worker/src/index.js` with esbuild into a single ESM file at `dist/server/index.js`. `./site-content.js` stays an external import.
 3. `scripts/build.sh` copies the hosting manifest and migrations into `dist/.openai/`.
 
-`npm run lint` runs ESLint, `npm run format` formats the sources with Prettier and `npm run format:check` verifies formatting. GitHub Actions (`.github/workflows/ci.yml`) runs lint, format check, tests and build validation on every pull request and on `main`.
+`npm run typecheck` type-checks the JavaScript with TypeScript (`tsc`, no build step): all of `worker/src` with `strictNullChecks` (`tsconfig.json`), and every frontend module that starts with `// @ts-check` (`web/tsconfig.json`). Add `// @ts-check` to a frontend module once it is clean; annotate DOM lookups with a JSDoc cast such as `/** @type {HTMLButtonElement} */ (document.querySelector("#id"))`. `npm run lint` runs ESLint, `npm run format` formats the sources with Prettier and `npm run format:check` verifies formatting. GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, format check, tests and build validation on every pull request and on `main`.
 
 ### Static assets, caching and CSP
 
@@ -128,7 +130,7 @@ Days start at midnight Tehran time (UTC+03:30). Expired windows are deleted by t
 
 ### API errors
 
-Errors are JSON `{error, message?}`. A body that is not a JSON object returns `400` with `error:"invalid_json"`. An unexpected failure is logged and returns `500` with `error:"internal_error"`; `503` is reserved for an unavailable dependency (database binding, SMS, payment gateway).
+Errors are JSON `{error, message?}`. A body that is not a JSON object returns `400` with `error:"invalid_json"`. On the public endpoints (OTP request and verify, café setup, public booking, tracking cancel/pay) a field with the wrong type or size returns `400` with `error:"invalid_request"` and `fields`; business rules keep their own error codes. An unsupported method on an existing route returns `405`. An unexpected failure is logged and returns `500` with `error:"internal_error"`; `503` is reserved for an unavailable dependency (database binding, SMS, payment gateway).
 
 ### Regression tests
 

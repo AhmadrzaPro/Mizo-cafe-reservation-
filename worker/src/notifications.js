@@ -65,6 +65,7 @@ export async function queueReservationMessages(env, branch, reservation, setting
   }
   return results;
 }
+/** @param {import("./types").Env} env @param {string | null} [branchId] */
 export async function processDueReminders(env, branchId = null) {
   const now = tehranNow().key,
     condition = branchId ? "AND m.branch_id=?" : "",

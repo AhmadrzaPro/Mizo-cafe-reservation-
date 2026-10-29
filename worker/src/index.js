@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 import { requestOtp, verifyOtp } from "./auth/otp.js";
 import {
   canUseBranch,
@@ -40,6 +41,7 @@ import {
   publicReservation,
 } from "./reservations.js";
 import { readSaasOverview, requireSaasAdmin, updateSaasAccount } from "./saas-admin.js";
+import { InvalidBodyError, readBody, schemas } from "./schemas.js";
 import { readSchedule, readSettings, writeSchedule, writeSettings } from "./settings.js";
 import { readSetup, writeSetup } from "./setup.js";
 import { listStaff, saveStaff } from "./staff.js";
@@ -48,356 +50,426 @@ import { readSubscription, renewSubscriptionDemo, updateSubscription } from "./s
 import { tehranNow, validDate, validTime } from "./util/dates.js";
 import { isDemo } from "./util/env.js";
 import { safeSlug } from "./util/ids.js";
-async function handleBranchApi(request, env, url, cafeSlug, branchSlug, resource) {
-  if (!safeSlug(cafeSlug) || !safeSlug(branchSlug)) return reply({ error: "invalid_slug" }, 400);
-  const branch = await branchRow(env.DB, cafeSlug, branchSlug);
-  if (branch && ["availability", "reservations"].includes(resource))
-    await expireUnpaidReservations(env.DB, branch.id);
-  if (resource === "map") {
-    if (request.method === "GET") {
-      const map = await readMap(env.DB, cafeSlug, branchSlug);
-      return map ? reply(map) : reply({ error: "map_not_found" }, 404);
+
+/** @typedef {import("./types").Env} Env */
+/** @typedef {import("./types").Staff} Staff */
+/** @typedef {import("./types").Branch} Branch */
+/** @typedef {{ Bindings: Env, Variables: { session: Staff, branch: Branch } }} AppEnv */
+/** @typedef {import("hono").Context<AppEnv>} Ctx */
+
+const methodNotAllowed = () => reply({ error: "method_not_allowed" }, 405);
+const authenticationRequired = () =>
+  reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
+const forbidden = (message) => reply({ error: "forbidden", message }, 403);
+/** @param {Ctx} c @param {keyof typeof limits} policy @param {string} name */
+const withinLimit = (c, policy, name) =>
+  consumeLimit(c.env, limits[policy], `${name}:ip:${clientIp(c.req.raw, c.env)}`);
+/** @param {Ctx} c */
+const cafeQuery = (c) => c.req.query("cafe") || c.env.DEFAULT_CAFE_SLUG;
+
+/** Requires a signed-in staff member and stores it as `session`. */
+/** @type {import("hono").MiddlewareHandler<AppEnv>} */
+const requireStaff = async (c, next) => {
+  const session = await sessionStaff(c.env.DB, c.req.raw);
+  if (!session) return authenticationRequired();
+  c.set("session", session);
+  await next();
+};
+/** Requires the café owner. */
+const requireOwner = (message) =>
+  /** @type {import("hono").MiddlewareHandler<AppEnv>} */ (
+    async (c, next) => {
+      const session = await sessionStaff(c.env.DB, c.req.raw);
+      if (!session || session.role !== "owner") return forbidden(message);
+      c.set("session", session);
+      await next();
     }
-    if (request.method === "PUT") {
-      const length = Number(request.headers.get("content-length") || 0);
-      if (length > 150000) return reply({ error: "payload_too_large" }, 413);
-      const result = await writeMap(env.DB, cafeSlug, branchSlug, await readJson(request));
-      return result instanceof Response ? result : reply(result);
+  );
+/**
+ * Loads the active branch of the URL and requires a staff member who may use it with
+ * `permission`. With `missingBranch` a branch that does not exist answers 404 before any auth.
+ * @param {string | ((c: Ctx) => string)} permission
+ * @param {string} message
+ * @param {{ missingBranch?: boolean }} [options]
+ */
+const requireBranch = (permission, message, { missingBranch = false } = {}) =>
+  /** @type {import("hono").MiddlewareHandler<AppEnv>} */ (
+    async (c, next) => {
+      const branch = await branchRow(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
+      if (missingBranch && !branch) return reply({ error: "branch_not_found" }, 404);
+      const session = await sessionStaff(c.env.DB, c.req.raw),
+        needed = typeof permission === "function" ? permission(c) : permission;
+      if (!session || !branch || !canUseBranch(session, branch) || !hasPermission(session, needed))
+        return forbidden(message);
+      c.set("session", session);
+      c.set("branch", branch);
+      await next();
     }
-  }
-  if (resource === "settings") {
-    if (request.method === "GET") return reply(await readSettings(env.DB, cafeSlug, branchSlug));
-    if (request.method === "PUT")
-      return reply(await writeSettings(env.DB, cafeSlug, branchSlug, await readJson(request)));
-  }
+  );
+/** Branch resources that need a published branch but no staff (availability, public booking). */
+/** @type {import("hono").MiddlewareHandler<AppEnv>} */
+const loadBranch = async (c, next) => {
+  const branch = await branchRow(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
   if (!branch)
     return reply({ error: "branch_not_found", message: "ابتدا نقشه شعبه را منتشر کنید." }, 404);
-  if (resource === "schedule") {
-    if (request.method === "GET") return reply(await readSchedule(env.DB, branch));
-    if (request.method === "PUT")
-      return reply(await writeSchedule(env.DB, branch, await readJson(request)));
-  }
-  const settings = await readSettings(env.DB, cafeSlug, branchSlug);
-  if (resource === "availability" && request.method === "GET") {
-    const date = url.searchParams.get("date"),
-      partySize = Math.max(
-        1,
-        Math.min(settings.maxPartySize, Number(url.searchParams.get("party_size")) || 2),
-      );
-    if (!validDate(date)) return reply({ error: "invalid_date" }, 400);
-    return reply(await availability(env.DB, branch, date, partySize, settings));
-  }
-  if (resource === "reservations") {
-    if (request.method === "POST") {
-      const subject = `reservation:${branch.cafe_id}:ip:${clientIp(request, env)}`;
-      if (!(await consumeLimit(env, limits.reservationsPerIp, subject))) return rateLimitedReply();
-      return createReservation(env, branch, await readJson(request), settings);
-    }
-    if (request.method === "GET") {
-      const date = url.searchParams.get("date");
-      if (!validDate(date)) return reply({ error: "invalid_date" }, 400);
-      const result = await env.DB.prepare(
-        "SELECT r.tracking_code,r.customer_name,r.mobile,r.party_size,r.reserved_at,r.status,GROUP_CONCAT(t.name,'، ') AS table_names FROM reservations r LEFT JOIN reservation_tables rt ON rt.reservation_id=r.id LEFT JOIN cafe_tables t ON t.id=rt.table_id WHERE r.branch_id=? AND r.reserved_at>=? AND r.reserved_at<? GROUP BY r.id ORDER BY r.reserved_at",
-      )
-        .bind(branch.id, `${date}T00:00`, `${date}T23:59`)
-        .all();
-      return reply({ reservations: result.results || [] });
-    }
-  }
-  return reply({ error: "method_not_allowed" }, 405);
-}
-// Every route result is awaited inside one try, so a rejected handler promise is answered here too.
-async function handleApi(request, env, url) {
-  if (!env.DB) return reply({ error: "database_unavailable" }, 503);
-  try {
-    return await routeApi(request, env, url);
-  } catch (error) {
-    if (error instanceof InvalidJsonError)
-      return reply({ error: "invalid_json", message: "اطلاعات ارسالی معتبر نیست." }, 400);
-    console.error("api_error", error);
-    return reply({ error: "internal_error", message: "خطای داخلی رخ داد؛ دوباره تلاش کنید." }, 500);
-  }
-}
-async function routeApi(request, env, url) {
-  if (url.pathname === "/api/auth/request" && request.method === "POST") {
-    if (!(await consumeLimit(env, limits.otpPerIp, `otp:ip:${clientIp(request, env)}`)))
-      return rateLimitedReply();
-    return requestOtp(env, await readJson(request));
-  }
-  if (url.pathname === "/api/auth/verify" && request.method === "POST") {
-    if (
-      !(await consumeLimit(env, limits.otpVerifyPerIp, `otp-verify:ip:${clientIp(request, env)}`))
-    )
-      return rateLimitedReply();
-    return verifyOtp(env, await readJson(request));
-  }
-  if (url.pathname === "/api/auth/session" && request.method === "GET") {
-    const session = await sessionStaff(env.DB, request);
-    return reply(
-      session
-        ? { authenticated: true, staff: staffSessionPublic(session) }
-        : { authenticated: false },
+  c.set("branch", branch);
+  await next();
+};
+/** @param {Ctx} c */
+const branchSettings = (c) => readSettings(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
+
+/** @type {Hono<AppEnv>} */
+const app = new Hono();
+
+app.use("/api/*", async (c, next) => {
+  if (!c.env.DB) return reply({ error: "database_unavailable" }, 503);
+  await next();
+});
+
+// Auth
+app.post("/api/auth/request", async (c) => {
+  if (!(await withinLimit(c, "otpPerIp", "otp"))) return rateLimitedReply();
+  return requestOtp(c.env, await readBody(c.req.raw, schemas.otpRequest));
+});
+app.post("/api/auth/verify", async (c) => {
+  if (!(await withinLimit(c, "otpVerifyPerIp", "otp-verify"))) return rateLimitedReply();
+  return verifyOtp(c.env, await readBody(c.req.raw, schemas.otpVerify));
+});
+app.get("/api/auth/session", async (c) => {
+  const session = await sessionStaff(c.env.DB, c.req.raw);
+  return reply(
+    session
+      ? { authenticated: true, staff: staffSessionPublic(session) }
+      : { authenticated: false },
+  );
+});
+app.post("/api/auth/logout", (c) => logout(c.env, c.req.raw));
+
+// Café-wide staff areas
+app.get("/api/reports", requireStaff, (c) =>
+  readReports(c.env.DB, c.get("session"), new URL(c.req.url)),
+);
+app.get("/api/payments", requireStaff, (c) =>
+  readPayments(c.env.DB, c.get("session"), new URL(c.req.url)),
+);
+app.post("/api/payments/:id/refund", requireStaff, (c) =>
+  isDemo(c.env)
+    ? refundPayment(c.env.DB, c.get("session"), c.req.param("id"))
+    : reply({ error: "payment_not_configured" }, 503),
+);
+app.get("/api/loyalty", requireStaff, (c) =>
+  readLoyalty(c.env.DB, c.get("session"), new URL(c.req.url)),
+);
+app.patch("/api/loyalty/:customer", requireStaff, async (c) =>
+  adjustLoyalty(c.env.DB, c.get("session"), c.req.param("customer"), await readJson(c.req.raw)),
+);
+app.get("/api/subscription", requireStaff, async (c) =>
+  reply(await readSubscription(c.env.DB, c.get("session").cafe_id)),
+);
+app.put("/api/subscription", requireStaff, async (c) =>
+  updateSubscription(c.env.DB, c.get("session"), await readJson(c.req.raw)),
+);
+app.post("/api/subscription/renew", requireStaff, (c) =>
+  isDemo(c.env)
+    ? renewSubscriptionDemo(c.env.DB, c.get("session"))
+    : reply({ error: "payment_not_configured" }, 503),
+);
+app.get("/api/staff", requireStaff, (c) => listStaff(c.env.DB, c.get("session")));
+app.post("/api/staff", requireStaff, async (c) =>
+  saveStaff(c.env.DB, c.get("session"), await readJson(c.req.raw)),
+);
+app.patch("/api/staff/:id", requireStaff, async (c) =>
+  saveStaff(c.env.DB, c.get("session"), await readJson(c.req.raw), c.req.param("id")),
+);
+for (const path of [
+  "/api/payments",
+  "/api/payments/:id/refund",
+  "/api/loyalty",
+  "/api/loyalty/:customer",
+  "/api/subscription",
+  "/api/subscription/renew",
+  "/api/staff",
+  "/api/staff/:id",
+])
+  app.all(path, requireStaff, methodNotAllowed);
+
+// SaaS console
+app.on(["GET", "PATCH"], "/api/saas/overview", async (c) => {
+  if (!(await requireSaasAdmin(c.env.DB, c.req.raw)))
+    return forbidden("دسترسی مدیر SaaS برای این حساب فعال نیست.");
+  return c.req.method === "GET"
+    ? reply(await readSaasOverview(c.env.DB))
+    : updateSaasAccount(c.env.DB, await readJson(c.req.raw));
+});
+app.all("/api/saas/overview", async (c) =>
+  (await requireSaasAdmin(c.env.DB, c.req.raw))
+    ? methodNotAllowed()
+    : forbidden("دسترسی مدیر SaaS برای این حساب فعال نیست."),
+);
+
+// Café setup and branches
+const readCafe = async (c) =>
+  reply(await readSetup(c.env.DB, cafeQuery(c), await sessionStaff(c.env.DB, c.req.raw)));
+app.get("/api/setup", readCafe);
+app.post("/api/setup", async (c) => {
+  if (!(await withinLimit(c, "setupPerIp", "setup"))) return rateLimitedReply();
+  return writeSetup(c.env.DB, await readBody(c.req.raw, schemas.setup));
+});
+app.patch("/api/setup", requireOwner("فقط مالک کافه به این بخش دسترسی دارد."), async (c) =>
+  writeSetup(c.env.DB, await readJson(c.req.raw), c.get("session")),
+);
+app.all("/api/setup", methodNotAllowed);
+const ownsBranches = requireOwner("فقط مالک کافه می‌تواند شعب را مدیریت کند.");
+app.get("/api/branches", readCafe);
+app.post("/api/branches", ownsBranches, async (c) =>
+  createBranch(c.env.DB, await readJson(c.req.raw), c.get("session")),
+);
+app.patch("/api/branches/:slug", ownsBranches, async (c) =>
+  updateBranch(c.env.DB, c.req.param("slug"), await readJson(c.req.raw), c.get("session")),
+);
+app.all("/api/branches", ownsBranches, methodNotAllowed);
+app.all("/api/branches/:slug", ownsBranches, methodNotAllowed);
+
+// Branch-scoped routes
+const BRANCH = "/api/cafes/:cafe/branches/:branch";
+app.use(`${BRANCH}/*`, async (c, next) => {
+  if (!safeSlug(c.req.param("cafe")) || !safeSlug(c.req.param("branch")))
+    return reply({ error: "invalid_slug" }, 400);
+  await next();
+});
+
+const smsAccess = requireBranch("messages.read", "به پیامک‌های این شعبه دسترسی ندارید.");
+/** @param {string} message */
+const smsWrite = (message) =>
+  /** @type {import("hono").MiddlewareHandler<AppEnv>} */ (
+    async (c, next) =>
+      hasPermission(c.get("session"), "messages.write") ? next() : forbidden(message)
+  );
+app.get(`${BRANCH}/notifications`, smsAccess, async (c) =>
+  reply(await readNotifications(c.env, c.req.param("cafe"), c.req.param("branch"))),
+);
+app.put(
+  `${BRANCH}/notifications`,
+  smsAccess,
+  smsWrite("اجازه تغییر تنظیمات پیامک را ندارید."),
+  async (c) =>
+    writeNotificationSettings(
+      c.env,
+      c.req.param("cafe"),
+      c.req.param("branch"),
+      await readJson(c.req.raw),
+    ),
+);
+app.post(
+  `${BRANCH}/notifications/process`,
+  smsAccess,
+  smsWrite("اجازه اجرای یادآوری‌ها را ندارید."),
+  async (c) => {
+    const result = await processDueReminders(c.env, c.get("branch").id);
+    return reply({
+      ...result,
+      notifications: await readNotifications(c.env, c.req.param("cafe"), c.req.param("branch")),
+    });
+  },
+);
+app.all(`${BRANCH}/notifications`, smsAccess, methodNotAllowed);
+app.all(`${BRANCH}/notifications/process`, smsAccess, methodNotAllowed);
+
+const opsAccess = requireBranch("dashboard.view", "به عملیات این شعبه دسترسی ندارید.", {
+  missingBranch: true,
+});
+/** @param {string} permission @param {string} message */
+const opsWrite = (permission, message) =>
+  /** @type {import("hono").MiddlewareHandler<AppEnv>} */ (
+    async (c, next) => (hasPermission(c.get("session"), permission) ? next() : forbidden(message))
+  );
+app.get(`${BRANCH}/operations`, opsAccess, async (c) => {
+  const now = tehranNow(),
+    date = c.req.query("date") || now.date,
+    time = c.req.query("time") || now.time;
+  if (!validDate(date) || !validTime(time)) return reply({ error: "invalid_datetime" }, 400);
+  return reply(
+    await readOperations(
+      c.env.DB,
+      c.get("branch"),
+      date,
+      c.get("session"),
+      time,
+      await branchSettings(c),
+    ),
+  );
+});
+app.post(
+  `${BRANCH}/operations/reservations`,
+  opsAccess,
+  opsWrite("reservations.write", "اجازه ثبت رزرو ندارید."),
+  async (c) =>
+    createReservation(
+      c.env,
+      c.get("branch"),
+      await readJson(c.req.raw),
+      await branchSettings(c),
+      true,
+    ),
+);
+app.patch(
+  `${BRANCH}/operations/reservations/:id`,
+  opsAccess,
+  opsWrite("reservations.write", "اجازه ویرایش رزرو ندارید."),
+  async (c) =>
+    updateOperationalReservation(
+      c.env.DB,
+      c.get("branch"),
+      c.req.param("id"),
+      await readJson(c.req.raw),
+      await branchSettings(c),
+    ),
+);
+const waitlistWrite = opsWrite("waitlist.write", "اجازه مدیریت لیست انتظار ندارید.");
+app.post(`${BRANCH}/operations/waitlist`, opsAccess, waitlistWrite, async (c) =>
+  createWaitlist(c.env.DB, c.get("branch"), await readJson(c.req.raw)),
+);
+app.patch(`${BRANCH}/operations/waitlist/:id`, opsAccess, waitlistWrite, async (c) =>
+  updateWaitlist(c.env.DB, c.get("branch"), c.req.param("id"), await readJson(c.req.raw)),
+);
+app.patch(
+  `${BRANCH}/operations/tables/:id`,
+  opsAccess,
+  opsWrite("tables.write", "اجازه تغییر وضعیت میزها را ندارید."),
+  async (c) =>
+    updateTableStatus(c.env.DB, c.get("branch"), c.req.param("id"), await readJson(c.req.raw)),
+);
+for (const path of [
+  "/operations",
+  "/operations/:section{reservations|waitlist|tables}",
+  "/operations/:section{reservations|waitlist|tables}/:id",
+])
+  app.all(BRANCH + path, opsAccess, methodNotAllowed);
+
+const mapWrite = requireBranch("map.write", "به ویرایش نقشه این شعبه دسترسی ندارید.");
+app.get(`${BRANCH}/map/analyze`, mapWrite, (c) =>
+  reply({ enabled: Boolean(c.env.OPENAI_API_KEY) }),
+);
+app.post(`${BRANCH}/map/analyze`, mapWrite, (c) => analyzeMapImage(c.req.raw, c.env));
+app.all(`${BRANCH}/map/analyze`, methodNotAllowed);
+
+// Map, settings, schedule, availability and reservations of one branch. Writes and the
+// reservation list need staff with the matching permission; the rest is public.
+/** @param {string} resource */
+const branchWrite = (resource) =>
+  requireBranch(
+    (c) => (c.req.method === "PUT" ? `${resource}.write` : "reservations.read"),
+    "به این بخش دسترسی ندارید.",
+  );
+app.get(`${BRANCH}/map`, async (c) => {
+  const map = await readMap(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
+  return map ? reply(map) : reply({ error: "map_not_found" }, 404);
+});
+app.put(`${BRANCH}/map`, branchWrite("map"), async (c) => {
+  if (Number(c.req.header("content-length") || 0) > 150000)
+    return reply({ error: "payload_too_large" }, 413);
+  const result = await writeMap(
+    c.env.DB,
+    c.req.param("cafe"),
+    c.req.param("branch"),
+    await readJson(c.req.raw),
+  );
+  return result instanceof Response ? result : reply(result);
+});
+app.get(`${BRANCH}/settings`, async (c) => reply(await branchSettings(c)));
+app.put(`${BRANCH}/settings`, branchWrite("settings"), async (c) =>
+  reply(
+    await writeSettings(
+      c.env.DB,
+      c.req.param("cafe"),
+      c.req.param("branch"),
+      await readJson(c.req.raw),
+    ),
+  ),
+);
+app.get(`${BRANCH}/schedule`, loadBranch, async (c) =>
+  reply(await readSchedule(c.env.DB, c.get("branch"))),
+);
+app.put(`${BRANCH}/schedule`, branchWrite("schedule"), async (c) =>
+  reply(await writeSchedule(c.env.DB, c.get("branch"), await readJson(c.req.raw))),
+);
+app.get(`${BRANCH}/availability`, loadBranch, async (c) => {
+  const branch = c.get("branch"),
+    settings = await branchSettings(c),
+    date = c.req.query("date"),
+    partySize = Math.max(
+      1,
+      Math.min(settings.maxPartySize, Number(c.req.query("party_size")) || 2),
     );
-  }
-  if (url.pathname === "/api/auth/logout" && request.method === "POST") return logout(env, request);
-  if (url.pathname === "/api/reports" && request.method === "GET") {
-    const session = await sessionStaff(env.DB, request);
-    if (!session)
-      return reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
-    return readReports(env.DB, session, url);
-  }
-  const paymentsMatch = url.pathname.match(/^\/api\/payments(?:\/([^/]+)\/refund)?$/);
-  if (paymentsMatch) {
-    const session = await sessionStaff(env.DB, request);
-    if (!session)
-      return reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
-    if (request.method === "GET" && !paymentsMatch[1]) return readPayments(env.DB, session, url);
-    if (request.method === "POST" && paymentsMatch[1] && !isDemo(env))
-      return reply({ error: "payment_not_configured" }, 503);
-    if (request.method === "POST" && paymentsMatch[1])
-      return refundPayment(env.DB, session, decodeURIComponent(paymentsMatch[1]));
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const loyaltyMatch = url.pathname.match(/^\/api\/loyalty(?:\/([^/]+))?$/);
-  if (loyaltyMatch) {
-    const session = await sessionStaff(env.DB, request);
-    if (!session)
-      return reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
-    const customerId = loyaltyMatch[1] && decodeURIComponent(loyaltyMatch[1]);
-    if (request.method === "GET" && !customerId) return readLoyalty(env.DB, session, url);
-    if (request.method === "PATCH" && customerId)
-      return adjustLoyalty(env.DB, session, customerId, await readJson(request));
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  if (url.pathname === "/api/subscription" || url.pathname === "/api/subscription/renew") {
-    const session = await sessionStaff(env.DB, request);
-    if (!session)
-      return reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
-    if (request.method === "GET" && url.pathname === "/api/subscription")
-      return reply(await readSubscription(env.DB, session.cafe_id));
-    if (request.method === "PUT" && url.pathname === "/api/subscription")
-      return updateSubscription(env.DB, session, await readJson(request));
-    if (request.method === "POST" && url.pathname.endsWith("/renew") && !isDemo(env))
-      return reply({ error: "payment_not_configured" }, 503);
-    if (request.method === "POST" && url.pathname.endsWith("/renew"))
-      return renewSubscriptionDemo(env.DB, session);
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  if (url.pathname === "/api/saas/overview") {
-    const admin = await requireSaasAdmin(env.DB, request);
-    if (!admin)
-      return reply(
-        { error: "forbidden", message: "دسترسی مدیر SaaS برای این حساب فعال نیست." },
-        403,
-      );
-    if (request.method === "GET") return reply(await readSaasOverview(env.DB));
-    if (request.method === "PATCH") return updateSaasAccount(env.DB, await readJson(request));
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const staffMatch = url.pathname.match(/^\/api\/staff(?:\/([^/]+))?$/);
-  if (staffMatch) {
-    const session = await sessionStaff(env.DB, request);
-    if (!session)
-      return reply({ error: "authentication_required", message: "ابتدا وارد پنل شوید." }, 401);
-    const id = staffMatch[1] && decodeURIComponent(staffMatch[1]);
-    if (request.method === "GET" && !id) return listStaff(env.DB, session);
-    if (request.method === "POST" && !id)
-      return saveStaff(env.DB, session, await readJson(request));
-    if (request.method === "PATCH" && id)
-      return saveStaff(env.DB, session, await readJson(request), id);
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  if (url.pathname === "/api/setup") {
-    if (request.method === "GET")
-      return reply(
-        await readSetup(
-          env.DB,
-          url.searchParams.get("cafe") || env.DEFAULT_CAFE_SLUG,
-          await sessionStaff(env.DB, request),
-        ),
-      );
-    if (request.method === "POST") {
-      if (!(await consumeLimit(env, limits.setupPerIp, `setup:ip:${clientIp(request, env)}`)))
-        return rateLimitedReply();
-      return writeSetup(env.DB, await readJson(request));
-    }
-    if (request.method === "PATCH") {
-      const session = await sessionStaff(env.DB, request);
-      if (!session || session.role !== "owner")
-        return reply({ error: "forbidden", message: "فقط مالک کافه به این بخش دسترسی دارد." }, 403);
-      return writeSetup(env.DB, await readJson(request), session);
-    }
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const branchesMatch = url.pathname.match(/^\/api\/branches(?:\/([^/]+))?$/);
-  if (branchesMatch) {
-    const slug = branchesMatch[1] && decodeURIComponent(branchesMatch[1]);
-    if (request.method === "GET" && !slug)
-      return reply(
-        await readSetup(
-          env.DB,
-          url.searchParams.get("cafe") || env.DEFAULT_CAFE_SLUG,
-          await sessionStaff(env.DB, request),
-        ),
-      );
-    const session = await sessionStaff(env.DB, request);
-    if (!session || session.role !== "owner")
-      return reply(
-        { error: "forbidden", message: "فقط مالک کافه می‌تواند شعب را مدیریت کند." },
-        403,
-      );
-    if (request.method === "POST" && !slug)
-      return createBranch(env.DB, await readJson(request), session);
-    if (request.method === "PATCH" && slug)
-      return updateBranch(env.DB, slug, await readJson(request), session);
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const notificationsMatch = url.pathname.match(
-    /^\/api\/cafes\/([^/]+)\/branches\/([^/]+)\/notifications(?:\/(process))?$/,
+  await expireUnpaidReservations(c.env.DB, branch.id);
+  if (!validDate(date)) return reply({ error: "invalid_date" }, 400);
+  return reply(await availability(c.env.DB, branch, date, partySize, settings));
+});
+app.post(`${BRANCH}/reservations`, loadBranch, async (c) => {
+  const branch = c.get("branch");
+  await expireUnpaidReservations(c.env.DB, branch.id);
+  if (!(await withinLimit(c, "reservationsPerIp", `reservation:${branch.cafe_id}`)))
+    return rateLimitedReply();
+  return createReservation(
+    c.env,
+    branch,
+    await readBody(c.req.raw, schemas.publicReservation),
+    await branchSettings(c),
   );
-  if (notificationsMatch) {
-    const [, cafeSlug, branchSlug, action] = notificationsMatch;
-    if (!safeSlug(cafeSlug) || !safeSlug(branchSlug)) return reply({ error: "invalid_slug" }, 400);
-    const branch = await branchRow(env.DB, cafeSlug, branchSlug),
-      session = await sessionStaff(env.DB, request);
-    if (
-      !session ||
-      !branch ||
-      !canUseBranch(session, branch) ||
-      !hasPermission(session, "messages.read")
-    )
-      return reply({ error: "forbidden", message: "به پیامک‌های این شعبه دسترسی ندارید." }, 403);
-    if (request.method === "GET" && !action)
-      return reply(await readNotifications(env, cafeSlug, branchSlug));
-    if (request.method === "PUT" && !action) {
-      if (!hasPermission(session, "messages.write"))
-        return reply({ error: "forbidden", message: "اجازه تغییر تنظیمات پیامک را ندارید." }, 403);
-      return writeNotificationSettings(env, cafeSlug, branchSlug, await readJson(request));
-    }
-    if (request.method === "POST" && action === "process") {
-      if (!hasPermission(session, "messages.write"))
-        return reply({ error: "forbidden", message: "اجازه اجرای یادآوری‌ها را ندارید." }, 403);
-      const result = await processDueReminders(env, branch.id);
-      return reply({
-        ...result,
-        notifications: await readNotifications(env, cafeSlug, branchSlug),
-      });
-    }
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const opsMatch = url.pathname.match(
-    /^\/api\/cafes\/([^/]+)\/branches\/([^/]+)\/operations(?:\/(reservations|waitlist|tables)(?:\/([^/]+))?)?$/,
-  );
-  if (opsMatch) {
-    const [, cafeSlug, branchSlug, section, itemId] = opsMatch;
-    if (!safeSlug(cafeSlug) || !safeSlug(branchSlug)) return reply({ error: "invalid_slug" }, 400);
-    const branch = await branchRow(env.DB, cafeSlug, branchSlug);
-    if (!branch) return reply({ error: "branch_not_found" }, 404);
-    const session = await sessionStaff(env.DB, request);
-    if (!session || !canUseBranch(session, branch) || !hasPermission(session, "dashboard.view"))
-      return reply({ error: "forbidden", message: "به عملیات این شعبه دسترسی ندارید." }, 403);
-    const settings = await readSettings(env.DB, cafeSlug, branchSlug);
-    if (!section && request.method === "GET") {
-      const date = url.searchParams.get("date") || tehranNow().date,
-        time = url.searchParams.get("time") || tehranNow().time;
-      if (!validDate(date) || !validTime(time)) return reply({ error: "invalid_datetime" }, 400);
-      return reply(await readOperations(env.DB, branch, date, session, time, settings));
-    }
-    if (section === "reservations" && request.method === "POST" && !itemId) {
-      if (!hasPermission(session, "reservations.write"))
-        return reply({ error: "forbidden", message: "اجازه ثبت رزرو ندارید." }, 403);
-      return createReservation(env, branch, await readJson(request), settings, true);
-    }
-    if (section === "reservations" && request.method === "PATCH" && itemId) {
-      if (!hasPermission(session, "reservations.write"))
-        return reply({ error: "forbidden", message: "اجازه ویرایش رزرو ندارید." }, 403);
-      return updateOperationalReservation(
-        env.DB,
-        branch,
-        itemId,
-        await readJson(request),
-        settings,
-      );
-    }
-    if (section === "waitlist" && request.method === "POST" && !itemId) {
-      if (!hasPermission(session, "waitlist.write"))
-        return reply({ error: "forbidden", message: "اجازه مدیریت لیست انتظار ندارید." }, 403);
-      return createWaitlist(env.DB, branch, await readJson(request));
-    }
-    if (section === "waitlist" && request.method === "PATCH" && itemId) {
-      if (!hasPermission(session, "waitlist.write"))
-        return reply({ error: "forbidden", message: "اجازه مدیریت لیست انتظار ندارید." }, 403);
-      return updateWaitlist(env.DB, branch, itemId, await readJson(request));
-    }
-    if (section === "tables" && request.method === "PATCH" && itemId) {
-      if (!hasPermission(session, "tables.write"))
-        return reply({ error: "forbidden", message: "اجازه تغییر وضعیت میزها را ندارید." }, 403);
-      return updateTableStatus(env.DB, branch, itemId, await readJson(request));
-    }
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  const imageMatch = url.pathname.match(/^\/api\/cafes\/([^/]+)\/branches\/([^/]+)\/map\/analyze$/);
-  if (imageMatch) {
-    const [, cafeSlug, branchSlug] = imageMatch;
-    if (!["GET", "POST"].includes(request.method))
-      return reply({ error: "method_not_allowed" }, 405);
-    if (!safeSlug(cafeSlug) || !safeSlug(branchSlug)) return reply({ error: "invalid_slug" }, 400);
-    const branch = await branchRow(env.DB, cafeSlug, branchSlug),
-      session = await sessionStaff(env.DB, request);
-    if (
-      !branch ||
-      !session ||
-      !canUseBranch(session, branch) ||
-      !hasPermission(session, "map.write")
-    )
-      return reply({ error: "forbidden", message: "به ویرایش نقشه این شعبه دسترسی ندارید." }, 403);
-    return request.method === "GET"
-      ? reply({ enabled: Boolean(env.OPENAI_API_KEY) })
-      : analyzeMapImage(request, env);
-  }
-  const branchMatch = url.pathname.match(
-    /^\/api\/cafes\/([^/]+)\/branches\/([^/]+)\/(map|settings|schedule|availability|reservations)$/,
-  );
-  if (branchMatch) {
-    const [, cafeSlug, branchSlug, resource] = branchMatch;
-    if (request.method === "PUT" || (resource === "reservations" && request.method === "GET")) {
-      const branch = await branchRow(env.DB, cafeSlug, branchSlug),
-        session = await sessionStaff(env.DB, request),
-        needed = request.method === "PUT" ? `${resource}.write` : "reservations.read";
-      if (!session || !branch || !canUseBranch(session, branch) || !hasPermission(session, needed))
-        return reply({ error: "forbidden", message: "به این بخش دسترسی ندارید." }, 403);
-    }
-    return handleBranchApi(request, env, url, cafeSlug, branchSlug, resource);
-  }
-  const reservationMatch = url.pathname.match(
-    /^\/api\/reservations\/([A-Z0-9-]+)(?:\/(cancel|pay))?$/,
-  );
-  if (reservationMatch) {
-    const code = reservationMatch[1],
-      action = reservationMatch[2];
-    if (!(await consumeLimit(env, limits.trackingPerIp, `tracking:ip:${clientIp(request, env)}`)))
-      return rateLimitedReply();
-    if (request.method === "GET" && !action) {
-      const row = await lookupReservation(env.DB, code, url.searchParams.get("mobile"));
-      return row
-        ? reply(publicReservation(row))
-        : reply({ error: "reservation_not_found", message: "رزروی با این مشخصات پیدا نشد." }, 404);
-    }
-    const body = await readJson(request),
-      row = await lookupReservation(env.DB, code, body.mobile);
-    if (!row)
-      return reply(
-        { error: "reservation_not_found", message: "رزروی با این مشخصات پیدا نشد." },
-        404,
-      );
-    if (action === "pay" && request.method === "POST") return payReservationDemo(env, row);
-    if (action === "cancel" && request.method === "POST")
-      return cancelReservation(env.DB, row, code, body.mobile);
-    return reply({ error: "method_not_allowed" }, 405);
-  }
-  return reply({ error: "not_found" }, 404);
-}
+});
+app.get(`${BRANCH}/reservations`, branchWrite("reservations"), async (c) => {
+  const branch = c.get("branch"),
+    date = c.req.query("date");
+  await expireUnpaidReservations(c.env.DB, branch.id);
+  if (!validDate(date)) return reply({ error: "invalid_date" }, 400);
+  const result = await c.env.DB.prepare(
+    "SELECT r.tracking_code,r.customer_name,r.mobile,r.party_size,r.reserved_at,r.status,GROUP_CONCAT(t.name,'، ') AS table_names FROM reservations r LEFT JOIN reservation_tables rt ON rt.reservation_id=r.id LEFT JOIN cafe_tables t ON t.id=rt.table_id WHERE r.branch_id=? AND r.reserved_at>=? AND r.reserved_at<? GROUP BY r.id ORDER BY r.reserved_at",
+  )
+    .bind(branch.id, `${date}T00:00`, `${date}T23:59`)
+    .all();
+  return reply({ reservations: result.results || [] });
+});
+app.all(`${BRANCH}/:resource{map|settings|schedule|availability|reservations}`, methodNotAllowed);
+
+// Public tracking: lookup, cancellation and demo payment by tracking code and mobile.
+const CODE = "/api/reservations/:code{[A-Z0-9-]+}";
+// In Hono `/*` also matches the code path itself, so this one middleware covers every action.
+app.use(`${CODE}/*`, async (c, next) =>
+  (await withinLimit(c, "trackingPerIp", "tracking")) ? next() : rateLimitedReply(),
+);
+const reservationNotFound = () =>
+  reply({ error: "reservation_not_found", message: "رزروی با این مشخصات پیدا نشد." }, 404);
+app.get(CODE, async (c) => {
+  const row = await lookupReservation(c.env.DB, c.req.param("code"), c.req.query("mobile"));
+  return row ? reply(publicReservation(row)) : reservationNotFound();
+});
+app.post(`${CODE}/:action{cancel|pay}`, async (c) => {
+  const code = c.req.param("code"),
+    body = await readBody(c.req.raw, schemas.trackingAction),
+    row = await lookupReservation(c.env.DB, code, body.mobile);
+  if (!row) return reservationNotFound();
+  return c.req.param("action") === "pay"
+    ? payReservationDemo(c.env, row)
+    : cancelReservation(c.env.DB, row, code, body.mobile);
+});
+app.all(CODE, methodNotAllowed);
+app.all(`${CODE}/:action{cancel|pay}`, methodNotAllowed);
+
+app.notFound(() => reply({ error: "not_found" }, 404));
+app.onError((error) => {
+  if (error instanceof InvalidJsonError)
+    return reply({ error: "invalid_json", message: "اطلاعات ارسالی معتبر نیست." }, 400);
+  if (error instanceof InvalidBodyError)
+    return reply(
+      { error: "invalid_request", message: "اطلاعات ارسالی معتبر نیست.", fields: error.fields },
+      400,
+    );
+  console.error("api_error", error);
+  return reply({ error: "internal_error", message: "خطای داخلی رخ داد؛ دوباره تلاش کنید." }, 500);
+});
+
 export default {
+  /** @param {Request} request @param {Env} env @param {ExecutionContext} ctx */
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
@@ -405,10 +477,11 @@ export default {
         ctx.waitUntil(processDueReminders(env));
         ctx.waitUntil(cleanupRateLimitsOccasionally(env.DB));
       }
-      return handleApi(request, env, url);
+      return app.fetch(request, env, ctx);
     }
     return serveStatic(request, env, url);
   },
+  /** @param {ScheduledController} controller @param {Env} env @param {ExecutionContext} ctx */
   async scheduled(controller, env, ctx) {
     void controller;
     ctx.waitUntil(

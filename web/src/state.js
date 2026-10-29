@@ -1,3 +1,4 @@
+// @ts-check
 import { cloneDefault } from "./map-defaults.js";
 
 export const state = {

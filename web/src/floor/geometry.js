@@ -1,3 +1,4 @@
+// @ts-check
 export function fitFloorZoom(bounds, width, height) {
   return Math.max(
     0.02,

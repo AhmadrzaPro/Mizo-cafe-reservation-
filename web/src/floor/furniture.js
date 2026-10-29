@@ -1,3 +1,4 @@
+// @ts-check
 // Floor studio: visual furniture is derived from existing table records.
 export function tableFurniture(t) {
   const count = Math.max(1, Math.min(20, Number(t.capacity) || 1));
