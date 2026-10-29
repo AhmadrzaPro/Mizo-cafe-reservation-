@@ -36,7 +36,7 @@ function notModified(request, etag, headers) {
 }
 export async function serveStatic(request, env, url) {
   if (url.pathname === "/saas-admin") {
-    if (!env.DB || !(await requireSaasAdmin(env.DB, request)))
+    if (!(await requireSaasAdmin(env, request)))
       return new Response("دسترسی به این بخش مجاز نیست.", {
         status: 403,
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },

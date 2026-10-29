@@ -1,8 +1,14 @@
 import { reply } from "./http.js";
 import { pricedSubscription, subscriptionUnitPriceRials } from "./subscription.js";
 import { randomId } from "./util/ids.js";
-export async function requireSaasAdmin(db, request) {
-  const id = request.headers.get("oai-authenticated-user-id");
+// The SaaS console trusts the oai-authenticated-user-* headers only when the host is configured to
+// set them itself (SAAS_ADMIN_AUTH=oai-header). Elsewhere, such as plain Cloudflare Workers, a
+// client could send them and claim the console, so it stays closed.
+/** @param {import("./types").Env} env @param {Request} request */
+export async function requireSaasAdmin(env, request) {
+  if (env.SAAS_ADMIN_AUTH !== "oai-header" || !env.DB) return null;
+  const db = env.DB,
+    id = request.headers.get("oai-authenticated-user-id");
   if (!id) return null;
   const email = request.headers.get("oai-authenticated-user-email") || "",
     existing = await db.prepare("SELECT id FROM saas_admins WHERE id=? LIMIT 1").bind(id).first();

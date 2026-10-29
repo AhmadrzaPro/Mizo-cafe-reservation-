@@ -11,6 +11,8 @@ export interface Env {
   OPENAI_API_KEY?: string;
   MAP_VISION_MODEL?: string;
   CLIENT_IP_HEADER?: string;
+  /** "oai-header" only on a host that sets oai-authenticated-user-* itself. */
+  SAAS_ADMIN_AUTH?: string;
   [limit: `RATE_LIMIT_${string}` | `${string}_PER_${string}`]: string | undefined;
 }
 

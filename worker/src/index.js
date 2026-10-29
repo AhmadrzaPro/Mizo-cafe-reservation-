@@ -195,14 +195,14 @@ for (const path of [
 
 // SaaS console
 app.on(["GET", "PATCH"], "/api/saas/overview", async (c) => {
-  if (!(await requireSaasAdmin(c.env.DB, c.req.raw)))
+  if (!(await requireSaasAdmin(c.env, c.req.raw)))
     return forbidden("دسترسی مدیر SaaS برای این حساب فعال نیست.");
   return c.req.method === "GET"
     ? reply(await readSaasOverview(c.env.DB))
     : updateSaasAccount(c.env.DB, await readJson(c.req.raw));
 });
 app.all("/api/saas/overview", async (c) =>
-  (await requireSaasAdmin(c.env.DB, c.req.raw))
+  (await requireSaasAdmin(c.env, c.req.raw))
     ? methodNotAllowed()
     : forbidden("دسترسی مدیر SaaS برای این حساب فعال نیست."),
 );
