@@ -38,11 +38,17 @@ npm run validate
 
 The build emits `dist/server/index.js` and embeds the web assets:
 
-1. `scripts/embed-assets.mjs` bundles `web/src/main.js` with esbuild into a single IIFE script (served as `/app.js`, the only script on the page). It writes that bundle, the HTML, the CSS and the hero image into `dist/server/site-content.js`.
+1. `scripts/embed-assets.mjs` bundles `web/src/main.js` with esbuild into a single IIFE script (served as `/app.js`, the only script on the page). It writes that bundle, the HTML, the CSS, the hero image and the Vazirmatn font into `dist/server/site-content.js`, with a content hash per asset. The pages reference every asset as `path?v=<hash>`.
 2. `scripts/bundle.mjs` bundles `worker/src/index.js` with esbuild into a single ESM file at `dist/server/index.js`. `./site-content.js` stays an external import.
 3. `scripts/build.sh` copies the hosting manifest and migrations into `dist/.openai/`.
 
 `npm run lint` runs ESLint, `npm run format` formats the sources with Prettier and `npm run format:check` verifies formatting. GitHub Actions (`.github/workflows/ci.yml`) runs lint, format check, tests and build validation on every pull request and on `main`.
+
+### Static assets, caching and CSP
+
+- The Vazirmatn variable font (OFL) comes from the pinned `vazirmatn` npm package and is served from `/fonts/vazirmatn.woff2`. The pages load nothing from Google Fonts or any other origin.
+- A URL carrying the current `?v=<hash>` is cached as `public, max-age=31536000, immutable`. A changed file gets a new hash, so a deploy never serves stale CSS or JS. The page itself and unversioned asset URLs revalidate with an `ETag` (`304 Not Modified` when unchanged).
+- Pages send a `Content-Security-Policy` that allows scripts, fonts and API calls only from the same origin, plus `nosniff`, `Referrer-Policy`, `Permissions-Policy` and HSTS. `style-src` keeps `'unsafe-inline'` because rendered markup positions elements with `style` attributes. Do not add inline `<script>` blocks or `on…=` handler attributes; the CSP blocks them.
 
 ### Cloudflare Workers
 

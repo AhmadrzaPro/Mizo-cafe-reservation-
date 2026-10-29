@@ -18,6 +18,7 @@
     "esbuild": "0.28.2",
     "eslint": "10.0.1",
     "globals": "17.13.0",
-    "prettier": "3.9.9"
+    "prettier": "3.9.9",
+    "vazirmatn": "33.0.3"
   }
 }
