@@ -8,8 +8,8 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -p . && tsc -p web",
-    "format": "prettier --write worker/src web/src \"web/*.css\"",
-    "format:check": "prettier --check worker/src web/src \"web/*.css\""
+    "format": "prettier --write worker/src web/src \"web/css/**/*.css\"",
+    "format:check": "prettier --check worker/src web/src \"web/css/**/*.css\""
   },
   "engines": {
     "node": ">=22.13.0"

@@ -1,0 +1,100 @@
+/* Dialog scroll containment: the page stays still and full-screen headers stay visible. */
+body.modal-open {
+  position: fixed;
+  inset-inline: 0;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html:has(dialog[open]) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+dialog.ops-dialog,
+dialog.map-editor-dialog {
+  display: none;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+dialog.ops-dialog[open],
+dialog.map-editor-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.ops-header,
+.editor-header {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+}
+.ops-shell,
+.editor-shell {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+.ops-shell {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.editor-shell {
+  overflow: hidden;
+}
+.ops-mobile-back,
+.editor-mobile-exit {
+  display: none;
+}
+
+@media (max-width: 850px) {
+  dialog.ops-dialog,
+  dialog.map-editor-dialog {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  .editor-header {
+    padding-top: env(safe-area-inset-top);
+    height: calc(72px + env(safe-area-inset-top));
+  }
+}
+@media (max-width: 820px) {
+  .ops-header {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .ops-shell {
+    height: auto;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 520px) {
+  .ops-header-controls {
+    grid-template-columns: 1fr 1.25fr;
+  }
+  .ops-mobile-back {
+    display: block;
+    border: 1px solid #6b574b;
+    background: #28211d;
+    color: #fff;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+  .ops-header-controls .ops-primary {
+    grid-column: auto;
+  }
+  .editor-mobile-exit {
+    display: block;
+    border: 1px solid #d7cec5;
+    background: #fff;
+    color: #3e342e;
+    border-radius: 9px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+}

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { build } from "esbuild";
@@ -17,33 +17,26 @@ async function bundleApp() {
   return result.outputFiles[0].text;
 }
 const read = (path, encoding = "utf8") => readFile(resolve(root, path), encoding);
+// Each folder under web/css is one served stylesheet: its files joined in name order.
+async function stylesheet(folder) {
+  const dir = resolve(root, "web/css", folder),
+    names = (await readdir(dir)).filter((name) => name.endsWith(".css")).sort();
+  return (await Promise.all(names.map((name) => readFile(resolve(dir, name), "utf8")))).join("\n");
+}
 // Vazirmatn variable font (OFL) from the pinned npm package, served from our own origin.
 const fontDir = resolve(dirname(require.resolve("vazirmatn/package.json")), "fonts/webfonts");
-const [
-  page,
-  stylesCss,
-  editorCss,
-  paymentsCss,
-  mapSpacesCss,
-  appJs,
-  saasPage,
-  saasCss,
-  saasJs,
-  hero,
-  font,
-] = await Promise.all([
-  read("web/index.html"),
-  read("web/styles.css"),
-  read("web/editor.css"),
-  read("web/payments.css"),
-  read("web/map-spaces.css"),
-  bundleApp(),
-  read("web/saas-admin.html"),
-  read("web/saas-admin.css"),
-  read("web/saas-admin.js"),
-  read("web/assets/cafe-hero.webp", null),
-  readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
-]);
+const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, hero, font] =
+  await Promise.all([
+    read("web/index.html"),
+    stylesheet("main"),
+    stylesheet("editor"),
+    bundleApp(),
+    read("web/saas-admin.html"),
+    stylesheet("saas"),
+    read("web/saas-admin.js"),
+    read("web/assets/cafe-hero.webp", null),
+    readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
+  ]);
 const hash = (body) => createHash("sha256").update(body).digest("hex").slice(0, 12);
 // Each asset is served at its path; pages and stylesheets reference it as `path?v=<hash>`,
 // so a changed file gets a new URL and an unchanged one can be cached as immutable.
@@ -61,11 +54,7 @@ const fontUrl = addAsset("/fonts/vazirmatn.woff2", "font/woff2", font);
 const withFont = (css) => css.replaceAll("/fonts/vazirmatn.woff2", fontUrl);
 const urls = {
   font: fontUrl,
-  styles: addAsset(
-    "/styles.css",
-    "text/css; charset=utf-8",
-    withFont(`${stylesCss}\n${paymentsCss}\n${mapSpacesCss}`),
-  ),
+  styles: addAsset("/styles.css", "text/css; charset=utf-8", withFont(stylesCss)),
   editor: addAsset("/editor.css", "text/css; charset=utf-8", editorCss),
   app: addAsset("/app.js", "text/javascript; charset=utf-8", appJs),
   hero: addAsset("/assets/cafe-hero.webp", "image/webp", hero),
