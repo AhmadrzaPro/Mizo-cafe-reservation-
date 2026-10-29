@@ -8,3 +8,5 @@ dist/
 upload/
 *.tar.gz
 *.log
+.dev.vars
+.wrangler/

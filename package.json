@@ -6,13 +6,18 @@
     "build": "bash scripts/build.sh",
     "validate": "node scripts/validate-artifact.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "format": "prettier --write worker/src web/src \"web/*.css\""
+    "lint": "eslint .",
+    "format": "prettier --write worker/src web/src \"web/*.css\"",
+    "format:check": "prettier --check worker/src web/src \"web/*.css\""
   },
   "engines": {
     "node": ">=22.13.0"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "esbuild": "0.28.2",
+    "eslint": "10.0.1",
+    "globals": "17.13.0",
     "prettier": "3.9.9"
   }
 }

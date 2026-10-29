@@ -1,0 +1,18 @@
+# Cloudflare Workers deployment. The Worker serves both the API and the embedded web assets.
+name = "mizo-cafe-reservation"
+main = "dist/server/index.js"
+compatibility_date = "2026-10-01"
+
+[build]
+command = "npm run build"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mizo"
+# Replace with the id printed by `npx wrangler d1 create mizo`.
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "drizzle"
+
+# Sends due SMS reminders, expires unpaid holds and cleans up rate-limit windows.
+[triggers]
+crons = ["*/5 * * * *"]

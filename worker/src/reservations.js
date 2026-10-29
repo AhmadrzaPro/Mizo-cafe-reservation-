@@ -73,8 +73,7 @@ export async function createReservation(env, branch, body, settings, operational
     return reply({ error: "invalid_party_size", message: "تعداد مهمان‌ها معتبر نیست." }, 400);
   if (!ids.length || ids.length > 4)
     return reply({ error: "table_required", message: "یک میز انتخاب کنید." }, 400);
-  const rules = await dayRules(db, branch, date),
-    start = minutes(time);
+  const rules = await dayRules(db, branch, date);
   if (bookingTimeError(date, time, settings.reservationDuration, rules, operational))
     return reply(
       {

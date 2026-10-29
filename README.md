@@ -42,7 +42,29 @@ The build emits `dist/server/index.js` and embeds the web assets:
 2. `scripts/bundle.mjs` bundles `worker/src/index.js` with esbuild into a single ESM file at `dist/server/index.js`. `./site-content.js` stays an external import.
 3. `scripts/build.sh` copies the hosting manifest and migrations into `dist/.openai/`.
 
-`npm run format` formats the sources with Prettier. For hosting with Sites, create your own Site and replace `YOUR_SITE_PROJECT_ID` in `.openai/hosting.json`. The logical D1 binding is `DB`. Runtime credentials must be set as host secrets, never committed.
+`npm run lint` runs ESLint, `npm run format` formats the sources with Prettier and `npm run format:check` verifies formatting. GitHub Actions (`.github/workflows/ci.yml`) runs lint, format check, tests and build validation on every pull request and on `main`.
+
+### Cloudflare Workers
+
+`wrangler.toml` deploys the same build to Cloudflare Workers with a D1 database and a five-minute cron for the `scheduled` handler. `.env.example` lists every runtime variable.
+
+```bash
+npx wrangler d1 create mizo
+```
+
+Put the printed id in `database_id`, then apply migrations and run locally (copy `.env.example` to `.dev.vars` and set `DEMO_MODE=true` for local OTP codes):
+
+```bash
+npx wrangler d1 migrations apply mizo --local
+```
+
+```bash
+npx wrangler dev
+```
+
+Deploy with `npx wrangler d1 migrations apply mizo --remote` and `npx wrangler deploy`, and set secrets with `npx wrangler secret put KAVENEGAR_API_KEY`. For a database whose migrations were applied by another tool, Wrangler has no record of them: do not run `migrations apply` against it without first recording the applied files in its `d1_migrations` table.
+
+ For hosting with Sites, create your own Site and replace `YOUR_SITE_PROJECT_ID` in `.openai/hosting.json`. The logical D1 binding is `DB`. Runtime credentials must be set as host secrets, never committed.
 
 Optional runtime secrets: `KAVENEGAR_API_KEY`, `KAVENEGAR_TEMPLATE`, `KAVENEGAR_CONFIRMATION_TEMPLATE`, `KAVENEGAR_REMINDER_TEMPLATE`, and `OPENAI_API_KEY`. The image model may be overridden with `MAP_VISION_MODEL`.
 
