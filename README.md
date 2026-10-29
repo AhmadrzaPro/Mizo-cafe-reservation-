@@ -15,7 +15,8 @@ A Persian, right-to-left table reservation experience for cafés, built as a Clo
 
 | Path | Purpose |
 | --- | --- |
-| `web/index.html`, `web/*.css`, `web/assets/` | Page markup, styles and images |
+| `web/index.html`, `web/assets/` | Page markup and images |
+| `web/css/main/`, `web/css/editor/`, `web/css/saas/` | Stylesheets by feature. Each folder is served as one file (`/styles.css`, `/editor.css`, `/saas-admin.css`), its files joined in name order, so later files override earlier ones |
 | `web/src/` | Frontend ES modules; `main.js` wires the page and calls `initializeApp()` |
 | `web/src/state.js` | Shared frontend state: the booking `state` and the mutable `store` |
 | `web/src/floor/` | Floor studio: furniture, undo/redo history, geometry, zoom and gestures |
@@ -94,6 +95,10 @@ The café owner reviews the map before publication. Existing reservation history
 - Date, operating hours, table operational state and indoor/outdoor visibility are validated on the server. Moving a reservation preserves the old reservation if the new interval conflicts.
 - Demo payment/refund transitions use conditional transactional writes. Cancellation cannot be reversed by payment; duplicate payment/refund requests cannot record a second transaction. Payment respects manual confirmation.
 
+### SaaS console
+
+`/saas-admin` and `/api/saas/overview` identify the platform owner by the `oai-authenticated-user-id` header, and the first such user becomes the SaaS admin. That header is trusted only with `SAAS_ADMIN_AUTH=oai-header`, which must be set only on a host that authenticates users and sets the header itself (Sites). **Existing Sites deployments must add `SAAS_ADMIN_AUTH=oai-header` to keep the console.** Without it, for example on plain Cloudflare Workers, the console is closed (403), because any client could send that header.
+
 ### Runtime modes
 
 Demo behavior is now **explicit**: set `DEMO_MODE=true` only in an isolated demonstration deployment. This exposes test OTPs and simulates deposits/refunds/subscription renewal. Never use this mode with real customer data.
@@ -141,4 +146,4 @@ npm test
 npm run validate
 ```
 
-The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. `tests/abuse-protection.test.mjs` covers the limits above, concurrency at each limit's edge, and applying `0014` to an existing database. They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
+The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. `tests/abuse-protection.test.mjs` covers the limits above, concurrency at each limit's edge, and applying `0014` to an existing database. `tests/modules.test.mjs` covers staff, branches, loyalty, payments, reports, SMS, subscription and the SaaS console, each with the roles that may and may not use it. New API tests should use the shared fixture in `tests/helpers/worker.mjs` (`setupCafe`, `login`, `staffSession`, `book`, `setStatus`). They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
