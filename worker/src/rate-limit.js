@@ -8,6 +8,18 @@ const HOUR = 3600000,
 // Each limit is configurable through the named env variable; invalid or missing values use the default.
 export const limits = {
   otpPerIp: { env: "RATE_LIMIT_OTP_PER_IP_HOUR", fallback: 10, windowMs: HOUR, offsetMs: 0 },
+  otpVerifyPerIp: {
+    env: "RATE_LIMIT_OTP_VERIFY_PER_IP_HOUR",
+    fallback: 30,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
+  trackingPerIp: {
+    env: "RATE_LIMIT_TRACKING_PER_IP_HOUR",
+    fallback: 30,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
   setupPerIp: {
     env: "RATE_LIMIT_SETUP_PER_IP_DAY",
     fallback: 5,

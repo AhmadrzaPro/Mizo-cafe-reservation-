@@ -86,6 +86,8 @@ Limits are counted in the `rate_limits` table with one atomic upsert per check, 
 | Env variable | Default | Applies to |
 | --- | --- | --- |
 | `RATE_LIMIT_OTP_PER_IP_HOUR` | `10` | `POST /api/auth/request` per client IP per hour, in addition to the per-mobile OTP limits |
+| `RATE_LIMIT_OTP_VERIFY_PER_IP_HOUR` | `30` | `POST /api/auth/verify` per client IP per hour, in addition to the five attempts per OTP challenge |
+| `RATE_LIMIT_TRACKING_PER_IP_HOUR` | `30` | Public tracking lookup, cancellation and payment (`/api/reservations/<code>…`) per client IP per hour, counting misses |
 | `RATE_LIMIT_SETUP_PER_IP_DAY` | `5` | `POST /api/setup` (new café) per client IP per day |
 | `RATE_LIMIT_RESERVATIONS_PER_IP_HOUR` | `10` | Public reservation create per client IP per café per hour |
 | `MAX_ACTIVE_RESERVATIONS_PER_MOBILE` | `3` | Active (pending or confirmed) future public reservations per mobile per branch. Staff-created reservations are not capped |
@@ -95,6 +97,10 @@ Limits are counted in the `rate_limits` table with one atomic upsert per check, 
 Days start at midnight Tehran time (UTC+03:30). Expired windows are deleted by the `scheduled` handler and, at most every ten minutes per isolate, on requests to `/api/cafes/…`.
 
 `CLIENT_IP_HEADER` must name a header that the proxy in front of the app sets and overwrites. Otherwise clients can choose their own IP. For a comma-separated list such as `X-Forwarded-For`, the right-most entry is used. Requests with a missing or malformed IP share one `unknown` client, so they are limited together rather than skipped.
+
+### API errors
+
+Errors are JSON `{error, message?}`. A body that is not a JSON object returns `400` with `error:"invalid_json"`. An unexpected failure is logged and returns `500` with `error:"internal_error"`; `503` is reserved for an unavailable dependency (database binding, SMS, payment gateway).
 
 ### Regression tests
 

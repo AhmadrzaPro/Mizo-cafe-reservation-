@@ -65,7 +65,8 @@ async function fixture(overrides = {}) {
     env = { DB, DEMO_MODE: "true", ...overrides },
     pending = [];
   // `ip` sets the default client IP header; pass null to send no IP header at all.
-  async function call(path, { method = "GET", body, ip = "198.51.100.1", headers = {} } = {}) {
+  // `raw` sends a body string as-is, for malformed-JSON cases.
+  async function call(path, { method = "GET", body, raw, ip = "198.51.100.1", headers = {} } = {}) {
     const response = await worker.fetch(
       new Request("https://test.local" + path, {
         method,
@@ -74,7 +75,7 @@ async function fixture(overrides = {}) {
           ...(ip ? { "CF-Connecting-IP": ip } : {}),
           ...headers,
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
       }),
       env,
       { waitUntil: (p) => pending.push(p) },
@@ -370,4 +371,58 @@ test("the scheduled handler removes expired rate-limit windows", async () => {
   await Promise.all(pending);
   assert.equal(DB.raw.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE key='old'").get().n, 0);
   assert.equal(DB.raw.prepare("SELECT COUNT(*) AS n FROM rate_limits").get().n, before - 1);
+});
+
+test("OTP verification is limited per IP across challenges", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const { a, call } = await fixture();
+  const verify = (ip) =>
+    call("/api/auth/verify", {
+      method: "POST",
+      ip,
+      body: { cafeSlug: a.slug, mobile: owner, challengeId: "otp:none", code: "000000" },
+    });
+  for (let i = 0; i < 30; i++) assert.equal((await verify()).status, 400);
+  isRateLimited(await verify());
+  assert.equal((await verify("198.51.100.2")).status, 400);
+  t.mock.timers.tick(HOUR);
+  assert.equal((await verify()).status, 400);
+});
+
+test("reservation tracking is limited per IP, including misses", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const { a, book, call } = await fixture();
+  const created = await book(a, 1);
+  assert.equal(created.status, 201);
+  const path = `/api/reservations/${created.data.trackingCode}`;
+  for (let i = 0; i < 29; i++)
+    assert.equal((await call(`/api/reservations/RMA-NOPE00?mobile=${owner}`)).status, 404);
+  assert.equal((await call(`${path}?mobile=09121110000`)).status, 200);
+  isRateLimited(await call(`${path}?mobile=09121110000`));
+  isRateLimited(await call(`${path}/cancel`, { method: "POST", body: { mobile: "09121110000" } }));
+  assert.equal((await call(`${path}?mobile=09121110000`, { ip: "198.51.100.2" })).status, 200);
+  t.mock.timers.tick(HOUR);
+  assert.equal((await call(`${path}?mobile=09121110000`)).status, 200);
+});
+
+test("malformed or non-object JSON bodies return 400, not a server error", async () => {
+  const { a, call } = await fixture();
+  for (const raw of ["{not json", "null", "[]", '"text"', ""]) {
+    const r = await call(a.base + "/reservations", { method: "POST", raw });
+    assert.equal(r.status, 400, raw);
+    assert.equal(r.data.error, "invalid_json");
+    assert.match(r.data.message, /[؀-ۿ]/);
+  }
+  assert.equal((await call("/api/auth/verify", { method: "POST", raw: "{" })).status, 400);
+});
+
+test("an unexpected failure returns 500 internal_error", async (t) => {
+  const { env, call } = await fixture();
+  t.mock.method(console, "error", () => {});
+  env.DB.prepare = () => {
+    throw new Error("boom");
+  };
+  const r = await call("/api/auth/verify", { method: "POST", body: {} });
+  assert.equal(r.status, 500);
+  assert.equal(r.data.error, "internal_error");
 });

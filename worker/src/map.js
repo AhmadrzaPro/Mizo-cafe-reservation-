@@ -1,5 +1,5 @@
 import { branchRow } from "./branches.js";
-import { reply } from "./http.js";
+import { readJson, reply } from "./http.js";
 import { idPart } from "./util/ids.js";
 export const outdoorAreaName = (name) =>
   /(تراس|حیاط|روف|باغ|بالکن|فضای باز)/.test(String(name || ""));
@@ -50,7 +50,7 @@ export async function analyzeMapImage(request, env) {
       { error: "image_too_large", message: "تصویر را کوچک‌تر کنید و دوباره تلاش کنید." },
       413,
     );
-  const body = await request.json(),
+  const body = await readJson(request),
     image = body?.image;
   if (
     typeof image !== "string" ||
