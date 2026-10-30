@@ -5,9 +5,7 @@ import { pageParams, store } from "./state.js";
 
 /** True when deposits go through a real gateway rather than the demo simulation. */
 export const usesGateway = () =>
-  !["demo", "none", undefined].includes(store.cafeSettings?.paymentMode);
-/** True when the deposit can be paid online (a gateway, or the demo simulation). */
-export const onlinePayment = () => (store.cafeSettings?.paymentMode || "none") !== "none";
+  Boolean(store.cafeSettings?.paymentMode && store.cafeSettings.paymentMode !== "demo");
 
 export const payButtonLabel = (confirming = false) =>
   usesGateway()

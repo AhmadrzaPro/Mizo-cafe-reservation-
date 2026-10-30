@@ -218,21 +218,12 @@ test("payments: a paid deposit is listed and refunded once, only by staff who ma
   assert.equal((await call("/api/payments", { cookie: owner })).data.summary.refunded, 500000);
 });
 
-test("payments: a demo payment cannot be refunded once demo mode is off", async () => {
-  const { DB, call, setupCafe, login, book, env } = await fixture();
+test("payments: without demo mode refunds report that no gateway is configured", async () => {
+  const { call, setupCafe, login, env } = await fixture();
   const cafe = await setupCafe(),
     owner = await login(cafe);
-  DB.raw
-    .prepare("UPDATE branch_settings SET deposit_enabled=1 WHERE branch_id=?")
-    .run(cafe.branchId);
-  const booked = await book(cafe);
-  await call(`/api/reservations/${booked.data.trackingCode}/pay`, {
-    method: "POST",
-    body: { mobile: "09121110000" },
-  });
-  const [payment] = (await call("/api/payments", { cookie: owner })).data.transactions;
   delete env.DEMO_MODE;
-  const r = await call(`/api/payments/${payment.id}/refund`, { method: "POST", cookie: owner });
+  const r = await call("/api/payments/x/refund", { method: "POST", cookie: owner });
   assert.equal(r.status, 503);
   assert.equal(r.data.error, "payment_not_configured");
 });

@@ -25,14 +25,7 @@ import {
   updateWaitlist,
 } from "./operations.js";
 import { paymentMode } from "./gateway.js";
-import {
-  completeGatewayPayment,
-  payReservation,
-  readPayments,
-  refundPayment,
-  reviewCardTransfer,
-  submitCardTransfer,
-} from "./payments.js";
+import { completeGatewayPayment, payReservation, readPayments, refundPayment } from "./payments.js";
 import {
   cleanupRateLimits,
   cleanupRateLimitsOccasionally,
@@ -160,17 +153,13 @@ app.get("/api/reports", requireStaff, (c) =>
 app.get("/api/payments", requireStaff, (c) =>
   readPayments(c.env.DB, c.get("session"), new URL(c.req.url), paymentMode(c.env)),
 );
-app.post("/api/payments/:id/refund", requireStaff, (c) =>
-  refundPayment(c.env.DB, c.get("session"), c.req.param("id"), { demo: isDemo(c.env) }),
-);
-app.post("/api/payments/transfers/:id/:decision{approve|reject}", requireStaff, (c) =>
-  reviewCardTransfer(
-    c.env,
-    c.get("session"),
-    c.req.param("id"),
-    c.req.param("decision") === "approve",
-  ),
-);
+app.post("/api/payments/:id/refund", requireStaff, (c) => {
+  const mode = paymentMode(c.env);
+  if (mode === "none") return reply({ error: "payment_not_configured" }, 503);
+  return refundPayment(c.env.DB, c.get("session"), c.req.param("id"), {
+    manual: mode !== "demo",
+  });
+});
 // The gateway returns the customer here after payment; the response redirects to the booking page.
 app.get("/api/payments/:provider/callback", (c) =>
   completeGatewayPayment(c.env, c.req.param("provider"), new URL(c.req.url)),
@@ -463,21 +452,17 @@ app.get(CODE, async (c) => {
   const row = await lookupReservation(c.env.DB, c.req.param("code"), c.req.query("mobile"));
   return row ? reply(publicReservation(row)) : reservationNotFound();
 });
-app.post(`${CODE}/:action{cancel|pay|card-transfer}`, async (c) => {
+app.post(`${CODE}/:action{cancel|pay}`, async (c) => {
   const code = c.req.param("code"),
-    action = c.req.param("action"),
-    body = await readBody(
-      c.req.raw,
-      action === "card-transfer" ? schemas.cardTransfer : schemas.trackingAction,
-    ),
+    body = await readBody(c.req.raw, schemas.trackingAction),
     row = await lookupReservation(c.env.DB, code, body.mobile);
   if (!row) return reservationNotFound();
-  if (action === "pay") return payReservation(c.env, row, new URL(c.req.url).origin);
-  if (action === "card-transfer") return submitCardTransfer(c.env, row, body);
-  return cancelReservation(c.env.DB, row, code, body.mobile);
+  return c.req.param("action") === "pay"
+    ? payReservation(c.env, row, new URL(c.req.url).origin)
+    : cancelReservation(c.env.DB, row, code, body.mobile);
 });
 app.all(CODE, methodNotAllowed);
-app.all(`${CODE}/:action{cancel|pay|card-transfer}`, methodNotAllowed);
+app.all(`${CODE}/:action{cancel|pay}`, methodNotAllowed);
 
 app.notFound(() => reply({ error: "not_found" }, 404));
 app.onError((error) => {
