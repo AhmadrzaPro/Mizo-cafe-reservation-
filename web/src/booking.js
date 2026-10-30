@@ -5,6 +5,7 @@ import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
 import { faDigits } from "./format.js";
 import { visibleAreas } from "./map-model.js";
 import { escapeHtml, tehranClientNow } from "./operations.js";
+import { payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
 export const dates = document.querySelector("#dates"),
@@ -189,6 +190,7 @@ export function showDepositPayment(payment, trackingCode, mobile) {
   document.querySelector("#depositDeadline").textContent =
     `مهلت پرداخت: ${faDigits(payment.dueAt ? new Date(payment.dueAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }) : "—")}`;
   document.querySelector("#depositPolicy").textContent = payment.refundPolicy || "";
+  document.querySelector("#payDeposit").textContent = payButtonLabel(true);
 }
 
 export function wireBooking() {

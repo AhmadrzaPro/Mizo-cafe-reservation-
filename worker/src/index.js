@@ -24,7 +24,8 @@ import {
   updateTableStatus,
   updateWaitlist,
 } from "./operations.js";
-import { payReservationDemo, readPayments, refundPayment } from "./payments.js";
+import { paymentMode } from "./gateway.js";
+import { completeGatewayPayment, payReservation, readPayments, refundPayment } from "./payments.js";
 import {
   cleanupRateLimits,
   cleanupRateLimitsOccasionally,
@@ -150,12 +151,18 @@ app.get("/api/reports", requireStaff, (c) =>
   readReports(c.env.DB, c.get("session"), new URL(c.req.url)),
 );
 app.get("/api/payments", requireStaff, (c) =>
-  readPayments(c.env.DB, c.get("session"), new URL(c.req.url)),
+  readPayments(c.env.DB, c.get("session"), new URL(c.req.url), paymentMode(c.env)),
 );
-app.post("/api/payments/:id/refund", requireStaff, (c) =>
-  isDemo(c.env)
-    ? refundPayment(c.env.DB, c.get("session"), c.req.param("id"))
-    : reply({ error: "payment_not_configured" }, 503),
+app.post("/api/payments/:id/refund", requireStaff, (c) => {
+  const mode = paymentMode(c.env);
+  if (mode === "none") return reply({ error: "payment_not_configured" }, 503);
+  return refundPayment(c.env.DB, c.get("session"), c.req.param("id"), {
+    manual: mode !== "demo",
+  });
+});
+// The gateway returns the customer here after payment; the response redirects to the booking page.
+app.get("/api/payments/:provider/callback", (c) =>
+  completeGatewayPayment(c.env, c.req.param("provider"), new URL(c.req.url)),
 );
 app.get("/api/loyalty", requireStaff, (c) =>
   readLoyalty(c.env.DB, c.get("session"), new URL(c.req.url)),
@@ -376,7 +383,9 @@ app.put(`${BRANCH}/map`, branchWrite("map"), async (c) => {
   );
   return result instanceof Response ? result : reply(result);
 });
-app.get(`${BRANCH}/settings`, async (c) => reply(await branchSettings(c)));
+app.get(`${BRANCH}/settings`, async (c) =>
+  reply({ ...(await branchSettings(c)), paymentMode: paymentMode(c.env) }),
+);
 app.put(`${BRANCH}/settings`, branchWrite("settings"), async (c) =>
   reply(
     await writeSettings(
@@ -449,7 +458,7 @@ app.post(`${CODE}/:action{cancel|pay}`, async (c) => {
     row = await lookupReservation(c.env.DB, code, body.mobile);
   if (!row) return reservationNotFound();
   return c.req.param("action") === "pay"
-    ? payReservationDemo(c.env, row)
+    ? payReservation(c.env, row, new URL(c.req.url).origin)
     : cancelReservation(c.env.DB, row, code, body.mobile);
 });
 app.all(CODE, methodNotAllowed);

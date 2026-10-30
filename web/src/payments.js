@@ -22,6 +22,24 @@ export function fillPaymentSettings() {
   );
   document.querySelector("#refundPolicy").value = store.cafeSettings.refundPolicy || "";
 }
+const paymentModes = {
+  zarinpal: [
+    "درگاه زرین‌پال",
+    "بیعانه آنلاین از درگاه زرین‌پال دریافت می‌شود. بازپرداخت را از پنل زرین‌پال انجام دهید و این‌جا ثبت کنید.",
+  ],
+  demo: ["درگاه آزمایشی", "جریان کامل پرداخت شبیه‌سازی می‌شود و پول واقعی جابه‌جا نمی‌شود."],
+  none: [
+    "درگاه پرداخت تنظیم نشده",
+    "تا اتصال درگاه، رزرو آنلاین شعبه‌هایی که بیعانه دارند ممکن نیست.",
+  ],
+};
+function showPaymentMode(mode) {
+  const [title, text] = paymentModes[mode] || paymentModes.none,
+    box = document.querySelector("#paymentMode");
+  box.querySelector("b").textContent = title;
+  box.querySelector("small").textContent = text;
+  box.dataset.mode = mode;
+}
 export async function fetchPayments() {
   const error = document.querySelector("#paymentsError");
   error.textContent = "";
@@ -32,6 +50,7 @@ export async function fetchPayments() {
       response = await fetch(`/api/payments${params}`),
       data = await response.json();
     if (!response.ok) throw new Error(data.message || "دریافت تراکنش‌ها انجام نشد.");
+    showPaymentMode(data.mode);
     document.querySelector("#paymentsPaid").textContent = money(data.summary.paid);
     document.querySelector("#paymentsPending").textContent =
       `${money(data.summary.pending)} · ${faDigits(data.summary.pendingCount)} رزرو`;
@@ -47,7 +66,14 @@ export async function fetchPayments() {
         isRefund = item.type === "refund";
       row.innerHTML = `<span class="transaction-icon ${isRefund ? "refund" : "paid"}">${isRefund ? "↩" : "✓"}</span><div><b>${escapeHtml(item.customerName)}</b><small>${escapeHtml(item.trackingCode)} · ${escapeHtml(item.branchName)} · ${formatPersianDate(item.createdAt)}</small></div><strong>${isRefund ? "−" : "+"}${money(item.amountRials)}</strong>${!isRefund && data.canWrite ? '<button type="button">بازپرداخت</button>' : ""}`;
       row.querySelector("button")?.addEventListener("click", async () => {
-        if (!confirm("بیعانه بازپرداخت و رزرو لغو شود؟")) return;
+        if (
+          !confirm(
+            data.mode === "demo"
+              ? "بیعانه بازپرداخت و رزرو لغو شود؟"
+              : "ابتدا مبلغ را از پنل درگاه پرداخت به مشتری برگردانید. بازپرداخت این‌جا ثبت و رزرو لغو شود؟",
+          )
+        )
+          return;
         const refund = await fetch(`/api/payments/${encodeURIComponent(item.id)}/refund`, {
             method: "POST",
           }),

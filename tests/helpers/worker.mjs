@@ -85,7 +85,7 @@ export async function fixture(envOverrides = {}) {
     } catch {
       // Pages and plain-text errors stay as text.
     }
-    return { status: response.status, data };
+    return { status: response.status, data, headers: response.headers };
   }
   async function setupCafe(name = "کافه آزمایشی", mobile = ownerMobile) {
     const r = await call("/api/setup", {

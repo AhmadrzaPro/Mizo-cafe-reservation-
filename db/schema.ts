@@ -270,3 +270,18 @@ export const rateLimits = sqliteTable("rate_limits", {
   windowStart: integer("window_start").notNull(),
   count: integer("count").notNull().default(0),
 }, (table) => [primaryKey({ columns: [table.key, table.windowStart] }), index("idx_rate_limits_window_start").on(table.windowStart)]);
+
+export const paymentAttempts = sqliteTable("payment_attempts", {
+  id: text("id").primaryKey(),
+  reservationId: text("reservation_id").notNull().references(() => reservations.id, { onDelete: "cascade" }),
+  branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  authority: text("authority").notNull(),
+  amountRials: integer("amount_rials").notNull(),
+  status: text("status").notNull().default("pending"),
+  reference: text("reference"),
+  cardPan: text("card_pan"),
+  error: text("error").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [uniqueIndex("idx_payment_attempts_provider_authority").on(table.provider, table.authority), index("idx_payment_attempts_reservation").on(table.reservationId)]);

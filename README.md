@@ -9,7 +9,7 @@ A Persian, right-to-left table reservation experience for cafés, built as a Clo
 - Floor editor: indoor and outdoor areas, draggable tables, image-based manual tracing, and a reviewable draft before publication.
 - Team roles: owner, branch manager, reception and barista with branch-scoped access.
 - Optional integrations: Kavenegar SMS and OpenAI image analysis. Manual map tracing remains available without OpenAI. Demo SMS requires explicit `DEMO_MODE=true`.
-- Demo payment and optional subscription UI. These do not process real money.
+- Deposits through ZarinPal (or simulated in demo mode), and an optional subscription UI (demo only).
 
 ## Structure
 
@@ -103,7 +103,28 @@ The café owner reviews the map before publication. Existing reservation history
 
 Demo behavior is now **explicit**: set `DEMO_MODE=true` only in an isolated demonstration deployment. This exposes test OTPs and simulates deposits/refunds/subscription renewal. Never use this mode with real customer data.
 
-With `DEMO_MODE` absent, missing Kavenegar configuration returns a clear error instead of exposing an OTP. Reservation messages report failed delivery if their SMS templates are missing. Real payment processing is **not implemented**: deposit-enabled public booking returns `payment_not_configured` until a verified gateway integration exists; keep deposits disabled for real reservations in the meantime. Ordinary bookings work without payments.
+With `DEMO_MODE` absent, missing Kavenegar configuration returns a clear error instead of exposing an OTP. Reservation messages report failed delivery if their SMS templates are missing. Deposits need a payment gateway (see *Online deposits* below): without one, and outside demo mode, deposit-enabled public booking returns `payment_not_configured`. Ordinary bookings work without payments.
+
+### Online deposits (ZarinPal)
+
+| Env variable | Value |
+| --- | --- |
+| `PAYMENT_GATEWAY` | `zarinpal` |
+| `ZARINPAL_MERCHANT_ID` | The merchant ID from the ZarinPal panel (secret) |
+| `ZARINPAL_SANDBOX` | `true` to use `sandbox.zarinpal.com` for testing; leave unset in production |
+
+When a gateway is configured it is used even with `DEMO_MODE=true`.
+
+1. **Start.** "Pay deposit" calls `POST /api/reservations/<code>/pay`. The Worker requests a payment for the reservation's stored deposit (rials, `IRR`), records it in `payment_attempts` and returns `redirectUrl`. The page sends the customer to ZarinPal. The table stays held for at least 10 more minutes so they can finish at the bank.
+2. **Return.** ZarinPal returns the customer to `GET /api/payments/zarinpal/callback?Authority=…&Status=OK|NOK`. The Worker claims the attempt once, then verifies the payment with the amount stored on the server, never one from the URL.
+3. **Outcome.** A verified payment marks the deposit paid and confirms the reservation (or leaves it for manual confirmation), records the ZarinPal reference and sends the confirmation SMS. The customer is redirected to `/?cafe=…&code=…&payment=success|late|pending|failed`, where the tracking dialog shows the result.
+4. **Failure cases:**
+   - **Cancelled at the bank, rejected by ZarinPal, or the hold already expired:** the payment is not verified, so ZarinPal returns the money to the customer by itself.
+   - **ZarinPal unreachable during verification:** the result is `pending`, and opening the same callback again retries.
+   - **Hold released while the money was being verified (`late`):** the payment is recorded on the cancelled reservation so staff can refund it.
+5. **Refunds.** ZarinPal refunds are made from the ZarinPal panel. "Refund" in the payments dialog then records it (provider `manual`) and cancels the reservation.
+
+Before going live, make one sandbox payment end to end: set `ZARINPAL_SANDBOX=true`, enable deposits for a branch, book and pay. Then remove `ZARINPAL_SANDBOX` and set the production merchant ID.
 
 ### Upgrade an existing database
 
@@ -113,6 +134,7 @@ With `DEMO_MODE` absent, missing Kavenegar configuration returns a clear error i
 4. Distribute the explicit café URL, and configure Kavenegar or isolated demo mode as appropriate. No implicit global-café fallback remains.
 5. Do not mix an older Worker with the new triggers. The English-edition branch is separate and must receive the same backend/contract changes before its deployment is upgraded.
 6. Apply `0014_rate_limits.sql` before serving a Worker with abuse protection. It only adds the `rate_limits` table and does not change existing data.
+7. Apply `0015_payment_attempts.sql` before serving a Worker with gateway payments. It only adds the `payment_attempts` table.
 
 ### Abuse protection
 
@@ -146,4 +168,4 @@ npm test
 npm run validate
 ```
 
-The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. `tests/abuse-protection.test.mjs` covers the limits above, concurrency at each limit's edge, and applying `0014` to an existing database. `tests/modules.test.mjs` covers staff, branches, loyalty, payments, reports, SMS, subscription and the SaaS console, each with the roles that may and may not use it. New API tests should use the shared fixture in `tests/helpers/worker.mjs` (`setupCafe`, `login`, `staffSession`, `book`, `setStatus`). They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.
+The API regression cases run the **built Worker** and all migrations against an isolated SQLite database with a transactional D1-shaped adapter. `tests/floor-studio.test.mjs` imports the floor-studio modules directly and runs without a browser. The API cases cover two-café authorization, bound OTPs, concurrent reservations, arbitrary overlapping starts, buffer boundaries, map spaces, closed/inactive tables, status permissions, and payment/cancel/refund races. `tests/abuse-protection.test.mjs` covers the limits above, concurrency at each limit's edge, and applying `0014` to an existing database. `tests/payment-gateway.test.mjs` runs ZarinPal deposits end to end against a fake ZarinPal, including cancelled, rejected, unreachable, expired and duplicate callbacks. `tests/modules.test.mjs` covers staff, branches, loyalty, payments, reports, SMS, subscription and the SaaS console, each with the roles that may and may not use it. New API tests should use the shared fixture in `tests/helpers/worker.mjs` (`setupCafe`, `login`, `staffSession`, `book`, `setStatus`). They do not substitute for browser/mobile visual testing or a staging test on hosted D1/Kavenegar/a real gateway.

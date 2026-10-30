@@ -1,4 +1,5 @@
 import { hasPermission } from "./auth/session.js";
+import { paymentGateway } from "./gateway.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
 import { expireUnpaidReservations, lookupReservation, publicReservation } from "./reservations.js";
@@ -6,38 +7,187 @@ import { readSettings } from "./settings.js";
 import { isDemo } from "./util/env.js";
 import { randomId } from "./util/ids.js";
 import { maskMobile } from "./util/mobile.js";
-export async function payReservationDemo(env, row) {
-  if (!isDemo(env))
-    return reply(
-      { error: "payment_not_configured", message: "پرداخت آزمایشی در این محیط فعال نیست." },
-      503,
-    );
+// Minutes a started gateway payment keeps the table held, so the customer can finish at the bank.
+const GATEWAY_HOLD_MINUTES = 10;
+// Checks shared by every way of paying. Returns the response to send instead, or null to go on.
+async function paymentBlocked(env, row) {
   if (!["pending", "confirmed"].includes(row.status))
     return reply({ error: "cannot_pay", message: "این رزرو لغو یا بسته شده است." }, 409);
   if (row.payment_status === "paid") return reply(publicReservation(row));
   if (row.payment_status !== "pending" || !Number(row.deposit_amount_rials))
     return reply({ error: "payment_not_available" }, 409);
-  const now = new Date().toISOString();
-  if (!row.payment_due_at || row.payment_due_at <= now) {
+  if (!row.payment_due_at || row.payment_due_at <= new Date().toISOString()) {
     await expireUnpaidReservations(env.DB, row.branch_id);
-    return reply({ error: "payment_expired" }, 409);
+    return reply(
+      { error: "payment_expired", message: "مهلت پرداخت تمام شده و میز آزاد شده است." },
+      409,
+    );
   }
-  const reference = `DEMO-${crypto.randomUUID()}`,
-    id = randomId("payment");
-  const result = await env.DB.batch([
+  return null;
+}
+// Pays a reservation's deposit: through the configured gateway, or simulated in demo mode.
+export async function payReservation(env, row, origin) {
+  const gateway = paymentGateway(env);
+  if (gateway) return startGatewayPayment(env, gateway, row, origin);
+  return payReservationDemo(env, row);
+}
+async function startGatewayPayment(env, gateway, row, origin) {
+  const blocked = await paymentBlocked(env, row);
+  if (blocked) return blocked;
+  let started;
+  try {
+    started = await gateway.request({
+      amountRials: Number(row.deposit_amount_rials),
+      callbackUrl: `${origin}/api/payments/${gateway.name}/callback`,
+      description: `بیعانه رزرو ${row.tracking_code}`,
+      mobile: row.mobile,
+    });
+  } catch (error) {
+    console.error("payment_request_failed", error);
+    return reply(
+      {
+        error: "gateway_unavailable",
+        message: "اتصال به درگاه پرداخت برقرار نشد؛ دوباره تلاش کنید.",
+      },
+      502,
+    );
+  }
+  const now = new Date(),
+    holdUntil = new Date(now.getTime() + GATEWAY_HOLD_MINUTES * 60000).toISOString();
+  await env.DB.batch([
     env.DB.prepare(
-      "UPDATE reservations SET payment_status='paid',paid_at=?,status=CASE WHEN (SELECT auto_confirm FROM branch_settings WHERE branch_id=reservations.branch_id)=0 THEN 'pending' ELSE 'confirmed' END,updated_at=? WHERE id=? AND status='pending' AND payment_status='pending' AND payment_due_at>?",
-    ).bind(now, now, row.id, now),
+      "INSERT INTO payment_attempts (id,reservation_id,branch_id,provider,authority,amount_rials,status,created_at,updated_at) VALUES (?,?,?,?,?,?,'pending',?,?)",
+    ).bind(
+      randomId("attempt"),
+      row.id,
+      row.branch_id,
+      gateway.name,
+      started.authority,
+      Number(row.deposit_amount_rials),
+      now.toISOString(),
+      now.toISOString(),
+    ),
     env.DB.prepare(
-      "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',deposit_amount_rials,'success','demo',?,? FROM reservations WHERE id=? AND changes()=1",
-    ).bind(id, reference, now, row.id),
+      "UPDATE reservations SET payment_due_at=? WHERE id=? AND payment_status='pending' AND payment_due_at<?",
+    ).bind(holdUntil, row.id, holdUntil),
   ]);
-  const updated = await lookupReservation(env.DB, row.tracking_code, row.mobile);
-  if (!result[0].meta?.changes) {
-    if (updated?.payment_status === "paid" && ["pending", "confirmed"].includes(updated.status))
-      return reply(publicReservation(updated));
-    return reply({ error: "cannot_pay" }, 409);
+  return reply({ ...publicReservation(row), redirectUrl: started.url });
+}
+// Where the gateway sends the customer back. Verifies the payment once and redirects to the
+// booking page with ?payment=success|late|pending|failed and the tracking code.
+export async function completeGatewayPayment(env, provider, url) {
+  const gateway = paymentGateway(env),
+    db = env.DB,
+    authority = String(url.searchParams.get("Authority") || "").slice(0, 100);
+  /** @param {string} result @param {Record<string, any> | null} [attempt] */
+  const back = (result, attempt = null) =>
+    new Response(null, {
+      status: 303,
+      headers: {
+        location: `/?${new URLSearchParams({
+          ...(attempt ? { cafe: attempt.cafe_slug, code: attempt.tracking_code } : {}),
+          payment: result,
+        })}`,
+        "cache-control": "no-store",
+      },
+    });
+  if (!gateway || gateway.name !== provider || !authority) return back("failed");
+  const attempt = await db
+    .prepare(
+      "SELECT a.*,r.tracking_code,r.status AS reservation_status,r.payment_status,r.payment_due_at,r.deposit_amount_rials,c.slug AS cafe_slug FROM payment_attempts a JOIN reservations r ON r.id=a.reservation_id JOIN branches b ON b.id=a.branch_id JOIN cafes c ON c.id=b.cafe_id WHERE a.provider=? AND a.authority=? LIMIT 1",
+    )
+    .bind(provider, authority)
+    .first();
+  if (!attempt) return back("failed");
+  if (attempt.status === "paid") return back("success", attempt);
+  if (attempt.status === "paid_late") return back("late", attempt);
+  const now = new Date().toISOString();
+  // Claiming the attempt first means a repeated or concurrent callback cannot verify it twice.
+  const claimed = await db
+    .prepare(
+      "UPDATE payment_attempts SET status='verifying',updated_at=? WHERE id=? AND status='pending'",
+    )
+    .bind(now, attempt.id)
+    .run();
+  if (!claimed.meta?.changes)
+    return back(attempt.status === "verifying" ? "pending" : "failed", attempt);
+  const fail = async (error) => {
+    await db
+      .prepare("UPDATE payment_attempts SET status='failed',error=?,updated_at=? WHERE id=?")
+      .bind(error, now, attempt.id)
+      .run();
+    return back("failed", attempt);
+  };
+  if (url.searchParams.get("Status") !== "OK") return fail("cancelled_at_gateway");
+  // A payment that is never verified goes back to the customer, so one that the reservation can
+  // no longer take is simply left unverified.
+  if (
+    attempt.reservation_status !== "pending" ||
+    attempt.payment_status !== "pending" ||
+    !attempt.payment_due_at ||
+    attempt.payment_due_at <= now ||
+    Number(attempt.deposit_amount_rials) !== Number(attempt.amount_rials)
+  )
+    return fail("reservation_not_payable");
+  let verified;
+  try {
+    verified = await gateway.verify({ amountRials: Number(attempt.amount_rials), authority });
+  } catch (error) {
+    // The outcome is unknown: release the claim so returning to this URL verifies again.
+    console.error("payment_verify_failed", error);
+    await db
+      .prepare(
+        "UPDATE payment_attempts SET status='pending',updated_at=? WHERE id=? AND status='verifying'",
+      )
+      .bind(now, attempt.id)
+      .run();
+    return back("pending", attempt);
   }
+  if (!verified.ok) return fail(`verify_${verified.code}`);
+  await db.batch([
+    db
+      .prepare(
+        "UPDATE reservations SET payment_status='paid',paid_at=?,status=CASE WHEN (SELECT auto_confirm FROM branch_settings WHERE branch_id=reservations.branch_id)=0 THEN 'pending' ELSE 'confirmed' END,updated_at=? WHERE id=? AND status='pending' AND payment_status='pending'",
+      )
+      .bind(now, now, attempt.reservation_id),
+    // Released while the customer was at the bank: the money is kept on record so staff refund it.
+    db
+      .prepare(
+        "UPDATE reservations SET payment_status='paid',paid_at=?,updated_at=? WHERE id=? AND payment_status IN ('pending','failed') AND changes()=0",
+      )
+      .bind(now, now, attempt.reservation_id),
+    db
+      .prepare(
+        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',?,'success',?,?,? FROM reservations WHERE id=? AND payment_status='paid' AND NOT EXISTS (SELECT 1 FROM payment_transactions WHERE reservation_id=? AND type='payment' AND status='success')",
+      )
+      .bind(
+        randomId("payment"),
+        Number(attempt.amount_rials),
+        provider,
+        verified.reference,
+        now,
+        attempt.reservation_id,
+        attempt.reservation_id,
+      ),
+    db
+      .prepare(
+        "UPDATE payment_attempts SET status=CASE WHEN (SELECT status FROM reservations WHERE id=?) IN ('pending','confirmed') THEN 'paid' ELSE 'paid_late' END,reference=?,card_pan=?,updated_at=? WHERE id=?",
+      )
+      .bind(attempt.reservation_id, verified.reference, verified.cardPan, now, attempt.id),
+  ]);
+  const settled = await db
+    .prepare("SELECT status FROM payment_attempts WHERE id=?")
+    .bind(attempt.id)
+    .first();
+  if (settled?.status !== "paid") return back("late", attempt);
+  const row = await db
+    .prepare("SELECT * FROM reservations WHERE id=?")
+    .bind(attempt.reservation_id)
+    .first();
+  await notifyPaid(env, row);
+  return back("success", attempt);
+}
+async function notifyPaid(env, row) {
   const branch = await env.DB.prepare("SELECT * FROM branches WHERE id=?")
     .bind(row.branch_id)
     .first();
@@ -62,9 +212,37 @@ export async function payReservationDemo(env, row) {
   } catch (error) {
     console.error("payment_notification_failed", error);
   }
+}
+export async function payReservationDemo(env, row) {
+  if (!isDemo(env))
+    return reply(
+      { error: "payment_not_configured", message: "پرداخت آزمایشی در این محیط فعال نیست." },
+      503,
+    );
+  const blocked = await paymentBlocked(env, row);
+  if (blocked) return blocked;
+  const now = new Date().toISOString();
+  const reference = `DEMO-${crypto.randomUUID()}`,
+    id = randomId("payment");
+  const result = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE reservations SET payment_status='paid',paid_at=?,status=CASE WHEN (SELECT auto_confirm FROM branch_settings WHERE branch_id=reservations.branch_id)=0 THEN 'pending' ELSE 'confirmed' END,updated_at=? WHERE id=? AND status='pending' AND payment_status='pending' AND payment_due_at>?",
+    ).bind(now, now, row.id, now),
+    env.DB.prepare(
+      "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',deposit_amount_rials,'success','demo',?,? FROM reservations WHERE id=? AND changes()=1",
+    ).bind(id, reference, now, row.id),
+  ]);
+  const updated = await lookupReservation(env.DB, row.tracking_code, row.mobile);
+  if (!result[0].meta?.changes) {
+    if (updated?.payment_status === "paid" && ["pending", "confirmed"].includes(updated.status))
+      return reply(publicReservation(updated));
+    return reply({ error: "cannot_pay" }, 409);
+  }
+  await notifyPaid(env, row);
   return reply({ ...publicReservation(updated), reference });
 }
-export async function readPayments(db, session, url) {
+/** @param {"zarinpal" | "demo" | "none"} mode */
+export async function readPayments(db, session, url, mode) {
   if (!hasPermission(session, "payments.read"))
     return reply({ error: "forbidden", message: "به پرداخت‌ها دسترسی ندارید." }, 403);
   const branchId = String(url.searchParams.get("branch") || session.branch_id || ""),
@@ -109,7 +287,7 @@ export async function readPayments(db, session, url) {
       .filter((item) => item.type === "refund" && item.status === "success")
       .reduce((sum, item) => sum + item.amountRials, 0);
   return reply({
-    mode: "demo",
+    mode,
     canWrite: hasPermission(session, "payments.write"),
     summary: {
       paid,
@@ -120,7 +298,9 @@ export async function readPayments(db, session, url) {
     transactions,
   });
 }
-export async function refundPayment(db, session, transactionId) {
+// With a real gateway the money is returned from the gateway's own panel; this records it
+// (provider "manual") and releases the reservation. In demo mode the refund is simulated.
+export async function refundPayment(db, session, transactionId, { manual = false } = {}) {
   if (!hasPermission(session, "payments.write")) return reply({ error: "forbidden" }, 403);
   const row = await db
     .prepare(
@@ -135,7 +315,7 @@ export async function refundPayment(db, session, transactionId) {
   )
     return reply({ error: "payment_not_found" }, 404);
   const now = new Date().toISOString(),
-    reference = `REF-DEMO-${crypto.randomUUID()}`;
+    reference = `${manual ? "REF-MANUAL" : "REF-DEMO"}-${crypto.randomUUID()}`;
   const result = await db.batch([
     db
       .prepare(
@@ -144,9 +324,16 @@ export async function refundPayment(db, session, transactionId) {
       .bind(now, row.reservation_id),
     db
       .prepare(
-        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'refund',?,'success','demo',?,? FROM reservations WHERE id=? AND changes()=1",
+        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'refund',?,'success',?,?,? FROM reservations WHERE id=? AND changes()=1",
       )
-      .bind(randomId("payment"), row.amount_rials, reference, now, row.reservation_id),
+      .bind(
+        randomId("payment"),
+        row.amount_rials,
+        manual ? "manual" : "demo",
+        reference,
+        now,
+        row.reservation_id,
+      ),
     db
       .prepare(
         "DELETE FROM reservation_locks WHERE reservation_id=? AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND payment_status='refunded')",
@@ -166,5 +353,5 @@ export async function refundPayment(db, session, transactionId) {
       },
       409,
     );
-  return reply({ refunded: true, reference });
+  return reply({ refunded: true, manual, reference });
 }

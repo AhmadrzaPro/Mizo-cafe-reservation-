@@ -407,3 +407,26 @@
     margin: 0;
   }
 }
+.payment-return {
+  border-radius: 12px;
+  padding: 11px 14px;
+  margin: 0 0 14px;
+  line-height: 1.8;
+  background: #e9f4ee;
+  color: #2f6b4a;
+}
+.payment-return[data-tone="warning"] {
+  background: #fbf1df;
+  color: #85571c;
+}
+.payment-return[data-tone="error"] {
+  background: #f9e5e1;
+  color: #8a3a2c;
+}
+.payment-mode[data-mode="none"] {
+  background: #f9e5e1;
+}
+.payment-mode[data-mode="none"] > span {
+  background: #c0624f;
+  box-shadow: 0 0 0 6px #c0624f1f;
+}

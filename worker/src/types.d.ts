@@ -13,6 +13,11 @@ export interface Env {
   CLIENT_IP_HEADER?: string;
   /** "oai-header" only on a host that sets oai-authenticated-user-* itself. */
   SAAS_ADMIN_AUTH?: string;
+  /** "zarinpal" to take deposits through ZarinPal. */
+  PAYMENT_GATEWAY?: string;
+  ZARINPAL_MERCHANT_ID?: string;
+  /** "true" to use sandbox.zarinpal.com. */
+  ZARINPAL_SANDBOX?: string;
   [limit: `RATE_LIMIT_${string}` | `${string}_PER_${string}`]: string | undefined;
 }
 

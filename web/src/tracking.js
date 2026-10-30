@@ -1,11 +1,13 @@
 import { fetchAvailability, money, trackingDialog } from "./booking.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
+import { followGatewayRedirect, payButtonLabel, payingLabel } from "./payment-flow.js";
 
 export function wireTracking() {
   document.querySelector("#openTracking").onclick = () => {
     document.querySelector("#trackingResult").hidden = true;
     document.querySelector("#trackingError").hidden = true;
+    document.querySelector("#paymentReturn").hidden = true;
     trackingDialog.showModal();
   };
   document.querySelector("#trackingForm").onsubmit = async (e) => {
@@ -31,7 +33,7 @@ export function wireTracking() {
         },
         payment =
           data.payment?.status === "pending" && ["pending", "confirmed"].includes(data.status)
-            ? `<div class="tracking-payment"><b>بیعانه ${money(data.payment.amountRials)}</b><button type="button" id="trackingPay" class="primary-btn">پرداخت آزمایشی</button></div>`
+            ? `<div class="tracking-payment"><b>بیعانه ${money(data.payment.amountRials)}</b><button type="button" id="trackingPay" class="primary-btn">${payButtonLabel()}</button></div>`
             : data.payment?.status === "paid"
               ? '<p class="paid-label">بیعانه پرداخت شده</p>'
               : "";
@@ -39,6 +41,7 @@ export function wireTracking() {
       result.hidden = false;
       document.querySelector("#trackingPay")?.addEventListener("click", async (event) => {
         event.target.disabled = true;
+        event.target.textContent = payingLabel();
         const payResponse = await fetch(`/api/reservations/${encodeURIComponent(code)}/pay`, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -49,8 +52,10 @@ export function wireTracking() {
           error.textContent = paid.message || "پرداخت انجام نشد";
           error.hidden = false;
           event.target.disabled = false;
+          event.target.textContent = payButtonLabel();
           return;
         }
+        if (followGatewayRedirect(paid)) return;
         result.querySelector(".tracking-payment").innerHTML =
           `<b class="payment-success">${paid.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b>`;
       });

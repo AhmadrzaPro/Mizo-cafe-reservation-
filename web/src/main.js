@@ -21,6 +21,7 @@ import { wirePayments } from "./payments.js";
 import { wireFloorEditorTools } from "./floor/editor-tools.js";
 import { wireFloorZoom } from "./floor/zoom.js";
 import { initializeApp } from "./init.js";
+import { showPaymentReturn } from "./payment-flow.js";
 
 wireModal();
 wireJalaliPicker();
@@ -44,4 +45,4 @@ wirePayments();
 wireFloorEditorTools();
 wireFloorZoom();
 
-initializeApp();
+initializeApp().then(showPaymentReturn);

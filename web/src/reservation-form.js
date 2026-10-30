@@ -2,6 +2,7 @@ import { reservationsUrl } from "./api.js";
 import { customerDialog, fetchAvailability, showDepositPayment, successDialog } from "./booking.js";
 import { faDigits, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
+import { followGatewayRedirect, payingLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
 export function wireReservationForm() {
@@ -60,7 +61,7 @@ export function wireReservationForm() {
     if (!event.target.closest("#payDeposit") || !store.pendingPayment) return;
     const button = document.querySelector("#payDeposit");
     button.disabled = true;
-    button.textContent = "در حال پرداخت آزمایشی…";
+    button.textContent = payingLabel();
     try {
       const response = await fetch(
           `/api/reservations/${encodeURIComponent(store.pendingPayment.trackingCode)}/pay`,
@@ -72,6 +73,7 @@ export function wireReservationForm() {
         ),
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "پرداخت انجام نشد.");
+      if (followGatewayRedirect(data)) return;
       document.querySelector("#depositPayment").innerHTML =
         `<b class="payment-success">${data.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b><small>شماره پیگیری: ${escapeHtml(data.reference || "آزمایشی")}</small>`;
       document.querySelector(".success-dialog h2").textContent =

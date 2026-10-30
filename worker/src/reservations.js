@@ -1,10 +1,10 @@
 import { bookingTimeError, lockTimes } from "./availability.js";
+import { paymentMode } from "./gateway.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
 import { limitValue } from "./rate-limit.js";
 import { dayRules, defaultSettings } from "./settings.js";
 import { minutes, tehranNow, validDate, validTime } from "./util/dates.js";
-import { isDemo } from "./util/env.js";
 import { randomId, trackingCode } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
 export function depositFor(settings, time, partySize) {
@@ -53,7 +53,7 @@ export async function createReservation(env, branch, body, settings, operational
     partySize = Number(body.partySize),
     ids = [...new Set(Array.isArray(body.tableIds) ? body.tableIds.map(String) : [])],
     source = ["phone", "walk_in"].includes(body.source) ? body.source : "web";
-  if (!operational && settings.depositEnabled && !isDemo(env))
+  if (!operational && settings.depositEnabled && paymentMode(env) === "none")
     return reply(
       {
         error: "payment_not_configured",
