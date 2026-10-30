@@ -91,7 +91,7 @@ The café owner reviews the map before publication. Existing reservation history
 - `/?new=1` starts a new café. Setup records the owner's mobile atomically with the café, branch and initial map. Subsequent access requires that invited mobile's OTP; the first visitor can no longer claim an existing café.
 - OTP challenges are café-bound and single use. Manager APIs check both café ownership and branch permissions.
 - Database triggers in `0012_tenant_booking_integrity.sql` reject overlapping reservation intervals, including buffer time and arbitrary walk-in start times. Availability uses the same interval rules, independent of slot settings and legacy lock spacing.
-- Public tracking supports lookup, cancellation and payment; staff status changes are only accepted by the authenticated operations API.
+- Public tracking supports lookup, cancellation and payment; staff status changes are only accepted by the authenticated operations API. Lookup is `POST /api/reservations/<code>` with `{mobile}` in the body, so the mobile never appears in URLs, access logs or browser history.
 - Date, operating hours, table operational state and indoor/outdoor visibility are validated on the server. Moving a reservation preserves the old reservation if the new interval conflicts.
 - Demo payment/refund transitions use conditional transactional writes. Cancellation cannot be reversed by payment; duplicate payment/refund requests cannot record a second transaction. Payment respects manual confirmation.
 

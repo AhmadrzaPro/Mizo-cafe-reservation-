@@ -396,13 +396,21 @@ test("reservation tracking is limited per IP, including misses", async (t) => {
   assert.equal(created.status, 201);
   const path = `/api/reservations/${created.data.trackingCode}`;
   for (let i = 0; i < 29; i++)
-    assert.equal((await call(`/api/reservations/RMA-NOPE00?mobile=${owner}`)).status, 404);
-  assert.equal((await call(`${path}?mobile=09121110000`)).status, 200);
-  isRateLimited(await call(`${path}?mobile=09121110000`));
+    assert.equal(
+      (await call("/api/reservations/RMA-NOPE00", { method: "POST", body: { mobile: owner } }))
+        .status,
+      404,
+    );
+  assert.equal((await call(path, { method: "POST", body: { mobile: "09121110000" } })).status, 200);
+  isRateLimited(await call(path, { method: "POST", body: { mobile: "09121110000" } }));
   isRateLimited(await call(`${path}/cancel`, { method: "POST", body: { mobile: "09121110000" } }));
-  assert.equal((await call(`${path}?mobile=09121110000`, { ip: "198.51.100.2" })).status, 200);
+  assert.equal(
+    (await call(path, { method: "POST", body: { mobile: "09121110000" }, ip: "198.51.100.2" }))
+      .status,
+    200,
+  );
   t.mock.timers.tick(HOUR);
-  assert.equal((await call(`${path}?mobile=09121110000`)).status, 200);
+  assert.equal((await call(path, { method: "POST", body: { mobile: "09121110000" } })).status, 200);
 });
 
 test("malformed or non-object JSON bodies return 400, not a server error", async () => {
@@ -461,7 +469,12 @@ test("an unsupported method on an existing route returns 405", async () => {
     [a.base + "/map", "DELETE"],
     ["/api/setup", "DELETE"],
     ["/api/reservations/RMA-AAAAAA", "PATCH"],
+    ["/api/reservations/RMA-AAAAAA?mobile=09121110000", "GET"],
   ])
-    assert.equal((await call(path, { method, body: {} })).status, 405, `${method} ${path}`);
+    assert.equal(
+      (await call(path, { method, body: method === "GET" ? undefined : {} })).status,
+      405,
+      `${method} ${path}`,
+    );
   assert.equal((await call("/api/nope")).status, 404);
 });

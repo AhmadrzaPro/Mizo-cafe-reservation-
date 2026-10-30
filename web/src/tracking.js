@@ -18,9 +18,11 @@ export function wireTracking() {
       result = document.querySelector("#trackingResult");
     error.hidden = true;
     try {
-      const response = await fetch(
-          `/api/reservations/${encodeURIComponent(code)}?mobile=${encodeURIComponent(mobile)}`,
-        ),
+      const response = await fetch(`/api/reservations/${encodeURIComponent(code)}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mobile }),
+        }),
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "رزرو پیدا نشد.");
       const labels = {

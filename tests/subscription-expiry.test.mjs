@@ -67,7 +67,10 @@ test("after the grace period public booking pauses; staff bookings and tracking 
     },
   });
   assert.equal(phone.status, 201);
-  const tracked = await f.call(`/api/reservations/${before.data.trackingCode}?mobile=09121110000`);
+  const tracked = await f.call(`/api/reservations/${before.data.trackingCode}`, {
+    method: "POST",
+    body: { mobile: "09121110000" },
+  });
   assert.equal(tracked.status, 200);
 });
 

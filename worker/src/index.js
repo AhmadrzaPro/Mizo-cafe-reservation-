@@ -498,8 +498,10 @@ app.use(`${CODE}/*`, async (c, next) =>
 );
 const reservationNotFound = () =>
   reply({ error: "reservation_not_found", message: "رزروی با این مشخصات پیدا نشد." }, 404);
-app.get(CODE, async (c) => {
-  const row = await lookupReservation(c.env.DB, c.req.param("code"), c.req.query("mobile"));
+// The mobile travels in the body, not the URL, so it never reaches access logs or browser history.
+app.post(CODE, async (c) => {
+  const body = await readBody(c.req.raw, schemas.trackingAction),
+    row = await lookupReservation(c.env.DB, c.req.param("code"), body.mobile);
   return row ? reply(publicReservation(row)) : reservationNotFound();
 });
 app.post(`${CODE}/:action{cancel|pay}`, async (c) => {
