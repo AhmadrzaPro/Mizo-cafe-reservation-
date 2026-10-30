@@ -9,6 +9,7 @@ import {
   loadCafeProfile,
 } from "./profile.js";
 import { pageParams, store } from "./state.js";
+import { refreshSubscriptionNotice } from "./subscription.js";
 
 export function fillSetupForm(editing = false) {
   document.querySelector("#setupOwnerFields").hidden = editing;
@@ -70,6 +71,7 @@ export function applyManagerAccess() {
     if (branch) store.currentBranch = branch.slug;
   }
   applyCafeProfile(store.cafeProfile);
+  refreshSubscriptionNotice();
 }
 export async function loadManagerSession() {
   try {

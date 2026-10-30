@@ -53,6 +53,8 @@ import { readSetup, writeSetup } from "./setup.js";
 import { listStaff, saveStaff } from "./staff.js";
 import { serveStatic } from "./static.js";
 import {
+  expireSubscriptions,
+  onlineBookingPaused,
   readSubscription,
   renewSubscriptionDemo,
   submitSubscriptionTransfer,
@@ -126,6 +128,13 @@ const loadBranch = async (c, next) => {
     return reply({ error: "branch_not_found", message: "ابتدا نقشه شعبه را منتشر کنید." }, 404);
   c.set("branch", branch);
   await next();
+};
+/** @param {Ctx} c */
+const cafeBookingPaused = async (c) => {
+  const cafe = await c.env.DB.prepare("SELECT id FROM cafes WHERE slug=? LIMIT 1")
+    .bind(c.req.param("cafe"))
+    .first();
+  return cafe ? onlineBookingPaused(c.env.DB, String(cafe.id)) : false;
 };
 /** @param {Ctx} c */
 const branchSettings = (c) => readSettings(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
@@ -421,7 +430,11 @@ app.put(`${BRANCH}/map`, branchWrite("map"), async (c) => {
   return result instanceof Response ? result : reply(result);
 });
 app.get(`${BRANCH}/settings`, async (c) =>
-  reply({ ...(await branchSettings(c)), paymentMode: paymentMode(c.env) }),
+  reply({
+    ...(await branchSettings(c)),
+    paymentMode: paymentMode(c.env),
+    onlineBookingPaused: await cafeBookingPaused(c),
+  }),
 );
 app.put(`${BRANCH}/settings`, branchWrite("settings"), async (c) =>
   reply(
@@ -534,6 +547,7 @@ export default {
       Promise.all([
         processDueReminders(env),
         expireUnpaidReservations(env.DB),
+        expireSubscriptions(env.DB),
         cleanupRateLimits(env.DB),
       ]),
     );

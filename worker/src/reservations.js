@@ -3,6 +3,7 @@ import { paymentMode } from "./gateway.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
 import { limitValue } from "./rate-limit.js";
+import { onlineBookingPaused } from "./subscription.js";
 import { dayRules, defaultSettings } from "./settings.js";
 import { minutes, tehranNow, validDate, validTime } from "./util/dates.js";
 import { randomId, trackingCode } from "./util/ids.js";
@@ -63,6 +64,15 @@ export async function createReservation(env, branch, body, settings, operational
     );
   if (!operational && !settings.reservationsEnabled)
     return reply({ error: "reservations_disabled", message: "رزرو آنلاین موقتاً متوقف است." }, 409);
+  // An unpaid subscription past its grace period pauses public booking; staff can still book.
+  if (!operational && (await onlineBookingPaused(db, branch.cafe_id)))
+    return reply(
+      {
+        error: "online_booking_paused",
+        message: "رزرو آنلاین این کافه موقتاً در دسترس نیست؛ لطفاً با کافه تماس بگیرید.",
+      },
+      409,
+    );
   if (!name) return reply({ error: "name_required", message: "نام مشتری را وارد کنید." }, 400);
   if (!operational && !rawMobile)
     return reply({ error: "invalid_mobile", message: "شماره موبایل معتبر وارد کنید." }, 400);

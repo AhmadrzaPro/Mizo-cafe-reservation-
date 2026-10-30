@@ -92,13 +92,11 @@ export function applySettingsToCustomer() {
   notice.hidden = !store.cafeSettings.customerNotice;
   document.querySelector("#durationLabel").textContent =
     `مدت رزرو: ${faDigits(store.cafeSettings.reservationDuration)} دقیقه`;
-  continueBtn.disabled = !store.cafeSettings.reservationsEnabled;
-  continueBtn.innerHTML = store.cafeSettings.reservationsEnabled
-    ? "ادامه و انتخاب میز <span>←</span>"
-    : "رزرو موقتاً متوقف است";
-  document
-    .querySelector(".booking-card")
-    .classList.toggle("booking-paused", !store.cafeSettings.reservationsEnabled);
+  // Paused by the café, or by an unpaid subscription past its grace period.
+  const open = store.cafeSettings.reservationsEnabled && !store.cafeSettings.onlineBookingPaused;
+  continueBtn.disabled = !open;
+  continueBtn.innerHTML = open ? "ادامه و انتخاب میز <span>←</span>" : "رزرو موقتاً متوقف است";
+  document.querySelector(".booking-card").classList.toggle("booking-paused", !open);
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;
     document.querySelector("#guestCount").textContent = faDigits(state.guests);

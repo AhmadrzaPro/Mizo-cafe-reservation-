@@ -13,14 +13,15 @@ export function renderSubscription() {
   if (!store.subscriptionData) return;
   document.querySelector("#subscriptionDisabled").hidden = store.subscriptionData.enabled;
   document.querySelector("#subscriptionEnabled").hidden = !store.subscriptionData.enabled;
-  if (!store.subscriptionData.enabled) return;
+  if (!store.subscriptionData.enabled) return renderSubscriptionNotice();
   document.querySelector("#subscriptionStatus").textContent = subscriptionStatusLabel(
     store.subscriptionData.status,
   );
   const period =
-    store.subscriptionData.status === "trial"
+    store.subscriptionData.endsAt ||
+    (store.subscriptionData.status === "trial"
       ? store.subscriptionData.trialEndsAt
-      : store.subscriptionData.currentPeriodEndsAt;
+      : store.subscriptionData.currentPeriodEndsAt);
   document.querySelector("#subscriptionPeriod").textContent = period
     ? formatPersianDate(period)
     : "تعیین نشده";
@@ -37,11 +38,12 @@ export function renderSubscription() {
     ? store.subscriptionData.events
         .map(
           (event) =>
-            `<article><b>${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", payment_submitted: "ثبت کارت به کارت", payment_card: "تأیید پرداخت کارت به کارت", payment_rejected: "رد پرداخت کارت به کارت", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b><span>${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span></article>`,
+            `<article><b>${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", payment_submitted: "ثبت کارت به کارت", payment_card: "تأیید پرداخت کارت به کارت", payment_rejected: "رد پرداخت کارت به کارت", expired: "پایان دوره؛ نیازمند پرداخت", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b><span>${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span></article>`,
         )
         .join("")
     : '<div class="subscription-empty">هنوز رویدادی ثبت نشده است.</div>';
   renderSubscriptionPayment();
+  renderSubscriptionNotice();
 }
 /** "6219861930664833" → "6219 8619 3066 4833" */
 const groupCard = (number) => String(number).replace(/(\d{4})(?=\d)/g, "$1 ");
@@ -94,6 +96,33 @@ function renderSubscriptionPayment() {
     }
   };
 }
+const persianDate = (iso) =>
+  new Date(iso).toLocaleDateString("fa-IR", { day: "numeric", month: "long" });
+// The owner's warning once a trial or paid period has ended without payment.
+export function renderSubscriptionNotice() {
+  const data = store.subscriptionData,
+    notice = document.querySelector("#subscriptionNotice"),
+    show = store.managerSession?.role === "owner" && data?.enabled && data.status === "past_due";
+  notice.hidden = !show;
+  if (!show) return;
+  notice.dataset.paused = String(Boolean(data.bookingPaused));
+  notice.querySelector("p").textContent = data.payment?.pending
+    ? "دوره اشتراک تمام شده و پرداخت شما در انتظار تأیید میزو است."
+    : data.bookingPaused
+      ? "دوره اشتراک تمام شده و رزرو آنلاین مشتریان بسته شده است. پس از پرداخت و تأیید، دوباره باز می‌شود. پنل و رزرو تلفنی کار می‌کنند."
+      : `دوره اشتراک تمام شده است. اگر تا ${data.graceEndsAt ? persianDate(data.graceEndsAt) : "چند روز آینده"} پرداخت نشود، رزرو آنلاین مشتریان بسته می‌شود.`;
+}
+/** Loads the subscription for the owner's warning when the panel opens. */
+export async function refreshSubscriptionNotice() {
+  if (store.managerSession?.role !== "owner") return renderSubscriptionNotice();
+  try {
+    const response = await fetch("/api/subscription");
+    if (response.ok) store.subscriptionData = await response.json();
+  } catch {
+    // The warning is optional; the panel works without it.
+  }
+  renderSubscriptionNotice();
+}
 export async function fetchSubscription() {
   const error = document.querySelector("#subscriptionError");
   error.textContent = "";
@@ -126,11 +155,13 @@ export async function changeSubscription(payload) {
 }
 
 export function wireSubscription() {
-  document.querySelector("#openSubscription").onclick = async () => {
+  const openSubscription = async () => {
     adminDialog.close();
     subscriptionDialog.showModal();
     await fetchSubscription();
   };
+  document.querySelector("#openSubscription").onclick = openSubscription;
+  document.querySelector("#subscriptionNoticePay").onclick = openSubscription;
   document.querySelector("#enableSubscription").onclick = () =>
     changeSubscription({ enabled: true });
   document.querySelector("#disableSubscription").onclick = () => {

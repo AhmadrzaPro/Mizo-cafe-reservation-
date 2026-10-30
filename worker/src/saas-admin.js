@@ -1,5 +1,9 @@
 import { reply } from "./http.js";
-import { pricedSubscription, subscriptionUnitPriceRials } from "./subscription.js";
+import {
+  pricedSubscription,
+  subscriptionStanding,
+  subscriptionUnitPriceRials,
+} from "./subscription.js";
 import { randomId } from "./util/ids.js";
 // The SaaS console trusts the oai-authenticated-user-* headers only when the host is configured to
 // set them itself (SAAS_ADMIN_AUTH=oai-header). Elsewhere, such as plain Cloudflare Workers, a
@@ -31,11 +35,12 @@ export async function requireSaasAdmin(env, request) {
 export async function readSaasOverview(db) {
   const result = await db
       .prepare(
-        "SELECT c.id,c.name,c.slug,COUNT(DISTINCT CASE WHEN b.active=1 THEN b.id END) AS branch_count,COALESCE(s.enabled,0) AS enabled,COALESCE(s.status,'inactive') AS status,s.trial_ends_at,s.current_period_ends_at,c.created_at FROM cafes c LEFT JOIN branches b ON b.cafe_id=c.id LEFT JOIN saas_subscriptions s ON s.cafe_id=c.id WHERE c.slug!='roma' GROUP BY c.id ORDER BY c.created_at DESC",
+        "SELECT c.id,c.name,c.slug,COUNT(DISTINCT CASE WHEN b.active=1 THEN b.id END) AS branch_count,COALESCE(s.enabled,0) AS enabled,COALESCE(s.status,'inactive') AS status,s.trial_ends_at,s.current_period_ends_at,s.updated_at,c.created_at FROM cafes c LEFT JOIN branches b ON b.cafe_id=c.id LEFT JOIN saas_subscriptions s ON s.cafe_id=c.id WHERE c.slug!='roma' GROUP BY c.id ORDER BY c.created_at DESC",
       )
       .all(),
     cafes = (result.results || []).map((row) => {
-      const offer = pricedSubscription(row.branch_count);
+      const offer = pricedSubscription(row.branch_count),
+        standing = subscriptionStanding(row);
       return {
         id: row.id,
         name: row.name,
@@ -43,7 +48,9 @@ export async function readSaasOverview(db) {
         branchCount: offer.activeBranchCount,
         enabled: Boolean(row.enabled),
         plan: "standard",
-        status: row.status,
+        status: standing.status,
+        bookingPaused: standing.bookingPaused,
+        graceEndsAt: standing.graceEndsAt,
         unitPriceRials: offer.unitPriceRials,
         monthlyPriceRials: offer.monthlyPriceRials,
         trialEndsAt: row.trial_ends_at,
@@ -75,6 +82,8 @@ export async function readSaasOverview(db) {
       enabled: cafes.filter((item) => item.enabled).length,
       trials: cafes.filter((item) => item.status === "trial").length,
       active: cafes.filter((item) => item.status === "active").length,
+      pastDue: cafes.filter((item) => item.status === "past_due").length,
+      paused: cafes.filter((item) => item.bookingPaused).length,
       mrrRials: cafes
         .filter((item) => item.status === "active" && item.enabled)
         .reduce((sum, item) => sum + item.monthlyPriceRials, 0),

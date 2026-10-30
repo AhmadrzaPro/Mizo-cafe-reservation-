@@ -49,3 +49,6 @@
     grid-template-columns: 1fr;
   }
 }
+.saas-cafe-row .saas-warning {
+  color: #a3412e;
+}
