@@ -1142,3 +1142,11 @@ dialog[open] {
     display: block;
   }
 }
+/* One page, two roles: a café's booking page (?cafe=…) or Mizo's introduction for cafés. */
+/* Until the page knows which, it shows only the neutral parts. */
+body[data-mode="cafe"] .platform-only,
+body[data-mode="platform"] .cafe-only,
+body:not([data-mode]) .platform-only,
+body:not([data-mode]) .cafe-meta {
+  display: none;
+}

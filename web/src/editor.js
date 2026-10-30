@@ -374,7 +374,7 @@ export function wireEditor() {
   document.querySelector("#zoomIn").onclick = () => zoomEditor(store.zoom * 1.25);
   document.querySelector("#zoomOut").onclick = () => zoomEditor(store.zoom / 1.25);
   document.querySelector("#resetMap").onclick = () => {
-    if (!confirm("چیدمان دمو بازنشانی شود؟")) return;
+    if (!confirm("چیدمان این بخش به حالت پیش‌فرض برگردد؟")) return;
     store.cafeMap = cloneDefault();
     store.activeArea = "main";
     store.customerArea = "main";

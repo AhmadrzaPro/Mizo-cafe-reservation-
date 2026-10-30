@@ -49,6 +49,8 @@ export async function initializeApp() {
   }
   const profile = await loadCafeProfile();
   if (!profile.configured || !profile.branches?.length) {
+    // No café to book: the page introduces Mizo to cafés instead.
+    document.body.dataset.mode = "platform";
     /** @type {HTMLButtonElement} */ (document.querySelector("#continueBtn")).disabled = true;
     times.textContent =
       "برای رزرو، لینک اختصاصی کافه را باز کنید. برای راه‌اندازی، مدیریت کافه را انتخاب کنید.";

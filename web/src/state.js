@@ -32,13 +32,11 @@ export const store = {
   dirty: false,
   currentCafeSlug: pageParams.get("cafe") || "",
   currentBranch: "main",
+  // Replaced by the café's real profile once it loads; no café is shown before that.
   cafeProfile: {
     configured: false,
-    cafe: { slug: "roma", name: "کافه روما", structure: "single" },
-    branches: [
-      { slug: "elahiye", name: "شعبه الهیه", city: "تهران", address: "" },
-      { slug: "shahrak-gharb", name: "شعبه شهرک غرب", city: "تهران", address: "" },
-    ],
+    cafe: { slug: "", name: "", structure: "single" },
+    branches: [{ slug: "main", name: "شعبه اصلی", city: "", address: "" }],
   },
   cafeSettings: {
     reservationsEnabled: true,

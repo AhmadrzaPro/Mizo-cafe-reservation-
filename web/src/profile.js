@@ -64,8 +64,11 @@ export function applyCafeProfile(profile) {
   const branch = activeBranchProfile();
   if (!branch) return;
   document.querySelector(".cafe-meta span:first-child").textContent = profile.cafe.name;
-  document.querySelector(".cafe-meta span:nth-child(2)").textContent =
-    `${branch.city}، ${branch.name}`;
+  document.querySelector(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
+    .filter(Boolean)
+    .join("، ");
+  document.body.dataset.mode = "cafe";
+  document.title = `${profile.cafe.name} — رزرو میز`;
   document.querySelector("#adminCafeName").textContent = profile.cafe.name;
   document.querySelector("#adminCafeLocation").textContent = `${branch.city} · ${branch.name}`;
   document.querySelector(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
