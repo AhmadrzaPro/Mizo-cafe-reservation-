@@ -71,12 +71,3 @@ export async function cleanupRateLimits(db, now = Date.now()) {
     .bind(now - 2 * DAY)
     .run();
 }
-
-// Hosts without a cron trigger never call `scheduled`, so requests also clean up, at most every
-// ten minutes per isolate.
-let lastCleanup = 0;
-export function cleanupRateLimitsOccasionally(db, now = Date.now()) {
-  if (now - lastCleanup < 600000) return Promise.resolve();
-  lastCleanup = now;
-  return cleanupRateLimits(db, now);
-}

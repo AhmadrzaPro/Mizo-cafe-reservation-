@@ -26,13 +26,7 @@ import {
 } from "./operations.js";
 import { paymentMode } from "./gateway.js";
 import { completeGatewayPayment, payReservation, readPayments, refundPayment } from "./payments.js";
-import {
-  cleanupRateLimits,
-  cleanupRateLimitsOccasionally,
-  consumeLimit,
-  limits,
-  rateLimitedReply,
-} from "./rate-limit.js";
+import { cleanupRateLimits, consumeLimit, limits, rateLimitedReply } from "./rate-limit.js";
 import { readReports } from "./reports.js";
 import {
   cancelReservation,
@@ -50,6 +44,7 @@ import {
 import { InvalidBodyError, readBody, schemas } from "./schemas.js";
 import { readSchedule, readSettings, writeSchedule, writeSettings } from "./settings.js";
 import { readSetup, writeSetup } from "./setup.js";
+import { maintenanceOnRequest } from "./maintenance.js";
 import { listStaff, saveStaff } from "./staff.js";
 import { serveStatic } from "./static.js";
 import {
@@ -534,10 +529,8 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
-      if (request.method === "GET" && url.pathname.startsWith("/api/cafes/")) {
-        ctx.waitUntil(processDueReminders(env));
-        ctx.waitUntil(cleanupRateLimitsOccasionally(env.DB));
-      }
+      if (request.method === "GET" && url.pathname.startsWith("/api/cafes/") && env.DB)
+        for (const work of maintenanceOnRequest(env)) ctx.waitUntil(work);
       return app.fetch(request, env, ctx);
     }
     return serveStatic(request, env, url);

@@ -173,6 +173,15 @@ Limits are counted in the `rate_limits` table with one atomic upsert per check, 
 
 Days start at midnight Tehran time (UTC+03:30). Expired windows are deleted by the `scheduled` handler and, at most every ten minutes per isolate, on requests to `/api/cafes/…`.
 
+### Background work without a cron
+
+The `scheduled` handler sends due SMS reminders, expires unpaid deposit holds and ended subscriptions, and cleans up rate-limit windows. Hosts without a cron trigger never call it, so `GET /api/cafes/…` requests also run this work in the background, throttled per isolate (`worker/src/maintenance.js`):
+
+- due reminders at most once a minute
+- rate-limit cleanup and subscription expiry at most every ten minutes
+
+A failure is logged and never affects the request that triggered it.
+
 `CLIENT_IP_HEADER` must name a header that the proxy in front of the app sets and overwrites. Otherwise clients can choose their own IP. For a comma-separated list such as `X-Forwarded-For`, the right-most entry is used. Requests with a missing or malformed IP share one `unknown` client, so they are limited together rather than skipped.
 
 ### API errors
