@@ -10,3 +10,5 @@ upload/
 *.log
 .dev.vars
 .wrangler/
+playwright-report/
+test-results/

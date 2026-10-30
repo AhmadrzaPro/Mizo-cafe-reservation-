@@ -197,6 +197,18 @@ A failure is logged and never affects the request that triggered it.
 
 Errors are JSON `{error, message?}`. A body that is not a JSON object returns `400` with `error:"invalid_json"`. On the public endpoints (OTP request and verify, café setup, public booking, tracking cancel/pay) a field with the wrong type or size returns `400` with `error:"invalid_request"` and `fields`; business rules keep their own error codes. An unsupported method on an existing route returns `405`. An unexpected failure is logged and returns `500` with `error:"internal_error"`; `503` is reserved for an unavailable dependency (database binding, SMS, payment gateway).
 
+### Browser tests (end to end)
+
+`npm run test:e2e` builds the Worker and drives it in Chromium with Playwright, at desktop and phone size. `e2e/server.mjs` serves the build on Node with an in-memory SQLite D1, demo OTP and a fake ZarinPal; it is never deployed. The tests cover:
+
+- **Customer:** booking and tracking. The mobile never appears in a URL.
+- **Page modes:** a café's booking page versus the Mizo introduction.
+- **Staff:** owner OTP sign-in through the dialog and every admin panel, then signing out everywhere.
+- **Payments:** a ZarinPal deposit through to the return page.
+- **Subscriptions:** a card-to-card payment approved in the SaaS console, and booking paused after the grace period.
+
+A test fails on any script error, console error or CSP violation. CI runs it as a separate `e2e` job and keeps the report when it fails. Locally the browser comes from Playwright: run `npx playwright install chromium` once.
+
 ### Regression tests
 
 Use Node.js 22.13+ (Node 24 recommended):

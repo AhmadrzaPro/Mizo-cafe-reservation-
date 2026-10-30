@@ -6,10 +6,11 @@
     "build": "bash scripts/build.sh",
     "validate": "node scripts/validate-artifact.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "test:e2e": "npm run build && playwright test",
     "lint": "eslint .",
     "typecheck": "tsc -p . && tsc -p web",
-    "format": "prettier --write worker/src web/src \"web/css/**/*.css\"",
-    "format:check": "prettier --check worker/src web/src \"web/css/**/*.css\""
+    "format": "prettier --write worker/src web/src e2e \"web/css/**/*.css\"",
+    "format:check": "prettier --check worker/src web/src e2e \"web/css/**/*.css\""
   },
   "engines": {
     "node": ">=22.13.0"
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261029.1",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "esbuild": "0.28.2",
     "eslint": "10.0.1",
     "globals": "17.13.0",

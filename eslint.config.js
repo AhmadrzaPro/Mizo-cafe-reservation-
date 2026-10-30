@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["dist/", "node_modules/", "db/"] },
+  { ignores: ["dist/", "node_modules/", "db/", "playwright-report/", "test-results/"] },
   js.configs.recommended,
   {
     files: ["web/**/*.js"],
@@ -13,7 +13,13 @@ export default [
     languageOptions: { globals: globals.serviceworker },
   },
   {
-    files: ["scripts/**/*.mjs", "tests/**/*.mjs", "eslint.config.js"],
+    files: [
+      "scripts/**/*.mjs",
+      "tests/**/*.mjs",
+      "e2e/**/*.mjs",
+      "eslint.config.js",
+      "playwright.config.mjs",
+    ],
     languageOptions: { globals: globals.node },
   },
   {
