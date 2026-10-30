@@ -1,0 +1,51 @@
+.saas-payments {
+  margin-bottom: 24px;
+}
+.saas-payment-list {
+  display: grid;
+  gap: 10px;
+}
+.saas-payment-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e0d6cc;
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.saas-payment-row h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.saas-payment-row p {
+  margin: 2px 0;
+  color: #6d5d51;
+  font-size: 13px;
+}
+.saas-payment-row .saas-warning {
+  color: #a3412e;
+}
+.saas-payment-actions {
+  display: flex;
+  gap: 6px;
+}
+.saas-payment-actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font: inherit;
+  cursor: pointer;
+  background: #2f6b4a;
+  color: #fff;
+}
+.saas-payment-actions .saas-reject {
+  background: #f3e1dc;
+  color: #8a3a2c;
+}
+@media (max-width: 640px) {
+  .saas-payment-row {
+    grid-template-columns: 1fr;
+  }
+}

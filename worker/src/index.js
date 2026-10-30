@@ -41,13 +41,24 @@ import {
   lookupReservation,
   publicReservation,
 } from "./reservations.js";
-import { readSaasOverview, requireSaasAdmin, updateSaasAccount } from "./saas-admin.js";
+import {
+  readSaasOverview,
+  requireSaasAdmin,
+  reviewSubscriptionPayment,
+  updateSaasAccount,
+} from "./saas-admin.js";
 import { InvalidBodyError, readBody, schemas } from "./schemas.js";
 import { readSchedule, readSettings, writeSchedule, writeSettings } from "./settings.js";
 import { readSetup, writeSetup } from "./setup.js";
 import { listStaff, saveStaff } from "./staff.js";
 import { serveStatic } from "./static.js";
-import { readSubscription, renewSubscriptionDemo, updateSubscription } from "./subscription.js";
+import {
+  readSubscription,
+  renewSubscriptionDemo,
+  submitSubscriptionTransfer,
+  subscriptionPaymentOptions,
+  updateSubscription,
+} from "./subscription.js";
 import { tehranNow, validDate, validTime } from "./util/dates.js";
 import { isDemo } from "./util/env.js";
 import { safeSlug } from "./util/ids.js";
@@ -171,15 +182,30 @@ app.patch("/api/loyalty/:customer", requireStaff, async (c) =>
   adjustLoyalty(c.env.DB, c.get("session"), c.req.param("customer"), await readJson(c.req.raw)),
 );
 app.get("/api/subscription", requireStaff, async (c) =>
-  reply(await readSubscription(c.env.DB, c.get("session").cafe_id)),
+  reply(
+    await readSubscription(c.env.DB, c.get("session").cafe_id, subscriptionPaymentOptions(c.env)),
+  ),
 );
 app.put("/api/subscription", requireStaff, async (c) =>
-  updateSubscription(c.env.DB, c.get("session"), await readJson(c.req.raw)),
+  updateSubscription(
+    c.env.DB,
+    c.get("session"),
+    await readJson(c.req.raw),
+    subscriptionPaymentOptions(c.env),
+  ),
 );
 app.post("/api/subscription/renew", requireStaff, (c) =>
   isDemo(c.env)
-    ? renewSubscriptionDemo(c.env.DB, c.get("session"))
+    ? renewSubscriptionDemo(c.env.DB, c.get("session"), subscriptionPaymentOptions(c.env))
     : reply({ error: "payment_not_configured" }, 503),
+);
+app.post("/api/subscription/card-transfer", requireStaff, async (c) =>
+  submitSubscriptionTransfer(
+    c.env.DB,
+    c.get("session"),
+    await readBody(c.req.raw, schemas.cardTransfer),
+    subscriptionPaymentOptions(c.env),
+  ),
 );
 app.get("/api/staff", requireStaff, (c) => listStaff(c.env.DB, c.get("session")));
 app.post("/api/staff", requireStaff, async (c) =>
@@ -195,6 +221,7 @@ for (const path of [
   "/api/loyalty/:customer",
   "/api/subscription",
   "/api/subscription/renew",
+  "/api/subscription/card-transfer",
   "/api/staff",
   "/api/staff/:id",
 ])
@@ -207,6 +234,16 @@ app.on(["GET", "PATCH"], "/api/saas/overview", async (c) => {
   return c.req.method === "GET"
     ? reply(await readSaasOverview(c.env.DB))
     : updateSaasAccount(c.env.DB, await readJson(c.req.raw));
+});
+app.post("/api/saas/payments/:id/:decision{approve|reject}", async (c) => {
+  const admin = await requireSaasAdmin(c.env, c.req.raw);
+  if (!admin) return forbidden("دسترسی مدیر SaaS برای این حساب فعال نیست.");
+  return reviewSubscriptionPayment(
+    c.env.DB,
+    admin,
+    c.req.param("id"),
+    c.req.param("decision") === "approve",
+  );
 });
 app.all("/api/saas/overview", async (c) =>
   (await requireSaasAdmin(c.env, c.req.raw))

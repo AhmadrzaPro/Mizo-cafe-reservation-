@@ -285,3 +285,17 @@ export const paymentAttempts = sqliteTable("payment_attempts", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [uniqueIndex("idx_payment_attempts_provider_authority").on(table.provider, table.authority), index("idx_payment_attempts_reservation").on(table.reservationId)]);
+
+export const subscriptionPayments = sqliteTable("subscription_payments", {
+  id: text("id").primaryKey(),
+  cafeId: text("cafe_id").notNull().references(() => cafes.id, { onDelete: "cascade" }),
+  amountRials: integer("amount_rials").notNull(),
+  months: integer("months").notNull().default(1),
+  method: text("method").notNull().default("card"),
+  reference: text("reference").notNull(),
+  cardLast4: text("card_last4"),
+  status: text("status").notNull().default("submitted"),
+  createdAt: text("created_at").notNull(),
+  reviewedAt: text("reviewed_at"),
+  reviewedBy: text("reviewed_by"),
+}, (table) => [index("idx_subscription_payments_status").on(table.status, table.createdAt), index("idx_subscription_payments_cafe").on(table.cafeId, table.createdAt)]);

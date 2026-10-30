@@ -13,6 +13,11 @@ database_name = "mizo"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 migrations_dir = "drizzle"
 
+# The platform's card, shown to café owners to pay their subscription card to card.
+[vars]
+SUBSCRIPTION_CARD_NUMBER = "6219861930664833"
+# SUBSCRIPTION_CARD_HOLDER = "نام صاحب کارت"
+
 # Sends due SMS reminders, expires unpaid holds and cleans up rate-limit windows.
 [triggers]
 crons = ["*/5 * * * *"]

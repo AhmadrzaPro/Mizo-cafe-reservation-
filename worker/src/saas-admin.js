@@ -51,8 +51,25 @@ export async function readSaasOverview(db) {
         createdAt: row.created_at,
       };
     });
+  // A bank reference that appears on more than one transfer is flagged for a closer look.
+  const pending = await db
+    .prepare(
+      "SELECT p.id,p.cafe_id,p.amount_rials,p.months,p.reference,p.card_last4,p.created_at,c.name AS cafe_name,(SELECT COUNT(*) FROM subscription_payments d WHERE d.reference=p.reference AND d.id!=p.id) AS duplicates FROM subscription_payments p JOIN cafes c ON c.id=p.cafe_id WHERE p.status='submitted' ORDER BY p.created_at",
+    )
+    .all();
   return {
     unitPriceRials: subscriptionUnitPriceRials,
+    pendingPayments: (pending.results || []).map((row) => ({
+      id: row.id,
+      cafeId: row.cafe_id,
+      cafeName: row.cafe_name,
+      amountRials: Number(row.amount_rials),
+      months: Number(row.months),
+      reference: row.reference,
+      cardLast4: row.card_last4 || "",
+      createdAt: row.created_at,
+      duplicateReference: Number(row.duplicates) > 0,
+    })),
     stats: {
       cafes: cafes.length,
       enabled: cafes.filter((item) => item.enabled).length,
@@ -105,5 +122,70 @@ export async function updateSaasAccount(db, body) {
         now,
       ),
   ]);
+  return reply(await readSaasOverview(db));
+}
+
+// The platform owner's decision on a café's card-to-card subscription payment. Approving extends
+// the paid period by 30 days per month paid, from today or from the current period's end if later.
+/** @param {any} db @param {{ id: string }} admin @param {string} paymentId @param {boolean} approve */
+export async function reviewSubscriptionPayment(db, admin, paymentId, approve) {
+  const payment = await db
+    .prepare(
+      "SELECT p.*,s.current_period_ends_at FROM subscription_payments p LEFT JOIN saas_subscriptions s ON s.cafe_id=p.cafe_id WHERE p.id=? LIMIT 1",
+    )
+    .bind(paymentId)
+    .first();
+  if (!payment) return reply({ error: "payment_not_found" }, 404);
+  const alreadyReviewed = () =>
+    reply({ error: "already_reviewed", message: "این پرداخت قبلاً بررسی شده است." }, 409);
+  if (payment.status !== "submitted") return alreadyReviewed();
+  const now = new Date(),
+    nowIso = now.toISOString(),
+    review = db
+      .prepare(
+        "UPDATE subscription_payments SET status=?,reviewed_at=?,reviewed_by=? WHERE id=? AND status='submitted'",
+      )
+      .bind(approve ? "approved" : "rejected", nowIso, admin.id, payment.id);
+  if (!approve) {
+    const [result] = await db.batch([
+      review,
+      db
+        .prepare(
+          "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) SELECT ?,?,'payment_rejected','standard','standard',?,?,? WHERE changes()=1",
+        )
+        .bind(
+          randomId("subevent"),
+          payment.cafe_id,
+          Number(payment.amount_rials),
+          `واریز با پیگیری ${payment.reference} تأیید نشد`,
+          nowIso,
+        ),
+    ]);
+    if (!result.meta?.changes) return alreadyReviewed();
+    return reply(await readSaasOverview(db));
+  }
+  const currentEnd = Date.parse(payment.current_period_ends_at || ""),
+    start = Number.isFinite(currentEnd) && currentEnd > now.getTime() ? currentEnd : now.getTime(),
+    periodEnd = new Date(start + Number(payment.months || 1) * 30 * 86400000).toISOString();
+  const [result] = await db.batch([
+    review,
+    db
+      .prepare(
+        "UPDATE saas_subscriptions SET enabled=1,status='active',current_period_ends_at=?,updated_at=? WHERE cafe_id=? AND changes()=1",
+      )
+      .bind(periodEnd, nowIso, payment.cafe_id),
+    db
+      .prepare(
+        "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) SELECT ?,?,'payment_card','standard','standard',?,?,? WHERE changes()=1",
+      )
+      .bind(
+        randomId("subevent"),
+        payment.cafe_id,
+        Number(payment.amount_rials),
+        `کارت به کارت · پیگیری ${payment.reference}`,
+        nowIso,
+      ),
+  ]);
+  if (!result.meta?.changes) return alreadyReviewed();
   return reply(await readSaasOverview(db));
 }

@@ -13,6 +13,9 @@ export interface Env {
   CLIENT_IP_HEADER?: string;
   /** "oai-header" only on a host that sets oai-authenticated-user-* itself. */
   SAAS_ADMIN_AUTH?: string;
+  /** The platform's card for cafés paying their subscription card to card. */
+  SUBSCRIPTION_CARD_NUMBER?: string;
+  SUBSCRIPTION_CARD_HOLDER?: string;
   /** "zarinpal" to take deposits through ZarinPal. */
   PAYMENT_GATEWAY?: string;
   ZARINPAL_MERCHANT_ID?: string;

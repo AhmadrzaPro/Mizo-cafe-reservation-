@@ -1,5 +1,8 @@
 import { reply } from "./http.js";
+import { validCardNumber } from "./util/card.js";
+import { isDemo } from "./util/env.js";
 import { randomId } from "./util/ids.js";
+import { normalizeDigits } from "./util/mobile.js";
 export const subscriptionUnitPriceRials = 4900000;
 export const subscriptionOffer = {
   id: "standard",
@@ -15,8 +18,19 @@ export function pricedSubscription(activeBranchCount) {
     monthlyPriceRials: count * subscriptionUnitPriceRials,
   };
 }
-export async function readSubscription(db, cafeId) {
-  const [row, branches, events] = await db.batch([
+// How cafés may pay the platform: the platform's card for card-to-card transfers (configured with
+// SUBSCRIPTION_CARD_NUMBER and SUBSCRIPTION_CARD_HOLDER) and, in demo mode, a simulated renewal.
+/** @param {import("./types").Env} env */
+export function subscriptionPaymentOptions(env) {
+  const cardNumber = validCardNumber(env.SUBSCRIPTION_CARD_NUMBER);
+  return {
+    card: cardNumber ? { cardNumber, cardHolder: env.SUBSCRIPTION_CARD_HOLDER || "" } : null,
+    demo: isDemo(env),
+  };
+}
+/** @param {any} db @param {string} cafeId @param {{ card?: { cardNumber: string, cardHolder: string } | null, demo?: boolean }} [options] */
+export async function readSubscription(db, cafeId, options = {}) {
+  const [row, branches, events, pending] = await db.batch([
       db
         .prepare(
           "SELECT cafe_id,enabled,plan,status,monthly_price_rials,trial_ends_at,current_period_ends_at,created_at,updated_at FROM saas_subscriptions WHERE cafe_id=? LIMIT 1",
@@ -30,7 +44,13 @@ export async function readSubscription(db, cafeId) {
           "SELECT id,type,from_plan,to_plan,amount_rials,note,created_at FROM subscription_events WHERE cafe_id=? ORDER BY created_at DESC LIMIT 12",
         )
         .bind(cafeId),
+      db
+        .prepare(
+          "SELECT id,amount_rials,reference,created_at FROM subscription_payments WHERE cafe_id=? AND status='submitted' ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(cafeId),
     ]),
+    pendingRow = pending.results?.[0],
     subscription = row.results?.[0],
     offer = pricedSubscription(branches.results?.[0]?.count);
   return {
@@ -44,6 +64,18 @@ export async function readSubscription(db, cafeId) {
     offer,
     trialEndsAt: subscription?.trial_ends_at || null,
     currentPeriodEndsAt: subscription?.current_period_ends_at || null,
+    payment: {
+      card: options.card || null,
+      demo: Boolean(options.demo),
+      pending: pendingRow
+        ? {
+            id: pendingRow.id,
+            amountRials: Number(pendingRow.amount_rials),
+            reference: pendingRow.reference,
+            createdAt: pendingRow.created_at,
+          }
+        : null,
+    },
     events: (events.results || []).map((item) => ({
       id: item.id,
       type: item.type,
@@ -55,7 +87,7 @@ export async function readSubscription(db, cafeId) {
     })),
   };
 }
-export async function updateSubscription(db, session, body) {
+export async function updateSubscription(db, session, body, options = {}) {
   if (session.role !== "owner")
     return reply(
       { error: "forbidden", message: "فقط مالک کافه می‌تواند اشتراک را مدیریت کند." },
@@ -122,9 +154,9 @@ export async function updateSubscription(db, session, body) {
         now,
       ),
   ]);
-  return reply(await readSubscription(db, session.cafe_id));
+  return reply(await readSubscription(db, session.cafe_id, options));
 }
-export async function renewSubscriptionDemo(db, session) {
+export async function renewSubscriptionDemo(db, session, options = {}) {
   if (session.role !== "owner") return reply({ error: "forbidden" }, 403);
   const [currentRow, branchRow] = await db.batch([
       db
@@ -156,5 +188,78 @@ export async function renewSubscriptionDemo(db, session) {
       )
       .bind(randomId("subevent"), session.cafe_id, current.plan || null, plan, price, now),
   ]);
-  return reply(await readSubscription(db, session.cafe_id));
+  return reply(await readSubscription(db, session.cafe_id, options));
+}
+
+// A café owner reports a card-to-card transfer of one month's fee to the platform's card. It waits
+// for the platform owner to find it in the bank account and approve it in the SaaS console.
+export async function submitSubscriptionTransfer(db, session, body, options) {
+  if (session.role !== "owner")
+    return reply(
+      { error: "forbidden", message: "فقط مالک کافه می‌تواند اشتراک را پرداخت کند." },
+      403,
+    );
+  if (!options.card)
+    return reply(
+      { error: "card_transfer_not_configured", message: "پرداخت کارت به کارت اشتراک فعال نیست." },
+      503,
+    );
+  const reference = normalizeDigits(body.reference).replace(/[\s-]/g, ""),
+    cardLast4 = normalizeDigits(body.cardLast4).replace(/\s/g, "");
+  if (!/^[A-Za-z0-9]{4,40}$/.test(reference))
+    return reply(
+      { error: "invalid_reference", message: "شماره پیگیری انتقال را درست وارد کنید." },
+      400,
+    );
+  if (cardLast4 && !/^\d{4}$/.test(cardLast4))
+    return reply(
+      { error: "invalid_card_last4", message: "چهار رقم آخر کارت خود را وارد کنید." },
+      400,
+    );
+  const subscription = await readSubscription(db, session.cafe_id, options);
+  if (!subscription.enabled)
+    return reply(
+      { error: "subscription_disabled", message: "ابتدا ماژول اشتراک را فعال کنید." },
+      409,
+    );
+  if (!subscription.monthlyPriceRials)
+    return reply({ error: "nothing_to_pay", message: "شعبه فعالی برای پرداخت وجود ندارد." }, 409);
+  const now = new Date().toISOString(),
+    id = randomId("subpay");
+  // At most one transfer per café waits for review at a time.
+  const [inserted] = await db.batch([
+    db
+      .prepare(
+        "INSERT INTO subscription_payments (id,cafe_id,amount_rials,months,method,reference,card_last4,status,created_at) SELECT ?,?,?,1,'card',?,?,'submitted',? WHERE NOT EXISTS (SELECT 1 FROM subscription_payments WHERE cafe_id=? AND status='submitted')",
+      )
+      .bind(
+        id,
+        session.cafe_id,
+        subscription.monthlyPriceRials,
+        reference,
+        cardLast4 || null,
+        now,
+        session.cafe_id,
+      ),
+    db
+      .prepare(
+        "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) SELECT ?,?,'payment_submitted','standard','standard',?,?,? WHERE changes()=1",
+      )
+      .bind(
+        randomId("subevent"),
+        session.cafe_id,
+        subscription.monthlyPriceRials,
+        `کارت به کارت · پیگیری ${reference}`,
+        now,
+      ),
+  ]);
+  if (!inserted.meta?.changes)
+    return reply(
+      {
+        error: "payment_pending",
+        message: "پرداخت قبلی شما هنوز در انتظار تأیید است.",
+      },
+      409,
+    );
+  return reply(await readSubscription(db, session.cafe_id, options));
 }
