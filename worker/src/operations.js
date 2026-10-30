@@ -208,6 +208,14 @@ export async function updateOperationalReservation(db, branch, code, body, setti
     );
   if (row.payment_status === "pending" && ["confirmed", "arrived", "completed"].includes(status))
     return reply({ error: "payment_required", message: "بیعانه هنوز پرداخت نشده است." }, 409);
+  if (row.payment_status === "review" && status !== row.status)
+    return reply(
+      {
+        error: "payment_in_review",
+        message: "ابتدا پرداخت کارت به کارت این رزرو را در بخش پرداخت تأیید یا رد کنید.",
+      },
+      409,
+    );
   let moving =
     date !== row.reserved_at.slice(0, 10) ||
     time !== row.reserved_at.slice(11, 16) ||

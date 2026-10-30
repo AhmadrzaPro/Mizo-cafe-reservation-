@@ -39,6 +39,11 @@ export const schemas = {
     source: text(20),
   }),
   trackingAction: z.looseObject({ mobile }),
+  cardTransfer: z.looseObject({
+    mobile,
+    reference: z.optional(z.union([z.string().check(z.maxLength(60)), z.number()])),
+    cardLast4: z.optional(z.union([z.string().check(z.maxLength(8)), z.number()])),
+  }),
 };
 // Thrown for a JSON body that does not match its schema; the API answers it with 400.
 export class InvalidBodyError extends Error {

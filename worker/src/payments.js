@@ -6,7 +6,7 @@ import { expireUnpaidReservations, lookupReservation, publicReservation } from "
 import { readSettings } from "./settings.js";
 import { isDemo } from "./util/env.js";
 import { randomId } from "./util/ids.js";
-import { maskMobile } from "./util/mobile.js";
+import { maskMobile, normalizeDigits } from "./util/mobile.js";
 // Minutes a started gateway payment keeps the table held, so the customer can finish at the bank.
 const GATEWAY_HOLD_MINUTES = 10;
 // Checks shared by every way of paying. Returns the response to send instead, or null to go on.
@@ -14,6 +14,14 @@ async function paymentBlocked(env, row) {
   if (!["pending", "confirmed"].includes(row.status))
     return reply({ error: "cannot_pay", message: "این رزرو لغو یا بسته شده است." }, 409);
   if (row.payment_status === "paid") return reply(publicReservation(row));
+  if (row.payment_status === "review")
+    return reply(
+      {
+        error: "payment_in_review",
+        message: "پرداخت کارت به کارت شما ثبت شده و در حال بررسی است.",
+      },
+      409,
+    );
   if (row.payment_status !== "pending" || !Number(row.deposit_amount_rials))
     return reply({ error: "payment_not_available" }, 409);
   if (!row.payment_due_at || row.payment_due_at <= new Date().toISOString()) {
@@ -187,6 +195,119 @@ export async function completeGatewayPayment(env, provider, url) {
   await notifyPaid(env, row);
   return back("success", attempt);
 }
+// Card to card: the customer transfers the deposit to the café's card and submits the bank's
+// reference. The reservation keeps its table while staff check the account (payment_status
+// "review"), and staff then approve or reject the transfer in the payments dialog.
+export async function submitCardTransfer(env, row, body) {
+  if (!row.card_transfer_enabled || !row.card_number)
+    return reply(
+      { error: "card_transfer_disabled", message: "این شعبه پرداخت کارت به کارت را نمی‌پذیرد." },
+      409,
+    );
+  const reference = normalizeDigits(body.reference).replace(/[\s-]/g, ""),
+    cardLast4 = normalizeDigits(body.cardLast4).replace(/\s/g, "");
+  if (!/^[A-Za-z0-9]{4,40}$/.test(reference))
+    return reply(
+      { error: "invalid_reference", message: "شماره پیگیری انتقال را درست وارد کنید." },
+      400,
+    );
+  if (cardLast4 && !/^\d{4}$/.test(cardLast4))
+    return reply(
+      { error: "invalid_card_last4", message: "چهار رقم آخر کارت خود را وارد کنید." },
+      400,
+    );
+  const blocked = await paymentBlocked(env, row);
+  if (blocked) return blocked;
+  const now = new Date().toISOString(),
+    id = randomId("attempt");
+  const result = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE reservations SET payment_status='review',updated_at=? WHERE id=? AND status='pending' AND payment_status='pending' AND payment_due_at>?",
+    ).bind(now, row.id, now),
+    env.DB.prepare(
+      "INSERT INTO payment_attempts (id,reservation_id,branch_id,provider,authority,amount_rials,status,reference,card_pan,created_at,updated_at) SELECT ?,id,branch_id,'card',?,deposit_amount_rials,'submitted',?,?,?,? FROM reservations WHERE id=? AND changes()=1",
+    ).bind(id, id, reference, cardLast4 || null, now, now, row.id),
+  ]);
+  if (!result[0].meta?.changes) return reply({ error: "cannot_pay" }, 409);
+  return reply(publicReservation(await lookupReservation(env.DB, row.tracking_code, row.mobile)));
+}
+// Staff decision on a submitted card-to-card transfer.
+export async function reviewCardTransfer(env, session, attemptId, approve) {
+  if (!hasPermission(session, "payments.write")) return reply({ error: "forbidden" }, 403);
+  const db = env.DB,
+    attempt = await db
+      .prepare(
+        "SELECT a.*,b.cafe_id FROM payment_attempts a JOIN branches b ON b.id=a.branch_id WHERE a.id=? AND a.provider='card' LIMIT 1",
+      )
+      .bind(attemptId)
+      .first();
+  if (
+    !attempt ||
+    attempt.cafe_id !== session.cafe_id ||
+    (session.role !== "owner" && attempt.branch_id !== session.branch_id)
+  )
+    return reply({ error: "transfer_not_found" }, 404);
+  const now = new Date().toISOString(),
+    alreadyReviewed = () =>
+      reply({ error: "already_reviewed", message: "این پرداخت قبلاً بررسی شده است." }, 409);
+  if (attempt.status !== "submitted") return alreadyReviewed();
+  if (!approve) {
+    const result = await db.batch([
+      db
+        .prepare(
+          "UPDATE payment_attempts SET status='rejected',updated_at=? WHERE id=? AND status='submitted'",
+        )
+        .bind(now, attempt.id),
+      db
+        .prepare(
+          "UPDATE reservations SET status=CASE WHEN status IN ('pending','confirmed') THEN 'cancelled' ELSE status END,payment_status='failed',updated_at=? WHERE id=? AND payment_status='review' AND changes()=1",
+        )
+        .bind(now, attempt.reservation_id),
+      db
+        .prepare(
+          "DELETE FROM reservation_locks WHERE reservation_id=? AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
+        )
+        .bind(attempt.reservation_id, attempt.reservation_id),
+      db
+        .prepare(
+          "UPDATE sms_messages SET status='cancelled' WHERE reservation_id=? AND status='queued' AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND status='cancelled')",
+        )
+        .bind(attempt.reservation_id, attempt.reservation_id),
+    ]);
+    if (!result[0].meta?.changes) return alreadyReviewed();
+    return reply({ reviewed: true, approved: false });
+  }
+  const result = await db.batch([
+    db
+      .prepare(
+        "UPDATE payment_attempts SET status='paid',updated_at=? WHERE id=? AND status='submitted'",
+      )
+      .bind(now, attempt.id),
+    db
+      .prepare(
+        "UPDATE reservations SET payment_status='paid',paid_at=?,status=CASE WHEN status!='pending' THEN status WHEN (SELECT auto_confirm FROM branch_settings WHERE branch_id=reservations.branch_id)=0 THEN 'pending' ELSE 'confirmed' END,updated_at=? WHERE id=? AND payment_status='review' AND changes()=1",
+      )
+      .bind(now, now, attempt.reservation_id),
+    db
+      .prepare(
+        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',?,'success','card',?,? FROM reservations WHERE id=? AND changes()=1",
+      )
+      .bind(
+        randomId("payment"),
+        Number(attempt.amount_rials),
+        attempt.reference,
+        now,
+        attempt.reservation_id,
+      ),
+  ]);
+  if (!result[0].meta?.changes) return alreadyReviewed();
+  const row = await db
+    .prepare("SELECT * FROM reservations WHERE id=?")
+    .bind(attempt.reservation_id)
+    .first();
+  if (["pending", "confirmed"].includes(row.status)) await notifyPaid(env, row);
+  return reply({ reviewed: true, approved: true, status: row.status });
+}
 async function notifyPaid(env, row) {
   const branch = await env.DB.prepare("SELECT * FROM branches WHERE id=?")
     .bind(row.branch_id)
@@ -262,10 +383,30 @@ export async function readPayments(db, session, url, mode) {
       .all(),
     pending = await db
       .prepare(
-        `SELECT COUNT(*) AS count,COALESCE(SUM(r.deposit_amount_rials),0) AS amount FROM reservations r JOIN branches b ON b.id=r.branch_id WHERE b.cafe_id=? AND r.payment_status='pending'${scope.replaceAll("p.branch_id", "r.branch_id")}`,
+        `SELECT COUNT(*) AS count,COALESCE(SUM(r.deposit_amount_rials),0) AS amount FROM reservations r JOIN branches b ON b.id=r.branch_id WHERE b.cafe_id=? AND r.payment_status IN ('pending','review')${scope.replaceAll("p.branch_id", "r.branch_id")}`,
       )
       .bind(...params)
       .first(),
+    // A bank reference submitted more than once in this café is flagged for a closer look.
+    transfersResult = await db
+      .prepare(
+        `SELECT a.id,a.amount_rials,a.reference,a.card_pan,a.created_at,r.tracking_code,r.customer_name,r.mobile,r.reserved_at,b.name AS branch_name,(SELECT COUNT(*) FROM payment_attempts d JOIN branches db ON db.id=d.branch_id WHERE d.provider='card' AND d.reference=a.reference AND d.id!=a.id AND db.cafe_id=b.cafe_id) AS duplicates FROM payment_attempts a JOIN reservations r ON r.id=a.reservation_id JOIN branches b ON b.id=a.branch_id WHERE b.cafe_id=? AND a.provider='card' AND a.status='submitted'${scope.replaceAll("p.branch_id", "a.branch_id")} ORDER BY a.created_at`,
+      )
+      .bind(...params)
+      .all(),
+    transfers = (transfersResult.results || []).map((row) => ({
+      id: row.id,
+      amountRials: Number(row.amount_rials),
+      reference: row.reference,
+      cardLast4: row.card_pan || "",
+      createdAt: row.created_at,
+      trackingCode: row.tracking_code,
+      customerName: row.customer_name,
+      mobile: maskMobile(row.mobile),
+      reservedAt: row.reserved_at,
+      branchName: row.branch_name,
+      duplicateReference: Number(row.duplicates) > 0,
+    })),
     transactions = (result.results || []).map((row) => ({
       id: row.id,
       reservationId: row.reservation_id,
@@ -295,12 +436,14 @@ export async function readPayments(db, session, url, mode) {
       pending: Number(pending?.amount || 0),
       pendingCount: Number(pending?.count || 0),
     },
+    transfers,
     transactions,
   });
 }
-// With a real gateway the money is returned from the gateway's own panel; this records it
-// (provider "manual") and releases the reservation. In demo mode the refund is simulated.
-export async function refundPayment(db, session, transactionId, { manual = false } = {}) {
+// Real money (gateway or card to card) is returned outside the app, from the gateway panel or by
+// bank transfer; this records it (provider "manual") and releases the reservation. A demo payment's
+// refund is simulated, and only in demo mode.
+export async function refundPayment(db, session, transactionId, { demo = false } = {}) {
   if (!hasPermission(session, "payments.write")) return reply({ error: "forbidden" }, 403);
   const row = await db
     .prepare(
@@ -314,6 +457,8 @@ export async function refundPayment(db, session, transactionId, { manual = false
     (session.role !== "owner" && row.branch_id !== session.branch_id)
   )
     return reply({ error: "payment_not_found" }, 404);
+  const manual = row.provider !== "demo";
+  if (!manual && !demo) return reply({ error: "payment_not_configured" }, 503);
   const now = new Date().toISOString(),
     reference = `${manual ? "REF-MANUAL" : "REF-DEMO"}-${crypto.randomUUID()}`;
   const result = await db.batch([

@@ -430,3 +430,78 @@
   background: #c0624f;
   box-shadow: 0 0 0 6px #c0624f1f;
 }
+.card-transfer {
+  border: 1px dashed #c9b9a8;
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 12px;
+  text-align: right;
+}
+.card-transfer > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 6px 0 10px;
+}
+.card-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #f5f0e8;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.card-number strong {
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+.card-number button {
+  border: 1px solid #c9b9a8;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.card-transfer > small {
+  display: block;
+  margin-top: 6px;
+  color: #6d5d51;
+}
+.card-transfer-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.card-transfer-form label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+}
+.card-transfer-form input {
+  border: 1px solid #d8ccbf;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+.payment-review {
+  display: block;
+  color: #85571c;
+  background: #fbf1df;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.card-transfers > p {
+  color: #6d5d51;
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.transfer-row small {
+  display: block;
+}
+.transfer-warning {
+  color: #a3412e;
+}
+.transfer-actions {
+  display: flex;
+  gap: 6px;
+}

@@ -2,7 +2,8 @@ import { settingsUrl } from "./api.js";
 import { fetchAvailability, money } from "./booking.js";
 import { adminDialog, paymentsDialog } from "./dialogs.js";
 import { switchBranch } from "./editor-nav.js";
-import { faDigits, formatPersianDate } from "./format.js";
+import { groupCard } from "./card-transfer.js";
+import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
 import { activeBranchProfile } from "./profile.js";
 import { store } from "./state.js";
@@ -21,6 +22,47 @@ export function fillPaymentSettings() {
     store.cafeSettings.paymentDeadlineMinutes || 15,
   );
   document.querySelector("#refundPolicy").value = store.cafeSettings.refundPolicy || "";
+  document.querySelector("#cardTransferEnabled").checked = Boolean(
+    store.cafeSettings.cardTransferEnabled,
+  );
+  document.querySelector("#cardNumber").value = groupCard(store.cafeSettings.cardNumber || "");
+  document.querySelector("#cardHolder").value = store.cafeSettings.cardHolder || "";
+}
+function renderTransfers(data) {
+  const section = document.querySelector("#cardTransfers"),
+    list = document.querySelector("#transfersList"),
+    error = document.querySelector("#paymentsError");
+  section.hidden = !data.transfers?.length;
+  list.innerHTML = "";
+  for (const item of data.transfers || []) {
+    const row = document.createElement("article");
+    row.className = "transfer-row";
+    row.innerHTML = `<span class="transaction-icon transfer">⇄</span><div><b>${escapeHtml(item.customerName)}</b><small>${escapeHtml(item.trackingCode)} · ${escapeHtml(item.mobile)} · ${formatPersianDate(item.createdAt)}</small><small dir="ltr">پیگیری ${escapeHtml(item.reference)}${item.cardLast4 ? ` · کارت ****${escapeHtml(item.cardLast4)}` : ""}</small>${item.duplicateReference ? '<small class="transfer-warning">این شماره پیگیری برای رزرو دیگری هم ثبت شده است</small>' : ""}</div><strong>${money(item.amountRials)}</strong>${data.canWrite ? '<div class="transfer-actions"><button type="button" data-decision="approve">تأیید واریز</button><button type="button" data-decision="reject" class="danger-action">رد</button></div>' : ""}`;
+    row.querySelectorAll("[data-decision]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const approve = button.dataset.decision === "approve";
+        if (
+          !confirm(
+            approve
+              ? "واریز در حساب کافه دیده شده است؟ رزرو تأیید می‌شود."
+              : "پرداخت رد و رزرو لغو شود؟",
+          )
+        )
+          return;
+        const response = await fetch(
+            `/api/payments/transfers/${encodeURIComponent(item.id)}/${button.dataset.decision}`,
+            { method: "POST" },
+          ),
+          result = await response.json();
+        if (!response.ok) {
+          error.textContent = result.message || "بررسی پرداخت انجام نشد";
+          return;
+        }
+        await Promise.all([fetchPayments(), fetchAvailability()]);
+      }),
+    );
+    list.appendChild(row);
+  }
 }
 const paymentModes = {
   zarinpal: [
@@ -28,12 +70,17 @@ const paymentModes = {
     "بیعانه آنلاین از درگاه زرین‌پال دریافت می‌شود. بازپرداخت را از پنل زرین‌پال انجام دهید و این‌جا ثبت کنید.",
   ],
   demo: ["درگاه آزمایشی", "جریان کامل پرداخت شبیه‌سازی می‌شود و پول واقعی جابه‌جا نمی‌شود."],
+  card: [
+    "کارت به کارت · بررسی دستی",
+    "مشتری بیعانه را به کارت کافه واریز می‌کند و شماره پیگیری را ثبت می‌کند. پس از دیدن واریز در حساب، آن را تأیید کنید.",
+  ],
   none: [
     "درگاه پرداخت تنظیم نشده",
     "تا اتصال درگاه، رزرو آنلاین شعبه‌هایی که بیعانه دارند ممکن نیست.",
   ],
 };
 function showPaymentMode(mode) {
+  if (mode === "none" && store.cafeSettings.cardTransferEnabled) mode = "card";
   const [title, text] = paymentModes[mode] || paymentModes.none,
     box = document.querySelector("#paymentMode");
   box.querySelector("b").textContent = title;
@@ -51,6 +98,7 @@ export async function fetchPayments() {
       data = await response.json();
     if (!response.ok) throw new Error(data.message || "دریافت تراکنش‌ها انجام نشد.");
     showPaymentMode(data.mode);
+    renderTransfers(data);
     document.querySelector("#paymentsPaid").textContent = money(data.summary.paid);
     document.querySelector("#paymentsPending").textContent =
       `${money(data.summary.pending)} · ${faDigits(data.summary.pendingCount)} رزرو`;
@@ -68,9 +116,11 @@ export async function fetchPayments() {
       row.querySelector("button")?.addEventListener("click", async () => {
         if (
           !confirm(
-            data.mode === "demo"
+            item.provider === "demo"
               ? "بیعانه بازپرداخت و رزرو لغو شود؟"
-              : "ابتدا مبلغ را از پنل درگاه پرداخت به مشتری برگردانید. بازپرداخت این‌جا ثبت و رزرو لغو شود؟",
+              : item.provider === "card"
+                ? "ابتدا مبلغ را به کارت مشتری برگردانید. بازپرداخت این‌جا ثبت و رزرو لغو شود؟"
+                : "ابتدا مبلغ را از پنل درگاه پرداخت به مشتری برگردانید. بازپرداخت این‌جا ثبت و رزرو لغو شود؟",
           )
         )
           return;
@@ -124,6 +174,9 @@ export function wirePayments() {
         paymentDeadlineMinutes: Number(document.querySelector("#paymentDeadline").value),
         depositPeakEnd: document.querySelector("#depositPeakEnd").value,
         refundPolicy: document.querySelector("#refundPolicy").value,
+        cardTransferEnabled: document.querySelector("#cardTransferEnabled").checked,
+        cardNumber: latinDigits(document.querySelector("#cardNumber").value),
+        cardHolder: document.querySelector("#cardHolder").value,
       };
     button.disabled = true;
     error.textContent = "";
@@ -135,6 +188,8 @@ export function wirePayments() {
         }),
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "ذخیره تنظیمات انجام نشد.");
+      if (payload.cardTransferEnabled && !data.cardTransferEnabled)
+        throw new Error("شماره کارت معتبر نیست؛ ۱۶ رقم کارت را دوباره بررسی کنید.");
       store.cafeSettings = data;
       fillPaymentSettings();
       button.textContent = "ذخیره شد ✓";

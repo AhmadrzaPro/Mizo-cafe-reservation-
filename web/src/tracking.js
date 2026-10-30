@@ -1,7 +1,13 @@
 import { fetchAvailability, money, trackingDialog } from "./booking.js";
+import { cardTransferMarkup, reviewMessage, wireCardTransfer } from "./card-transfer.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
-import { followGatewayRedirect, payButtonLabel, payingLabel } from "./payment-flow.js";
+import {
+  followGatewayRedirect,
+  onlinePayment,
+  payButtonLabel,
+  payingLabel,
+} from "./payment-flow.js";
 
 export function wireTracking() {
   document.querySelector("#openTracking").onclick = () => {
@@ -33,12 +39,19 @@ export function wireTracking() {
         },
         payment =
           data.payment?.status === "pending" && ["pending", "confirmed"].includes(data.status)
-            ? `<div class="tracking-payment"><b>بیعانه ${money(data.payment.amountRials)}</b><button type="button" id="trackingPay" class="primary-btn">${payButtonLabel()}</button></div>`
-            : data.payment?.status === "paid"
-              ? '<p class="paid-label">بیعانه پرداخت شده</p>'
-              : "";
-      result.innerHTML = `<b>${escapeHtml(labels[data.status] || data.status)}</b><p>${escapeHtml(data.tables.join("، "))} · ${faDigits(data.partySize)} نفر</p><p>${formatPersianDate(data.date)} ساعت ${faDigits(data.time)}</p>${payment}${["pending", "confirmed"].includes(data.status) ? '<button type="button" id="cancelReservation" class="danger-action">لغو رزرو</button>' : ""}`;
+            ? `<div class="tracking-payment"><b>بیعانه ${money(data.payment.amountRials)}</b>${onlinePayment() ? `<button type="button" id="trackingPay" class="primary-btn">${payButtonLabel()}</button>` : ""}${data.payment.cardTransfer ? cardTransferMarkup(data.payment.cardTransfer, data.payment.amountRials) : ""}</div>`
+            : data.payment?.status === "review"
+              ? `<div class="tracking-payment">${reviewMessage}</div>`
+              : data.payment?.status === "paid"
+                ? '<p class="paid-label">بیعانه پرداخت شده</p>'
+                : "";
+      result.innerHTML = `<b>${escapeHtml(labels[data.status] || data.status)}</b><p>${escapeHtml(data.tables.join("، "))} · ${faDigits(data.partySize)} نفر</p><p>${formatPersianDate(data.date)} ساعت ${faDigits(data.time)}</p>${payment}${["pending", "confirmed"].includes(data.status) && data.payment?.status !== "review" ? '<button type="button" id="cancelReservation" class="danger-action">لغو رزرو</button>' : ""}`;
       result.hidden = false;
+      if (data.payment?.status === "pending" && data.payment.cardTransfer)
+        wireCardTransfer(result, data.payment.cardTransfer, code, mobile, () => {
+          result.querySelector(".tracking-payment").innerHTML = reviewMessage;
+          result.querySelector("#cancelReservation")?.remove();
+        });
       document.querySelector("#trackingPay")?.addEventListener("click", async (event) => {
         event.target.disabled = true;
         event.target.textContent = payingLabel();

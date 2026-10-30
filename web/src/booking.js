@@ -1,11 +1,12 @@
 import { availabilityUrl, readableError } from "./api.js";
+import { cardTransferMarkup, reviewMessage, wireCardTransfer } from "./card-transfer.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
 import { faDigits } from "./format.js";
 import { visibleAreas } from "./map-model.js";
 import { escapeHtml, tehranClientNow } from "./operations.js";
-import { payButtonLabel } from "./payment-flow.js";
+import { onlinePayment, payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
 export const dates = document.querySelector("#dates"),
@@ -190,7 +191,19 @@ export function showDepositPayment(payment, trackingCode, mobile) {
   document.querySelector("#depositDeadline").textContent =
     `مهلت پرداخت: ${faDigits(payment.dueAt ? new Date(payment.dueAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }) : "—")}`;
   document.querySelector("#depositPolicy").textContent = payment.refundPolicy || "";
-  document.querySelector("#payDeposit").textContent = payButtonLabel(true);
+  const payButton = document.querySelector("#payDeposit");
+  payButton.textContent = payButtonLabel(true);
+  // The box is rebuilt from depositTemplate on every booking, so removing the button is safe.
+  if (!onlinePayment()) payButton.remove();
+  if (payment.cardTransfer) {
+    const section = document.querySelector("#depositCardTransfer");
+    section.innerHTML = cardTransferMarkup(payment.cardTransfer, payment.amountRials);
+    wireCardTransfer(section, payment.cardTransfer, trackingCode, mobile, () => {
+      box.innerHTML = reviewMessage;
+      store.pendingPayment = null;
+      document.querySelector(".success-dialog h2").textContent = "پرداخت ثبت شد؛ منتظر تأیید کافه";
+    });
+  }
 }
 
 export function wireBooking() {

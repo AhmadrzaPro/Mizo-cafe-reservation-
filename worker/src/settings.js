@@ -1,6 +1,19 @@
 import { defaultHours } from "./setup.js";
 import { validDate, validTime } from "./util/dates.js";
 import { randomId } from "./util/ids.js";
+import { normalizeDigits } from "./util/mobile.js";
+// A 16-digit Iranian bank card number that passes the Luhn check, or "".
+export function validCardNumber(value) {
+  const digits = normalizeDigits(value).replace(/[\s-]/g, "");
+  if (!/^\d{16}$/.test(digits)) return "";
+  let sum = 0;
+  for (let i = 0; i < 16; i++) {
+    let digit = Number(digits[15 - i]);
+    if (i % 2) digit = digit * 2 > 9 ? digit * 2 - 9 : digit * 2;
+    sum += digit;
+  }
+  return sum % 10 === 0 ? digits : "";
+}
 export const defaultSettings = {
   reservationsEnabled: true,
   autoConfirm: true,
@@ -20,6 +33,9 @@ export const defaultSettings = {
   depositPeakEnd: "22:00",
   paymentDeadlineMinutes: 15,
   refundPolicy: "تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود.",
+  cardTransferEnabled: false,
+  cardNumber: "",
+  cardHolder: "",
 };
 export function normalizeSettings(input) {
   return {
@@ -58,6 +74,18 @@ export function normalizeSettings(input) {
     refundPolicy: String(input?.refundPolicy || defaultSettings.refundPolicy)
       .trim()
       .slice(0, 240),
+    ...cardTransfer(input),
+  };
+}
+// Card-to-card deposits are on only with a valid card number.
+function cardTransfer(input) {
+  const cardNumber = validCardNumber(input?.cardNumber);
+  return {
+    cardTransferEnabled: Boolean(input?.cardTransferEnabled) && Boolean(cardNumber),
+    cardNumber,
+    cardHolder: String(input?.cardHolder || "")
+      .trim()
+      .slice(0, 60),
   };
 }
 export async function readSettings(db, cafeSlug, branchSlug) {
@@ -87,6 +115,9 @@ export async function readSettings(db, cafeSlug, branchSlug) {
         paymentDeadlineMinutes: Number(row.payment_deadline_minutes),
         depositPeakEnd: row.deposit_peak_end,
         refundPolicy: row.refund_policy,
+        cardTransferEnabled: Boolean(row.card_transfer_enabled),
+        cardNumber: row.card_number,
+        cardHolder: row.card_holder,
       }
     : defaultSettings;
 }
@@ -116,7 +147,7 @@ export async function writeSettings(db, cafeSlug, branchSlug, body) {
       ),
     db
       .prepare(
-        "INSERT INTO branch_settings (branch_id,reservations_enabled,auto_confirm,reservation_duration,max_party_size,customer_notice,buffer_minutes,slot_interval,sms_confirmation_enabled,sms_reminder_enabled,sms_reminder_minutes,deposit_enabled,deposit_mode,deposit_amount_rials,deposit_peak_only,deposit_peak_start,deposit_peak_end,payment_deadline_minutes,refund_policy,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(branch_id) DO UPDATE SET reservations_enabled=excluded.reservations_enabled,auto_confirm=excluded.auto_confirm,reservation_duration=excluded.reservation_duration,max_party_size=excluded.max_party_size,customer_notice=excluded.customer_notice,buffer_minutes=excluded.buffer_minutes,slot_interval=excluded.slot_interval,sms_confirmation_enabled=excluded.sms_confirmation_enabled,sms_reminder_enabled=excluded.sms_reminder_enabled,sms_reminder_minutes=excluded.sms_reminder_minutes,deposit_enabled=excluded.deposit_enabled,deposit_mode=excluded.deposit_mode,deposit_amount_rials=excluded.deposit_amount_rials,deposit_peak_only=excluded.deposit_peak_only,deposit_peak_start=excluded.deposit_peak_start,deposit_peak_end=excluded.deposit_peak_end,payment_deadline_minutes=excluded.payment_deadline_minutes,refund_policy=excluded.refund_policy,updated_at=excluded.updated_at",
+        "INSERT INTO branch_settings (branch_id,reservations_enabled,auto_confirm,reservation_duration,max_party_size,customer_notice,buffer_minutes,slot_interval,sms_confirmation_enabled,sms_reminder_enabled,sms_reminder_minutes,deposit_enabled,deposit_mode,deposit_amount_rials,deposit_peak_only,deposit_peak_start,deposit_peak_end,payment_deadline_minutes,refund_policy,card_transfer_enabled,card_number,card_holder,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(branch_id) DO UPDATE SET reservations_enabled=excluded.reservations_enabled,auto_confirm=excluded.auto_confirm,reservation_duration=excluded.reservation_duration,max_party_size=excluded.max_party_size,customer_notice=excluded.customer_notice,buffer_minutes=excluded.buffer_minutes,slot_interval=excluded.slot_interval,sms_confirmation_enabled=excluded.sms_confirmation_enabled,sms_reminder_enabled=excluded.sms_reminder_enabled,sms_reminder_minutes=excluded.sms_reminder_minutes,deposit_enabled=excluded.deposit_enabled,deposit_mode=excluded.deposit_mode,deposit_amount_rials=excluded.deposit_amount_rials,deposit_peak_only=excluded.deposit_peak_only,deposit_peak_start=excluded.deposit_peak_start,deposit_peak_end=excluded.deposit_peak_end,payment_deadline_minutes=excluded.payment_deadline_minutes,refund_policy=excluded.refund_policy,card_transfer_enabled=excluded.card_transfer_enabled,card_number=excluded.card_number,card_holder=excluded.card_holder,updated_at=excluded.updated_at",
       )
       .bind(
         branchId,
@@ -138,6 +169,9 @@ export async function writeSettings(db, cafeSlug, branchSlug, body) {
         s.depositPeakEnd,
         s.paymentDeadlineMinutes,
         s.refundPolicy,
+        s.cardTransferEnabled ? 1 : 0,
+        s.cardNumber,
+        s.cardHolder,
         now,
       ),
   ]);

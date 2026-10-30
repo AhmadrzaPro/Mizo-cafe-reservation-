@@ -53,7 +53,12 @@ export async function createReservation(env, branch, body, settings, operational
     partySize = Number(body.partySize),
     ids = [...new Set(Array.isArray(body.tableIds) ? body.tableIds.map(String) : [])],
     source = ["phone", "walk_in"].includes(body.source) ? body.source : "web";
-  if (!operational && settings.depositEnabled && paymentMode(env) === "none")
+  if (
+    !operational &&
+    settings.depositEnabled &&
+    paymentMode(env) === "none" &&
+    !settings.cardTransferEnabled
+  )
     return reply(
       {
         error: "payment_not_configured",
@@ -254,7 +259,11 @@ export async function createReservation(env, branch, body, settings, operational
         status: paymentStatus,
         dueAt: paymentDueAt,
         refundPolicy: settings.refundPolicy,
-        provider: "demo",
+        cardTransfer: cardTransferDetails(
+          settings.cardTransferEnabled,
+          settings.cardNumber,
+          settings.cardHolder,
+        ),
       },
     },
     201,
@@ -265,7 +274,7 @@ export async function lookupReservation(db, code, mobile) {
   if (!normalized) return null;
   return db
     .prepare(
-      "SELECT r.id,r.branch_id,r.tracking_code,r.customer_name,r.mobile,r.party_size,r.reserved_at,r.duration_minutes,r.status,r.notes,r.deposit_amount_rials,r.payment_status,r.payment_due_at,r.paid_at,b.name AS branch_name,s.refund_policy,GROUP_CONCAT(t.name,'، ') AS table_names FROM reservations r JOIN branches b ON b.id=r.branch_id LEFT JOIN branch_settings s ON s.branch_id=b.id LEFT JOIN reservation_tables rt ON rt.reservation_id=r.id LEFT JOIN cafe_tables t ON t.id=rt.table_id WHERE r.tracking_code=? AND r.mobile=? GROUP BY r.id LIMIT 1",
+      "SELECT r.id,r.branch_id,r.tracking_code,r.customer_name,r.mobile,r.party_size,r.reserved_at,r.duration_minutes,r.status,r.notes,r.deposit_amount_rials,r.payment_status,r.payment_due_at,r.paid_at,b.name AS branch_name,s.refund_policy,s.card_transfer_enabled,s.card_number,s.card_holder,GROUP_CONCAT(t.name,'، ') AS table_names FROM reservations r JOIN branches b ON b.id=r.branch_id LEFT JOIN branch_settings s ON s.branch_id=b.id LEFT JOIN reservation_tables rt ON rt.reservation_id=r.id LEFT JOIN cafe_tables t ON t.id=rt.table_id WHERE r.tracking_code=? AND r.mobile=? GROUP BY r.id LIMIT 1",
     )
     .bind(code, normalized)
     .first();
@@ -290,13 +299,31 @@ export function publicReservation(row) {
       dueAt: row.payment_due_at,
       paidAt: row.paid_at,
       refundPolicy: row.refund_policy || defaultSettings.refundPolicy,
-      provider: "demo",
+      cardTransfer: cardTransferDetails(
+        row.card_transfer_enabled,
+        row.card_number,
+        row.card_holder,
+      ),
     },
   };
+}
+// The café's card for card-to-card deposits, or null when the branch does not accept them.
+function cardTransferDetails(enabled, number, holder) {
+  return enabled && number ? { cardNumber: number, cardHolder: holder || "" } : null;
 }
 export async function cancelReservation(db, row, code, mobile) {
   if (!["pending", "confirmed"].includes(row.status))
     return reply({ error: "cannot_cancel", message: "این رزرو قابل لغو نیست." }, 409);
+  // A submitted card-to-card transfer is waiting for the café; cancelling now would leave the
+  // money unaccounted for.
+  if (row.payment_status === "review")
+    return reply(
+      {
+        error: "payment_in_review",
+        message: "پرداخت کارت به کارت شما در حال بررسی است؛ برای لغو با کافه تماس بگیرید.",
+      },
+      409,
+    );
   const result = await db.batch([
     db
       .prepare(
