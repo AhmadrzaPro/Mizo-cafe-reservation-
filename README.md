@@ -173,12 +173,21 @@ Limits are counted in the `rate_limits` table with one atomic upsert per check, 
 
 Days start at midnight Tehran time (UTC+03:30). Expired windows are deleted by the `scheduled` handler and, at most every ten minutes per isolate, on requests to `/api/cafes/…`.
 
+### Staff sessions
+
+A staff sign-in lasts 7 days, in an HttpOnly, Secure, SameSite=Strict cookie that stores only a hash of the token server-side.
+
+- **Last use** is recorded at most every five minutes.
+- **Devices:** `GET /api/auth/sessions` lists the signed-in member's devices. `POST /api/auth/logout-all` signs them out everywhere; the admin panel offers it next to "Sign out" and shows the device count when there is more than one.
+- **Deactivation:** deactivating a staff member deletes their sessions.
+- **Cleanup:** expired sessions and OTP challenges are removed by the background work below.
+
 ### Background work without a cron
 
 The `scheduled` handler sends due SMS reminders, expires unpaid deposit holds and ended subscriptions, and cleans up rate-limit windows. Hosts without a cron trigger never call it, so `GET /api/cafes/…` requests also run this work in the background, throttled per isolate (`worker/src/maintenance.js`):
 
 - due reminders at most once a minute
-- rate-limit cleanup and subscription expiry at most every ten minutes
+- rate-limit, session and OTP cleanup, and subscription expiry, at most every ten minutes
 
 A failure is logged and never affects the request that triggered it.
 

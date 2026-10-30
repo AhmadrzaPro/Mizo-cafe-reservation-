@@ -1,3 +1,4 @@
+import { cleanupAuth } from "./auth/session.js";
 import { processDueReminders } from "./notifications.js";
 import { cleanupRateLimits } from "./rate-limit.js";
 import { expireSubscriptions } from "./subscription.js";
@@ -19,7 +20,11 @@ export function maintenanceOnRequest(env, now = Date.now()) {
   }
   if (now - lastHousekeeping >= HOUSEKEEPING_EVERY) {
     lastHousekeeping = now;
-    work.push(cleanupRateLimits(env.DB, now), expireSubscriptions(env.DB));
+    work.push(
+      cleanupRateLimits(env.DB, now),
+      cleanupAuth(env.DB, now),
+      expireSubscriptions(env.DB),
+    );
   }
   // Background failures are logged, never surfaced to the request that triggered them.
   return work.map((promise) =>

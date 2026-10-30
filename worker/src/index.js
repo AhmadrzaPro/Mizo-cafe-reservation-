@@ -2,8 +2,11 @@ import { Hono } from "hono";
 import { requestOtp, verifyOtp } from "./auth/otp.js";
 import {
   canUseBranch,
+  cleanupAuth,
   hasPermission,
+  listSessions,
   logout,
+  logoutEverywhere,
   sessionStaff,
   staffSessionPublic,
 } from "./auth/session.js";
@@ -160,6 +163,8 @@ app.get("/api/auth/session", async (c) => {
   );
 });
 app.post("/api/auth/logout", (c) => logout(c.env, c.req.raw));
+app.get("/api/auth/sessions", requireStaff, (c) => listSessions(c.env.DB, c.get("session")));
+app.post("/api/auth/logout-all", requireStaff, (c) => logoutEverywhere(c.env.DB, c.get("session")));
 
 // Café-wide staff areas
 app.get("/api/reports", requireStaff, (c) =>
@@ -228,6 +233,8 @@ for (const path of [
   "/api/subscription/card-transfer",
   "/api/staff",
   "/api/staff/:id",
+  "/api/auth/sessions",
+  "/api/auth/logout-all",
 ])
   app.all(path, requireStaff, methodNotAllowed);
 
@@ -544,6 +551,7 @@ export default {
         expireUnpaidReservations(env.DB),
         expireSubscriptions(env.DB),
         cleanupRateLimits(env.DB),
+        cleanupAuth(env.DB),
       ]),
     );
   },

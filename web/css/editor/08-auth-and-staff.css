@@ -250,3 +250,15 @@
     min-height: 40px;
   }
 }
+.manager-session {
+  gap: 8px;
+}
+.manager-session > div {
+  margin-inline-end: auto;
+}
+.manager-session small {
+  display: block;
+  font-size: 0.65rem;
+  color: #63736a;
+  margin-top: 3px;
+}

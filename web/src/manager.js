@@ -72,6 +72,20 @@ export function applyManagerAccess() {
   }
   applyCafeProfile(store.cafeProfile);
   refreshSubscriptionNotice();
+  showActiveDevices();
+}
+// How many devices this staff member is signed in on, next to "sign out everywhere".
+async function showActiveDevices() {
+  const label = document.querySelector("#managerDevices");
+  label.textContent = "";
+  try {
+    const response = await fetch("/api/auth/sessions");
+    if (!response.ok) return;
+    const { sessions } = await response.json();
+    if (sessions.length > 1) label.textContent = `فعال روی ${faDigits(sessions.length)} دستگاه`;
+  } catch {
+    // The count is informational; the panel works without it.
+  }
 }
 export async function loadManagerSession() {
   try {
@@ -229,6 +243,13 @@ export function wireManager() {
     }
   };
   document.querySelector("#retryOtp").onclick = resetAuthForm;
+  document.querySelector("#logoutEverywhere").onclick = async () => {
+    if (!confirm("از همه دستگاه‌ها، از جمله همین دستگاه، خارج شوید؟")) return;
+    await fetch("/api/auth/logout-all", { method: "POST" });
+    store.managerSession = null;
+    adminDialog.close();
+    showManagerLogin();
+  };
   document.querySelector("#logoutManager").onclick = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     store.managerSession = null;
