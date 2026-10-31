@@ -126,13 +126,14 @@ export function wireLoyalty() {
       button.textContent = originalText;
     }
   };
+  // Editable dialogs load first and open after: data arriving once a dialog is open would
+  // overwrite whatever was already changed in it.
   byId("openMapEditor").onclick = async () => {
     adminDialog.close();
-    renderEditor();
-    editor.showModal();
     await fetchMap();
+    editor.showModal();
+    renderEditor();
   };
-  // Load first: settings arriving after the dialog opened would overwrite what was already typed.
   byId("openControlCenter").onclick = async () => {
     adminDialog.close();
     await fetchSettings();
@@ -140,7 +141,7 @@ export function wireLoyalty() {
   };
   byId("openSchedule").onclick = async () => {
     adminDialog.close();
-    scheduleDialog.showModal();
     await fetchSchedule();
+    scheduleDialog.showModal();
   };
 }

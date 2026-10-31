@@ -150,8 +150,8 @@ export async function changeSubscription(payload) {
 export function wireSubscription() {
   const openSubscription = async () => {
     adminDialog.close();
-    subscriptionDialog.showModal();
     await fetchSubscription();
+    subscriptionDialog.showModal();
   };
   byId("openSubscription").onclick = openSubscription;
   byId("subscriptionNoticePay").onclick = openSubscription;

@@ -180,9 +180,10 @@ export async function reviewSubscriptionPayment(db, admin, paymentId, approve) {
     review,
     db
       .prepare(
-        "UPDATE saas_subscriptions SET enabled=1,status='active',current_period_ends_at=?,updated_at=? WHERE cafe_id=? AND changes()=1",
+        // An upsert, so a café without a subscription record still gets the period it paid for.
+        "INSERT INTO saas_subscriptions (cafe_id,enabled,plan,status,monthly_price_rials,trial_ends_at,current_period_ends_at,created_at,updated_at) SELECT ?,1,'standard','active',?,NULL,?,?,? WHERE changes()=1 ON CONFLICT(cafe_id) DO UPDATE SET enabled=1,status='active',current_period_ends_at=excluded.current_period_ends_at,updated_at=excluded.updated_at",
       )
-      .bind(periodEnd, nowIso, payment.cafe_id),
+      .bind(payment.cafe_id, Number(payment.amount_rials), periodEnd, nowIso, nowIso),
     db
       .prepare(
         "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) SELECT ?,?,'payment_card','standard','standard',?,?,? WHERE changes()=1",

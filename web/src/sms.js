@@ -71,8 +71,9 @@ export async function fetchSms() {
 export async function openSmsCenter() {
   adminDialog.close();
   byId("smsBranch").value = store.currentBranch;
-  smsDialog.showModal();
+  // Loaded before opening, so the toggles never show (or save) defaults instead of the settings.
   await fetchSms();
+  smsDialog.showModal();
 }
 
 export function wireSms() {

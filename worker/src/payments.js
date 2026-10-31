@@ -9,6 +9,8 @@ import { randomId } from "./util/ids.js";
 import { maskMobile } from "./util/mobile.js";
 // Minutes a started gateway payment keeps the table held, so the customer can finish at the bank.
 const GATEWAY_HOLD_MINUTES = 10;
+// Recorded on an attempt whose verification never got an answer.
+const VERIFY_UNKNOWN = "verify_unreachable";
 // Checks shared by every way of paying. Returns the response to send instead, or null to go on.
 async function paymentBlocked(env, row) {
   if (!["pending", "confirmed"].includes(row.status))
@@ -120,13 +122,16 @@ export async function completeGatewayPayment(env, provider, url) {
   };
   if (url.searchParams.get("Status") !== "OK") return fail("cancelled_at_gateway");
   // A payment that is never verified goes back to the customer, so one that the reservation can
-  // no longer take is simply left unverified.
+  // no longer take is simply left unverified. After a verification whose outcome was lost, though,
+  // ZarinPal may already have settled the money, so that attempt is always verified again; if it
+  // was paid, the late path below records it for a refund.
   if (
-    attempt.reservation_status !== "pending" ||
-    attempt.payment_status !== "pending" ||
-    !attempt.payment_due_at ||
-    attempt.payment_due_at <= now ||
-    Number(attempt.deposit_amount_rials) !== Number(attempt.amount_rials)
+    attempt.error !== VERIFY_UNKNOWN &&
+    (attempt.reservation_status !== "pending" ||
+      attempt.payment_status !== "pending" ||
+      !attempt.payment_due_at ||
+      attempt.payment_due_at <= now ||
+      Number(attempt.deposit_amount_rials) !== Number(attempt.amount_rials))
   )
     return fail("reservation_not_payable");
   let verified;
@@ -137,9 +142,9 @@ export async function completeGatewayPayment(env, provider, url) {
     console.error("payment_verify_failed", error);
     await db
       .prepare(
-        "UPDATE payment_attempts SET status='pending',updated_at=? WHERE id=? AND status='verifying'",
+        "UPDATE payment_attempts SET status='pending',error=?,updated_at=? WHERE id=? AND status='verifying'",
       )
-      .bind(now, attempt.id)
+      .bind(VERIFY_UNKNOWN, now, attempt.id)
       .run();
     return back("pending", attempt);
   }
@@ -158,7 +163,7 @@ export async function completeGatewayPayment(env, provider, url) {
       .bind(now, now, attempt.reservation_id),
     db
       .prepare(
-        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',?,'success',?,?,? FROM reservations WHERE id=? AND payment_status='paid' AND NOT EXISTS (SELECT 1 FROM payment_transactions WHERE reservation_id=? AND type='payment' AND status='success')",
+        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'payment',?,'success',?,?,? FROM reservations WHERE id=? AND payment_status='paid' AND NOT EXISTS (SELECT 1 FROM payment_transactions WHERE reservation_id=? AND provider=? AND reference=? AND type='payment')",
       )
       .bind(
         randomId("payment"),
@@ -168,12 +173,23 @@ export async function completeGatewayPayment(env, provider, url) {
         now,
         attempt.reservation_id,
         attempt.reservation_id,
+        provider,
+        verified.reference,
       ),
     db
       .prepare(
-        "UPDATE payment_attempts SET status=CASE WHEN (SELECT status FROM reservations WHERE id=?) IN ('pending','confirmed') THEN 'paid' ELSE 'paid_late' END,reference=?,card_pan=?,updated_at=? WHERE id=?",
+        // A second payment for a reservation another attempt already paid is also late: it is
+        // recorded for a refund rather than reported to the customer as their booking payment.
+        "UPDATE payment_attempts SET status=CASE WHEN (SELECT status FROM reservations WHERE id=?) IN ('pending','confirmed') AND (SELECT COUNT(*) FROM payment_transactions WHERE reservation_id=? AND type='payment' AND status='success')=1 THEN 'paid' ELSE 'paid_late' END,reference=?,card_pan=?,updated_at=? WHERE id=?",
       )
-      .bind(attempt.reservation_id, verified.reference, verified.cardPan, now, attempt.id),
+      .bind(
+        attempt.reservation_id,
+        attempt.reservation_id,
+        verified.reference,
+        verified.cardPan,
+        now,
+        attempt.id,
+      ),
   ]);
   const settled = await db
     .prepare("SELECT status FROM payment_attempts WHERE id=?")
@@ -298,9 +314,12 @@ export async function readPayments(db, session, url, mode) {
     transactions,
   });
 }
-// With a real gateway the money is returned from the gateway's own panel; this records it
-// (provider "manual") and releases the reservation. In demo mode the refund is simulated.
-export async function refundPayment(db, session, transactionId, { manual = false } = {}) {
+// Real money (gateway) is returned from the gateway's own panel; this records it (provider
+// "manual") and releases the reservation. A demo payment's refund is simulated, and only in demo
+// mode. Each payment is refunded at most once (the refund's reference names it). When the
+// reservation holds another payment that is still unrefunded, as after a duplicate payment, the
+// refund is recorded without cancelling the reservation.
+export async function refundPayment(db, session, transactionId, { demo = false } = {}) {
   if (!hasPermission(session, "payments.write")) return reply({ error: "forbidden" }, 403);
   const row = await db
     .prepare(
@@ -314,26 +333,50 @@ export async function refundPayment(db, session, transactionId, { manual = false
     (session.role !== "owner" && row.branch_id !== session.branch_id)
   )
     return reply({ error: "payment_not_found" }, 404);
+  const manual = row.provider !== "demo";
+  if (!manual && !demo) return reply({ error: "payment_not_configured" }, 503);
   const now = new Date().toISOString(),
-    reference = `${manual ? "REF-MANUAL" : "REF-DEMO"}-${crypto.randomUUID()}`;
+    reference = `${manual ? "REF-MANUAL" : "REF-DEMO"}-${row.id}`,
+    alreadyRefunded = () =>
+      reply(
+        {
+          error: "already_refunded",
+          message: "این بیعانه قبلاً بازپرداخت شده یا قابل بازپرداخت نیست.",
+        },
+        409,
+      ),
+    insertRefund = (condition) =>
+      db
+        .prepare(
+          `INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'refund',?,'success',?,?,? FROM reservations WHERE id=? AND NOT EXISTS (SELECT 1 FROM payment_transactions WHERE type='refund' AND reference=?) AND ${condition}`,
+        )
+        .bind(
+          randomId("payment"),
+          row.amount_rials,
+          manual ? "manual" : "demo",
+          reference,
+          now,
+          row.reservation_id,
+          reference,
+        );
+  const others = await db
+    .prepare(
+      "SELECT COUNT(*) AS count FROM payment_transactions p WHERE p.reservation_id=? AND p.id!=? AND p.type='payment' AND p.status='success' AND NOT EXISTS (SELECT 1 FROM payment_transactions r WHERE r.type='refund' AND r.reference LIKE '%-'||p.id)",
+    )
+    .bind(row.reservation_id, row.id)
+    .first();
+  if (Number(others?.count || 0) > 0) {
+    const [inserted] = await db.batch([insertRefund("1")]);
+    if (!inserted.meta?.changes) return alreadyRefunded();
+    return reply({ refunded: true, manual, reference });
+  }
   const result = await db.batch([
     db
       .prepare(
         "UPDATE reservations SET payment_status='refunded',status=CASE WHEN status IN ('pending','confirmed','arrived') THEN 'cancelled' ELSE status END,updated_at=? WHERE id=? AND payment_status='paid'",
       )
       .bind(now, row.reservation_id),
-    db
-      .prepare(
-        "INSERT INTO payment_transactions (id,reservation_id,branch_id,type,amount_rials,status,provider,reference,created_at) SELECT ?,id,branch_id,'refund',?,'success',?,?,? FROM reservations WHERE id=? AND changes()=1",
-      )
-      .bind(
-        randomId("payment"),
-        row.amount_rials,
-        manual ? "manual" : "demo",
-        reference,
-        now,
-        row.reservation_id,
-      ),
+    insertRefund("changes()=1"),
     db
       .prepare(
         "DELETE FROM reservation_locks WHERE reservation_id=? AND EXISTS (SELECT 1 FROM reservations WHERE id=? AND payment_status='refunded')",
@@ -345,13 +388,6 @@ export async function refundPayment(db, session, transactionId, { manual = false
       )
       .bind(row.reservation_id, row.reservation_id),
   ]);
-  if (!result[0].meta?.changes)
-    return reply(
-      {
-        error: "already_refunded",
-        message: "این بیعانه قبلاً بازپرداخت شده یا قابل بازپرداخت نیست.",
-      },
-      409,
-    );
+  if (!result[0].meta?.changes) return alreadyRefunded();
   return reply({ refunded: true, manual, reference });
 }

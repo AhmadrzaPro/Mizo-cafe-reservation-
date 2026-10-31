@@ -52,7 +52,7 @@ import { listStaff, saveStaff } from "./staff.js";
 import { serveStatic } from "./static.js";
 import {
   expireSubscriptions,
-  onlineBookingPaused,
+  onlineBookingPausedBySlug,
   readSubscription,
   renewSubscriptionDemo,
   submitSubscriptionTransfer,
@@ -128,12 +128,7 @@ const loadBranch = async (c, next) => {
   await next();
 };
 /** @param {Ctx} c */
-const cafeBookingPaused = async (c) => {
-  const cafe = await c.env.DB.prepare("SELECT id FROM cafes WHERE slug=? LIMIT 1")
-    .bind(c.req.param("cafe"))
-    .first();
-  return cafe ? onlineBookingPaused(c.env.DB, String(cafe.id)) : false;
-};
+const cafeBookingPaused = (c) => onlineBookingPausedBySlug(c.env.DB, c.req.param("cafe") || "");
 /** @param {Ctx} c */
 const branchSettings = (c) => readSettings(c.env.DB, c.req.param("cafe"), c.req.param("branch"));
 
@@ -173,13 +168,9 @@ app.get("/api/reports", requireStaff, (c) =>
 app.get("/api/payments", requireStaff, (c) =>
   readPayments(c.env.DB, c.get("session"), new URL(c.req.url), paymentMode(c.env)),
 );
-app.post("/api/payments/:id/refund", requireStaff, (c) => {
-  const mode = paymentMode(c.env);
-  if (mode === "none") return reply({ error: "payment_not_configured" }, 503);
-  return refundPayment(c.env.DB, c.get("session"), c.req.param("id"), {
-    manual: mode !== "demo",
-  });
-});
+app.post("/api/payments/:id/refund", requireStaff, (c) =>
+  refundPayment(c.env.DB, c.get("session"), c.req.param("id"), { demo: isDemo(c.env) }),
+);
 // The gateway returns the customer here after payment; the response redirects to the booking page.
 app.get("/api/payments/:provider/callback", (c) =>
   completeGatewayPayment(c.env, c.req.param("provider"), new URL(c.req.url)),

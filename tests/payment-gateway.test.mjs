@@ -250,3 +250,92 @@ test("gateway errors and unknown callbacks fail safely", async (t) => {
     assert.equal(r.headers.get("location"), "/?payment=failed", path);
   }
 });
+
+test("a verification whose answer was lost is retried even after the hold expired", async (t) => {
+  let lose = true;
+  const calls = fakeZarinpal(t, {
+    verify: () => {
+      if (lose) throw new TypeError("connection reset");
+      return { data: { code: 101, ref_id: 4242, card_pan: "" }, errors: [] };
+    },
+  });
+  const f = await depositBooking();
+  t.mock.method(console, "error", () => {});
+  const authority = authorityOf((await f.pay()).data.redirectUrl);
+  assert.match((await f.callback(authority)).headers.get("location"), /payment=pending/);
+  // The hold runs out and the expiry job releases the table before the customer retries.
+  f.DB.raw
+    .prepare(
+      "UPDATE reservations SET payment_due_at='2000-01-01T00:00:00.000Z' WHERE tracking_code=?",
+    )
+    .run(f.booked.data.trackingCode);
+  await f.call(`${f.cafe.base}/availability?date=2090-01-02&party_size=2`);
+  assert.equal(f.reservation().status, "cancelled");
+  lose = false;
+  assert.match((await f.callback(authority)).headers.get("location"), /payment=late/);
+  assert.equal(calls.filter((c) => c.kind === "verify").length, 2);
+  assert.equal(f.reservation().payment_status, "paid");
+  const transaction = f.DB.raw.prepare("SELECT reference FROM payment_transactions").get();
+  assert.equal(transaction.reference, "4242");
+});
+
+test("a second payment for an already paid reservation is recorded and refunded on its own", async (t) => {
+  let lose = true,
+    reference = 1000;
+  fakeZarinpal(t, {
+    verify: () => {
+      if (lose) throw new TypeError("connection reset");
+      return { data: { code: 100, ref_id: ++reference, card_pan: "" }, errors: [] };
+    },
+  });
+  const f = await depositBooking();
+  t.mock.method(console, "error", () => {});
+  const first = authorityOf((await f.pay()).data.redirectUrl),
+    second = authorityOf((await f.pay()).data.redirectUrl);
+  await f.callback(first); // answer lost
+  lose = false;
+  assert.match((await f.callback(second)).headers.get("location"), /payment=success/);
+  assert.match((await f.callback(first)).headers.get("location"), /payment=late/);
+  const payments = f.DB.raw
+    .prepare(
+      "SELECT id,reference FROM payment_transactions WHERE type='payment' ORDER BY reference",
+    )
+    .all();
+  assert.equal(payments.length, 2);
+  assert.equal(f.reservation().status, "confirmed");
+
+  const owner = await f.login(f.cafe);
+  const extra = payments.find((p) => p.reference === "1002");
+  const refunded = await f.call(`/api/payments/${extra.id}/refund`, {
+    method: "POST",
+    cookie: owner,
+  });
+  assert.equal(refunded.data.refunded, true);
+  assert.equal(f.reservation().status, "confirmed", "the booking keeps its other payment");
+  assert.equal(
+    (await f.call(`/api/payments/${extra.id}/refund`, { method: "POST", cookie: owner })).data
+      .error,
+    "already_refunded",
+  );
+  const kept = payments.find((p) => p.reference === "1001");
+  await f.call(`/api/payments/${kept.id}/refund`, { method: "POST", cookie: owner });
+  assert.equal(f.reservation().status, "cancelled");
+  assert.equal(f.reservation().payment_status, "refunded");
+});
+
+test("gateway payments can still be refunded after the gateway is switched off", async (t) => {
+  fakeZarinpal(t);
+  const f = await depositBooking();
+  const authority = authorityOf((await f.pay()).data.redirectUrl);
+  await f.callback(authority);
+  const owner = await f.login(f.cafe);
+  const [payment] = (await f.call("/api/payments", { cookie: owner })).data.transactions;
+  delete f.env.PAYMENT_GATEWAY;
+  delete f.env.DEMO_MODE;
+  const refunded = await f.call(`/api/payments/${payment.id}/refund`, {
+    method: "POST",
+    cookie: owner,
+  });
+  assert.equal(refunded.data.manual, true);
+  assert.equal(f.reservation().payment_status, "refunded");
+});

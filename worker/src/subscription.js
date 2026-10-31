@@ -46,6 +46,16 @@ export async function onlineBookingPaused(db, cafeId) {
     .first();
   return subscriptionStanding(row).bookingPaused;
 }
+/** The same, by café slug, in one query. @param {any} db @param {string} slug */
+export async function onlineBookingPausedBySlug(db, slug) {
+  const row = await db
+    .prepare(
+      "SELECT s.enabled,s.status,s.trial_ends_at,s.current_period_ends_at,s.updated_at FROM saas_subscriptions s JOIN cafes c ON c.id=s.cafe_id WHERE c.slug=? LIMIT 1",
+    )
+    .bind(slug)
+    .first();
+  return subscriptionStanding(row).bookingPaused;
+}
 // Scheduled: records ended trials and paid periods as past_due, with an entry in each café's history.
 /** @param {any} db */
 export async function expireSubscriptions(db, now = new Date().toISOString()) {

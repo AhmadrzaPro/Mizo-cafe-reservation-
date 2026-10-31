@@ -145,3 +145,15 @@ test("only the SaaS admin reviews payments", async () => {
   assert.equal((await closed.review(id, "approve")).status, 403);
   assert.equal((await f.review("subpay:missing", "approve")).status, 404);
 });
+
+test("approving a payment for a café without a subscription record creates the paid period", async () => {
+  const f = await subscribedCafe();
+  await f.transfer({ reference: "999000" });
+  f.DB.raw.prepare("DELETE FROM saas_subscriptions").run();
+  const [pending] = (await f.overview()).data.pendingPayments;
+  assert.equal((await f.review(pending.id, "approve")).status, 200);
+  const data = (await f.call("/api/subscription", { cookie: f.owner })).data;
+  assert.equal(data.enabled, true);
+  assert.equal(data.status, "active");
+  assert.ok(Date.parse(data.currentPeriodEndsAt) > Date.now() + 29 * 86400000);
+});
