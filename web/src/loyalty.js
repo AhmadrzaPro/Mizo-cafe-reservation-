@@ -132,10 +132,11 @@ export function wireLoyalty() {
     editor.showModal();
     await fetchMap();
   };
+  // Load first: settings arriving after the dialog opened would overwrite what was already typed.
   byId("openControlCenter").onclick = async () => {
     adminDialog.close();
-    controlDialog.showModal();
     await fetchSettings();
+    controlDialog.showModal();
   };
   byId("openSchedule").onclick = async () => {
     adminDialog.close();

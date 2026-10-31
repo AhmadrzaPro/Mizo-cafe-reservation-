@@ -267,7 +267,9 @@
   .map-editor-dialog .property-panel:has(.table-properties:not([hidden])) {
     display: none;
   }
-  .map-editor-dialog .property-panel.inspector-open {
+  /* The :has() rule above outweighs a plain class, so the open inspector matches it too. */
+  .map-editor-dialog .property-panel.inspector-open,
+  .map-editor-dialog .property-panel.inspector-open:has(.table-properties:not([hidden])) {
     display: block;
     position: absolute;
     inset: auto 12px 12px;
