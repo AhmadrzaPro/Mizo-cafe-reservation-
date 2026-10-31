@@ -1,65 +1,61 @@
 import { settingsUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
+import { byId } from "./dom.js";
 import { faDigits } from "./format.js";
 import { activeBranchProfile, applySettingsToCustomer } from "./profile.js";
 import { store } from "./state.js";
 
 export function renderControls() {
-  document.querySelector("#reservationsEnabled").checked = store.cafeSettings.reservationsEnabled;
-  document.querySelector("#autoConfirm").checked = store.cafeSettings.autoConfirm;
-  document.querySelector("#reservationDuration").value = String(
-    store.cafeSettings.reservationDuration,
-  );
-  document.querySelector("#bufferMinutes").value = String(store.cafeSettings.bufferMinutes);
-  document.querySelector("#maxPartyValue").textContent = faDigits(store.cafeSettings.maxPartySize);
-  document.querySelector("#customerNotice").value = store.cafeSettings.customerNotice;
-  document.querySelector("#noticeCount").textContent = faDigits(
-    store.cafeSettings.customerNotice.length,
-  );
-  const light = document.querySelector("#reservationStatusLight");
+  byId("reservationsEnabled").checked = store.cafeSettings.reservationsEnabled;
+  byId("autoConfirm").checked = store.cafeSettings.autoConfirm;
+  byId("reservationDuration").value = String(store.cafeSettings.reservationDuration);
+  byId("bufferMinutes").value = String(store.cafeSettings.bufferMinutes);
+  byId("maxPartyValue").textContent = faDigits(store.cafeSettings.maxPartySize);
+  byId("customerNotice").value = store.cafeSettings.customerNotice;
+  byId("noticeCount").textContent = faDigits(store.cafeSettings.customerNotice.length);
+  const light = byId("reservationStatusLight");
   light.classList.toggle("offline", !store.cafeSettings.reservationsEnabled);
-  document.querySelector("#reservationStatusTitle").textContent = store.cafeSettings
-    .reservationsEnabled
+  byId("reservationStatusTitle").textContent = store.cafeSettings.reservationsEnabled
     ? "رزرو آنلاین فعال است"
     : "رزرو آنلاین متوقف است";
-  document.querySelector("#reservationStatusCaption").textContent = store.cafeSettings
-    .reservationsEnabled
+  byId("reservationStatusCaption").textContent = store.cafeSettings.reservationsEnabled
     ? "مشتری‌ها می‌توانند میز رزرو کنند"
     : "فرم رزرو برای مشتری غیرفعال است";
 }
 export function readControls() {
   store.cafeSettings = {
     ...store.cafeSettings,
-    reservationsEnabled: document.querySelector("#reservationsEnabled").checked,
-    autoConfirm: document.querySelector("#autoConfirm").checked,
-    reservationDuration: Number(document.querySelector("#reservationDuration").value),
-    bufferMinutes: Number(document.querySelector("#bufferMinutes").value),
+    reservationsEnabled: byId("reservationsEnabled").checked,
+    autoConfirm: byId("autoConfirm").checked,
+    reservationDuration: Number(byId("reservationDuration").value),
+    bufferMinutes: Number(byId("bufferMinutes").value),
     maxPartySize: store.cafeSettings.maxPartySize,
-    customerNotice: document.querySelector("#customerNotice").value.trim(),
+    customerNotice: byId("customerNotice").value.trim(),
   };
   renderControls();
 }
 
 export function wireControls() {
-  document.querySelector("#reservationsEnabled").onchange = readControls;
-  document.querySelector("#autoConfirm").onchange = readControls;
-  document.querySelector("#reservationDuration").onchange = readControls;
-  document.querySelector("#bufferMinutes").onchange = readControls;
-  document.querySelector("#customerNotice").oninput = (e) => {
-    store.cafeSettings.customerNotice = e.target.value;
-    document.querySelector("#noticeCount").textContent = faDigits(e.target.value.length);
+  byId("reservationsEnabled").onchange = readControls;
+  byId("autoConfirm").onchange = readControls;
+  byId("reservationDuration").onchange = readControls;
+  byId("bufferMinutes").onchange = readControls;
+  byId("customerNotice").oninput = () => {
+    const notice = byId("customerNotice").value;
+    store.cafeSettings.customerNotice = notice;
+    byId("noticeCount").textContent = faDigits(notice.length);
   };
-  document.querySelector("#maxPartyMinus").onclick = () => {
+  byId("maxPartyMinus").onclick = () => {
     store.cafeSettings.maxPartySize = Math.max(1, store.cafeSettings.maxPartySize - 1);
     renderControls();
   };
-  document.querySelector("#maxPartyPlus").onclick = () => {
+  byId("maxPartyPlus").onclick = () => {
     store.cafeSettings.maxPartySize = Math.min(20, store.cafeSettings.maxPartySize + 1);
     renderControls();
   };
-  document.querySelector("#saveControls").onclick = async () => {
+  byId("saveControls").onclick = async () => {
     readControls();
-    const status = document.querySelector("#controlSaveStatus"),
+    const status = byId("controlSaveStatus"),
       branch = activeBranchProfile();
     status.textContent = "در حال ذخیره…";
     try {

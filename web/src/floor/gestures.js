@@ -1,4 +1,3 @@
-// @ts-check
 import { mapViewportPointers } from "../state.js";
 
 export function setupFloorGestures(wrap, canvas, getZoom, setZoom, editorMode = false) {

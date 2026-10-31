@@ -1,4 +1,3 @@
-// @ts-check
 /** @param {string} selector */
 const dialog = (selector) => /** @type {HTMLDialogElement} */ (document.querySelector(selector));
 export const adminDialog = dialog("#adminDialog"),

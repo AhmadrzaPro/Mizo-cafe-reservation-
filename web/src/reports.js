@@ -1,10 +1,11 @@
 import { adminDialog, reportsDialog } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { faDigits, formatPersianDate } from "./format.js";
 import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export function setupReportBranches() {
-  const select = document.querySelector("#reportsBranch");
+  const select = byId("reportsBranch");
   select.innerHTML = "";
   if (store.managerSession?.role === "owner") {
     const all = document.createElement("option");
@@ -28,12 +29,12 @@ export function setupReportBranches() {
 }
 export function renderReports() {
   const summary = store.reportsData.summary;
-  document.querySelector("#reportReservations").textContent = faDigits(summary.reservations);
-  document.querySelector("#reportGuests").textContent = faDigits(summary.guests);
-  document.querySelector("#reportCompletion").textContent = `${faDigits(summary.completionRate)}٪`;
-  document.querySelector("#reportRepeat").textContent = faDigits(summary.repeatCustomers);
-  document.querySelector("#reportNoShow").textContent = `${faDigits(summary.noShowRate)}٪`;
-  const chart = document.querySelector("#reportChart"),
+  byId("reportReservations").textContent = faDigits(summary.reservations);
+  byId("reportGuests").textContent = faDigits(summary.guests);
+  byId("reportCompletion").textContent = `${faDigits(summary.completionRate)}٪`;
+  byId("reportRepeat").textContent = faDigits(summary.repeatCustomers);
+  byId("reportNoShow").textContent = `${faDigits(summary.noShowRate)}٪`;
+  const chart = byId("reportChart"),
     max = Math.max(1, ...store.reportsData.daily.map((item) => item.reservations));
   chart.innerHTML = store.reportsData.daily.length
     ? store.reportsData.daily
@@ -43,7 +44,7 @@ export function renderReports() {
         )
         .join("")
     : '<div class="insight-empty">در این بازه رزروی ثبت نشده است.</div>';
-  const hours = document.querySelector("#reportHours"),
+  const hours = byId("reportHours"),
     hourMax = Math.max(1, ...store.reportsData.busyHours.map((item) => item.reservations));
   hours.innerHTML = store.reportsData.busyHours.length
     ? store.reportsData.busyHours
@@ -53,7 +54,7 @@ export function renderReports() {
         )
         .join("")
     : '<div class="insight-empty">داده کافی وجود ندارد.</div>';
-  const branches = document.querySelector("#reportBranches");
+  const branches = byId("reportBranches");
   branches.innerHTML =
     store.reportsData.branches
       .map(
@@ -63,9 +64,9 @@ export function renderReports() {
       .join("") || '<div class="insight-empty">شعبه فعالی پیدا نشد.</div>';
 }
 export async function fetchReports() {
-  const error = document.querySelector("#reportsError"),
-    days = document.querySelector("#reportsDays").value,
-    branch = document.querySelector("#reportsBranch").value;
+  const error = byId("reportsError"),
+    days = byId("reportsDays").value,
+    branch = byId("reportsBranch").value;
   error.textContent = "";
   try {
     const response = await fetch(
@@ -81,12 +82,12 @@ export async function fetchReports() {
 }
 
 export function wireReports() {
-  document.querySelector("#openReports").onclick = async () => {
+  byId("openReports").onclick = async () => {
     adminDialog.close();
     setupReportBranches();
     reportsDialog.showModal();
     await fetchReports();
   };
-  document.querySelector("#reportsDays").onchange = fetchReports;
-  document.querySelector("#reportsBranch").onchange = fetchReports;
+  byId("reportsDays").onchange = fetchReports;
+  byId("reportsBranch").onchange = fetchReports;
 }

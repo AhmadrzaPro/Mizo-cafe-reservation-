@@ -8,7 +8,7 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "test:e2e": "npm run build && playwright test",
     "lint": "eslint .",
-    "typecheck": "tsc -p . && tsc -p web",
+    "typecheck": "node scripts/element-types.mjs --check && tsc -p . && tsc -p web",
     "format": "prettier --write worker/src web/src e2e \"web/css/**/*.css\"",
     "format:check": "prettier --check worker/src web/src e2e \"web/css/**/*.css\""
   },

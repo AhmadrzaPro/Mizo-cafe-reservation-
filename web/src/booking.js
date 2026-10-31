@@ -1,4 +1,5 @@
 import { availabilityUrl, readableError } from "./api.js";
+import { byId } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
@@ -8,8 +9,8 @@ import { escapeHtml, tehranClientNow } from "./operations.js";
 import { payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
-export const dates = document.querySelector("#dates"),
-  times = document.querySelector("#times");
+export const dates = byId("dates"),
+  times = byId("times");
 export function renderDates() {
   dates.innerHTML = "";
   for (let i = 0; i < 5; i++) {
@@ -89,20 +90,20 @@ export async function fetchAvailability() {
     times.textContent = readableError(error, "دریافت ظرفیت ممکن نیست.");
   }
 }
-export const count = document.querySelector("#guestCount");
+export const count = byId("guestCount");
 export async function changeGuests(delta) {
   state.guests = Math.max(1, Math.min(store.cafeSettings.maxPartySize, state.guests + delta));
   count.textContent = faDigits(state.guests);
   state.time = "";
   await fetchAvailability();
 }
-export const tableDialog = document.querySelector("#tableDialog"),
-  customerDialog = document.querySelector("#customerDialog"),
-  successDialog = document.querySelector("#successDialog"),
-  trackingDialog = document.querySelector("#trackingDialog");
+export const tableDialog = byId("tableDialog"),
+  customerDialog = byId("customerDialog"),
+  successDialog = byId("successDialog"),
+  trackingDialog = byId("trackingDialog");
 export function renderCustomerMap() {
-  const floor = document.querySelector("#customerFloorPlan"),
-    tabs = document.querySelector("#customerAreaTabs"),
+  const floor = byId("customerFloorPlan"),
+    tabs = byId("customerAreaTabs"),
     areas = visibleAreas();
   if (!areas.some((area) => area.id === store.customerArea))
     store.customerArea =
@@ -121,10 +122,10 @@ export function renderCustomerMap() {
     button.onclick = () => {
       store.customerArea = area.id;
       store.customerMapZoom = 1;
-      document.querySelector("#customerMapViewport").scrollTo(0, 0);
+      byId("customerMapViewport").scrollTo(0, 0);
       state.table = "";
       state.tableId = "";
-      const confirmButton = document.querySelector("#confirmBtn");
+      const confirmButton = byId("confirmBtn");
       confirmButton.disabled = true;
       confirmButton.textContent = "یک میز را انتخاب کنید";
       renderCustomerMap();
@@ -136,12 +137,7 @@ export function renderCustomerMap() {
     current?.kind === "outdoor"
       ? '<span class="outdoor-label">فضای باز</span>'
       : '<span class="window-label">پنجره سرتاسری</span><div class="bar">بار و صندوق</div>';
-  applyFloorViewport(
-    floor,
-    document.querySelector("#customerMapStage"),
-    areaBounds(current),
-    store.customerMapZoom,
-  );
+  applyFloorViewport(floor, byId("customerMapStage"), areaBounds(current), store.customerMapZoom);
   const areaTables = store.cafeMap.tables.filter((t) => t.area === store.customerArea);
   if (!areaTables.length) {
     floor.insertAdjacentHTML(
@@ -170,34 +166,34 @@ export function renderCustomerMap() {
       b.classList.add("selected");
       state.table = b.dataset.table;
       state.tableId = fullId;
-      const c = document.querySelector("#confirmBtn");
+      const c = byId("confirmBtn");
       c.disabled = false;
       c.textContent = `تأیید ${state.table}`;
     };
     floor.appendChild(b);
   });
 }
-export const depositTemplate = document.querySelector("#depositPayment").innerHTML;
+export const depositTemplate = byId("depositPayment").innerHTML;
 export const money = (value) =>
   `${faDigits(Math.round(Number(value || 0) / 10).toLocaleString("en-US"))} تومان`;
 export function showDepositPayment(payment, trackingCode, mobile) {
-  const box = document.querySelector("#depositPayment");
+  const box = byId("depositPayment");
   box.innerHTML = depositTemplate;
   store.pendingPayment = payment?.required ? { trackingCode, mobile } : null;
   box.hidden = !payment?.required;
   if (!payment?.required) return;
-  document.querySelector("#successDepositAmount").textContent = money(payment.amountRials);
-  document.querySelector("#depositDeadline").textContent =
+  byId("successDepositAmount").textContent = money(payment.amountRials);
+  byId("depositDeadline").textContent =
     `مهلت پرداخت: ${faDigits(payment.dueAt ? new Date(payment.dueAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }) : "—")}`;
-  document.querySelector("#depositPolicy").textContent = payment.refundPolicy || "";
-  document.querySelector("#payDeposit").textContent = payButtonLabel(true);
+  byId("depositPolicy").textContent = payment.refundPolicy || "";
+  byId("payDeposit").textContent = payButtonLabel(true);
 }
 
 export function wireBooking() {
   renderDates();
-  document.querySelector("#plus").onclick = () => changeGuests(1);
-  document.querySelector("#minus").onclick = () => changeGuests(-1);
-  document.querySelector("#continueBtn").onclick = () => {
+  byId("plus").onclick = () => changeGuests(1);
+  byId("minus").onclick = () => changeGuests(-1);
+  byId("continueBtn").onclick = () => {
     if (!state.time) {
       times.classList.add("attention");
       setTimeout(() => times.classList.remove("attention"), 700);
@@ -220,9 +216,9 @@ export function wireBooking() {
       )?.id ||
       areas[0]?.id ||
       "";
-    document.querySelector("#confirmBtn").disabled = true;
-    document.querySelector("#confirmBtn").textContent = "یک میز را انتخاب کنید";
-    document.querySelector("#selectionSummary").textContent =
+    byId("confirmBtn").disabled = true;
+    byId("confirmBtn").textContent = "یک میز را انتخاب کنید";
+    byId("selectionSummary").textContent =
       `${state.dateLabel}، ساعت ${faDigits(state.time)} برای ${faDigits(state.guests)} نفر`;
     tableDialog.showModal();
     renderCustomerMap();
@@ -230,19 +226,23 @@ export function wireBooking() {
   window.addEventListener("resize", () => {
     if (tableDialog.open) renderCustomerMap();
   });
-  document.querySelectorAll(".dialog-close").forEach(
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(".dialog-close")).forEach(
     (button) =>
       (button.onclick = () => {
         button.closest("dialog").close();
-        const target = button.dataset.backTo && document.querySelector(`#${button.dataset.backTo}`);
+        const target =
+          button.dataset.backTo &&
+          /** @type {HTMLDialogElement | null} */ (
+            document.querySelector(`#${button.dataset.backTo}`)
+          );
         if (target && !target.open) target.showModal();
       }),
   );
-  document.querySelector("#confirmBtn").onclick = () => {
+  byId("confirmBtn").onclick = () => {
     tableDialog.close();
-    document.querySelector("#customerSummary").textContent =
+    byId("customerSummary").textContent =
       `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
-    document.querySelector("#reservationError").hidden = true;
+    byId("reservationError").hidden = true;
     customerDialog.showModal();
   };
 }

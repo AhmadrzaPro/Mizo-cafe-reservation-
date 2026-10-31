@@ -1,6 +1,7 @@
 import { settingsUrl } from "./api.js";
 import { fetchAvailability, money } from "./booking.js";
-import { adminDialog, paymentsDialog } from "./dialogs.js";
+import { adminDialog, paymentsCard, paymentsDialog } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits, formatPersianDate } from "./format.js";
 import { escapeHtml } from "./operations.js";
@@ -8,19 +9,16 @@ import { activeBranchProfile } from "./profile.js";
 import { store } from "./state.js";
 
 export function fillPaymentSettings() {
-  document.querySelector("#depositEnabled").checked = Boolean(store.cafeSettings.depositEnabled);
-  document.querySelector("#depositMode").value = store.cafeSettings.depositMode || "fixed";
-  document.querySelector("#depositAmount").value = Math.round(
-    Number(store.cafeSettings.depositAmountRials || 0) / 10,
+  byId("depositEnabled").checked = Boolean(store.cafeSettings.depositEnabled);
+  byId("depositMode").value = store.cafeSettings.depositMode || "fixed";
+  byId("depositAmount").value = String(
+    Math.round(Number(store.cafeSettings.depositAmountRials || 0) / 10),
   );
-  document.querySelector("#depositPeakOnly").checked = Boolean(store.cafeSettings.depositPeakOnly);
-  document.querySelector("#depositPeakStart").value =
-    store.cafeSettings.depositPeakStart || "18:00";
-  document.querySelector("#depositPeakEnd").value = store.cafeSettings.depositPeakEnd || "22:00";
-  document.querySelector("#paymentDeadline").value = String(
-    store.cafeSettings.paymentDeadlineMinutes || 15,
-  );
-  document.querySelector("#refundPolicy").value = store.cafeSettings.refundPolicy || "";
+  byId("depositPeakOnly").checked = Boolean(store.cafeSettings.depositPeakOnly);
+  byId("depositPeakStart").value = store.cafeSettings.depositPeakStart || "18:00";
+  byId("depositPeakEnd").value = store.cafeSettings.depositPeakEnd || "22:00";
+  byId("paymentDeadline").value = String(store.cafeSettings.paymentDeadlineMinutes || 15);
+  byId("refundPolicy").value = store.cafeSettings.refundPolicy || "";
 }
 const paymentModes = {
   zarinpal: [
@@ -35,13 +33,13 @@ const paymentModes = {
 };
 function showPaymentMode(mode) {
   const [title, text] = paymentModes[mode] || paymentModes.none,
-    box = document.querySelector("#paymentMode");
+    box = byId("paymentMode");
   box.querySelector("b").textContent = title;
   box.querySelector("small").textContent = text;
   box.dataset.mode = mode;
 }
 export async function fetchPayments() {
-  const error = document.querySelector("#paymentsError");
+  const error = byId("paymentsError");
   error.textContent = "";
   try {
     const branch = activeBranchProfile(),
@@ -51,11 +49,11 @@ export async function fetchPayments() {
       data = await response.json();
     if (!response.ok) throw new Error(data.message || "دریافت تراکنش‌ها انجام نشد.");
     showPaymentMode(data.mode);
-    document.querySelector("#paymentsPaid").textContent = money(data.summary.paid);
-    document.querySelector("#paymentsPending").textContent =
+    byId("paymentsPaid").textContent = money(data.summary.paid);
+    byId("paymentsPending").textContent =
       `${money(data.summary.pending)} · ${faDigits(data.summary.pendingCount)} رزرو`;
-    document.querySelector("#paymentsRefunded").textContent = money(data.summary.refunded);
-    const list = document.querySelector("#paymentsList");
+    byId("paymentsRefunded").textContent = money(data.summary.refunded);
+    const list = byId("paymentsList");
     if (!data.transactions.length) {
       list.innerHTML = '<div class="insight-empty">هنوز تراکنشی برای این شعبه ثبت نشده است.</div>';
       return;
@@ -92,23 +90,23 @@ export async function fetchPayments() {
 }
 export async function openPayments() {
   adminDialog.close();
-  document.querySelector("#paymentsBranch").value = store.currentBranch;
+  byId("paymentsBranch").value = store.currentBranch;
   fillPaymentSettings();
   paymentsDialog.showModal();
   await fetchPayments();
 }
 
 export function wirePayments() {
-  document.querySelector("#openPayments").onclick = openPayments;
-  document.querySelector("#refreshPayments").onclick = fetchPayments;
-  document.querySelector("#paymentsBranch").onchange = async (event) => {
-    await switchBranch(event.target.value);
+  paymentsCard.onclick = openPayments;
+  byId("refreshPayments").onclick = fetchPayments;
+  byId("paymentsBranch").onchange = async (event) => {
+    await switchBranch(byId("paymentsBranch").value);
     fillPaymentSettings();
     await fetchPayments();
   };
-  document.querySelector("#savePaymentSettings").onclick = async () => {
-    const button = document.querySelector("#savePaymentSettings"),
-      error = document.querySelector("#paymentsError"),
+  byId("savePaymentSettings").onclick = async () => {
+    const button = byId("savePaymentSettings"),
+      error = byId("paymentsError"),
       branch = activeBranchProfile(),
       payload = {
         ...store.cafeSettings,
@@ -116,14 +114,14 @@ export function wirePayments() {
         branchName: branch.name,
         city: branch.city,
         address: branch.address,
-        depositEnabled: document.querySelector("#depositEnabled").checked,
-        depositMode: document.querySelector("#depositMode").value,
-        depositAmountRials: Number(document.querySelector("#depositAmount").value) * 10,
-        depositPeakOnly: document.querySelector("#depositPeakOnly").checked,
-        depositPeakStart: document.querySelector("#depositPeakStart").value,
-        paymentDeadlineMinutes: Number(document.querySelector("#paymentDeadline").value),
-        depositPeakEnd: document.querySelector("#depositPeakEnd").value,
-        refundPolicy: document.querySelector("#refundPolicy").value,
+        depositEnabled: byId("depositEnabled").checked,
+        depositMode: byId("depositMode").value,
+        depositAmountRials: Number(byId("depositAmount").value) * 10,
+        depositPeakOnly: byId("depositPeakOnly").checked,
+        depositPeakStart: byId("depositPeakStart").value,
+        paymentDeadlineMinutes: Number(byId("paymentDeadline").value),
+        depositPeakEnd: byId("depositPeakEnd").value,
+        refundPolicy: byId("refundPolicy").value,
       };
     button.disabled = true;
     error.textContent = "";

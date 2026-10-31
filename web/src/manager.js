@@ -1,5 +1,6 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, authDialog, paymentsCard, setupDialog } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import {
   activeBranchProfile,
@@ -12,58 +13,60 @@ import { pageParams, store } from "./state.js";
 import { refreshSubscriptionNotice } from "./subscription.js";
 
 export function fillSetupForm(editing = false) {
-  document.querySelector("#setupOwnerFields").hidden = editing;
-  document.querySelector("#setupOwnerMobile").required = !editing;
+  byId("setupOwnerFields").hidden = editing;
+  byId("setupOwnerMobile").required = !editing;
   const branch = activeBranchProfile();
-  document.querySelector("#setupTitle").textContent = editing
+  byId("setupTitle").textContent = editing
     ? "اطلاعات کافه را ویرایش کن"
     : "کافه‌ات را به میزو معرفی کن";
-  document.querySelector("#setupStep").textContent = editing ? "تنظیمات پایه" : "مرحله ۱ از ۳";
-  document.querySelector("#setupCafeName").value = editing ? store.cafeProfile.cafe.name : "";
-  document.querySelector("#setupCity").value = editing ? branch.city : "";
-  document.querySelector("#setupBranchName").value = editing ? branch.name : "شعبه اصلی";
-  document.querySelector("#setupAddress").value = editing ? branch.address : "";
-  document
-    .querySelectorAll('input[name="setupStructure"]')
-    .forEach((input) => (input.disabled = editing));
-  document.querySelector(
-    `input[name="setupStructure"][value="${editing ? store.cafeProfile.cafe.structure : "single"}"]`,
+  byId("setupStep").textContent = editing ? "تنظیمات پایه" : "مرحله ۱ از ۳";
+  byId("setupCafeName").value = editing ? store.cafeProfile.cafe.name : "";
+  byId("setupCity").value = editing ? branch.city : "";
+  byId("setupBranchName").value = editing ? branch.name : "شعبه اصلی";
+  byId("setupAddress").value = editing ? branch.address : "";
+  /** @type {NodeListOf<HTMLInputElement>} */ (
+    document.querySelectorAll('input[name="setupStructure"]')
+  ).forEach((input) => (input.disabled = editing));
+  /** @type {HTMLInputElement} */ (
+    document.querySelector(
+      `input[name="setupStructure"][value="${editing ? store.cafeProfile.cafe.structure : "single"}"]`,
+    )
   ).checked = true;
-  document.querySelector("#saveSetup").textContent = editing
-    ? "ذخیره تغییرات"
-    : "ساخت کافه و ورود به پنل";
-  document.querySelector("#setupError").textContent = "";
+  byId("saveSetup").textContent = editing ? "ذخیره تغییرات" : "ساخت کافه و ورود به پنل";
+  byId("setupError").textContent = "";
 }
 export function resetAuthForm() {
   store.otpChallenge = null;
-  document.querySelector("#otpRequestForm").hidden = false;
-  document.querySelector("#otpVerifyForm").hidden = true;
-  document.querySelector("#authError").textContent = "";
-  document.querySelector("#authCode").value = "";
-  document.querySelector("#demoCodeBox").hidden = true;
+  byId("otpRequestForm").hidden = false;
+  byId("otpVerifyForm").hidden = true;
+  byId("authError").textContent = "";
+  byId("authCode").value = "";
+  byId("demoCodeBox").hidden = true;
 }
 export function hasManagerPermission(permission) {
   return Boolean(store.managerSession?.permissions?.includes(permission));
 }
 export function applyManagerAccess() {
   if (!store.managerSession) return;
-  document.querySelector("#managerIdentity").textContent =
+  byId("managerIdentity").textContent =
     `${store.managerSession.name} · ${store.managerSession.roleLabel}`;
-  document
-    .querySelectorAll("[data-owner-only]")
-    .forEach((element) => (element.hidden = store.managerSession.role !== "owner"));
-  document.querySelectorAll("[data-manage-only]").forEach((element) => {
-    const permission =
-      element.id === "openMapEditor"
-        ? "map.write"
-        : element.id === "openSchedule"
-          ? "schedule.write"
-          : "settings.write";
-    element.hidden = !hasManagerPermission(permission);
-  });
-  document
-    .querySelectorAll("[data-permission]")
-    .forEach((element) => (element.hidden = !hasManagerPermission(element.dataset.permission)));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-owner-only]")).forEach(
+    (element) => (element.hidden = store.managerSession.role !== "owner"),
+  );
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-manage-only]")).forEach(
+    (element) => {
+      const permission =
+        element.id === "openMapEditor"
+          ? "map.write"
+          : element.id === "openSchedule"
+            ? "schedule.write"
+            : "settings.write";
+      element.hidden = !hasManagerPermission(permission);
+    },
+  );
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-permission]")).forEach(
+    (element) => (element.hidden = !hasManagerPermission(element.dataset.permission)),
+  );
   if (store.managerSession.branchId) {
     const branch = store.cafeProfile.branches.find(
       (item) => item.id === store.managerSession.branchId,
@@ -76,7 +79,7 @@ export function applyManagerAccess() {
 }
 // How many devices this staff member is signed in on, next to "sign out everywhere".
 async function showActiveDevices() {
-  const label = document.querySelector("#managerDevices");
+  const label = byId("managerDevices");
   label.textContent = "";
   try {
     const response = await fetch("/api/auth/sessions");
@@ -131,27 +134,31 @@ export function wireManager() {
   paymentsCard.innerHTML =
     "<b>پرداخت و بیعانه</b><span>قوانین بیعانه و تراکنش‌های هر شعبه</span><em>مدیریت پرداخت‌ها ←</em>";
   document.querySelector(".admin-grid").appendChild(paymentsCard);
-  document.querySelectorAll("[data-open-demo]").forEach((b) => (b.onclick = openManager));
-  document.querySelector("#adminClose").onclick = () => adminDialog.close();
-  document.querySelector("#editCafeProfile").onclick = () => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-open-demo]")).forEach(
+    (b) => (b.onclick = openManager),
+  );
+  byId("adminClose").onclick = () => adminDialog.close();
+  byId("editCafeProfile").onclick = () => {
     adminDialog.close();
     fillSetupForm(true);
     setupDialog.showModal();
   };
-  document.querySelector("#setupForm").onsubmit = async (event) => {
+  byId("setupForm").onsubmit = async (event) => {
     event.preventDefault();
-    const button = document.querySelector("#saveSetup"),
-      error = document.querySelector("#setupError"),
+    const button = byId("saveSetup"),
+      error = byId("setupError"),
       editing = store.cafeProfile.configured,
       payload = {
-        ownerMobile: latinDigits(document.querySelector("#setupOwnerMobile").value),
-        ownerName: document.querySelector("#setupOwnerName").value,
-        cafeName: document.querySelector("#setupCafeName").value,
-        city: document.querySelector("#setupCity").value,
-        branchName: document.querySelector("#setupBranchName").value,
-        address: document.querySelector("#setupAddress").value,
+        ownerMobile: latinDigits(byId("setupOwnerMobile").value),
+        ownerName: byId("setupOwnerName").value,
+        cafeName: byId("setupCafeName").value,
+        city: byId("setupCity").value,
+        branchName: byId("setupBranchName").value,
+        address: byId("setupAddress").value,
         branchSlug: store.currentBranch,
-        structure: document.querySelector('input[name="setupStructure"]:checked').value,
+        structure: /** @type {HTMLInputElement} */ (
+          document.querySelector('input[name="setupStructure"]:checked')
+        ).value,
       };
     button.disabled = true;
     button.textContent = "در حال آماده‌سازی کافه…";
@@ -177,11 +184,11 @@ export function wireManager() {
       button.textContent = editing ? "ذخیره تغییرات" : "ساخت کافه و ورود به پنل";
     }
   };
-  document.querySelector("#otpRequestForm").onsubmit = async (event) => {
+  byId("otpRequestForm").onsubmit = async (event) => {
     event.preventDefault();
-    const button = document.querySelector("#requestOtp"),
-      error = document.querySelector("#authError"),
-      mobile = latinDigits(document.querySelector("#authMobile").value);
+    const button = byId("requestOtp"),
+      error = byId("authError"),
+      mobile = latinDigits(byId("authMobile").value);
     button.disabled = true;
     button.textContent = "در حال ارسال…";
     error.textContent = "";
@@ -194,15 +201,15 @@ export function wireManager() {
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "ارسال کد انجام نشد.");
       store.otpChallenge = { id: data.challengeId, mobile };
-      document.querySelector("#otpRequestForm").hidden = true;
-      document.querySelector("#otpVerifyForm").hidden = false;
-      document.querySelector("#authNameRow").hidden = !data.requiresBootstrap;
-      document.querySelector("#authName").required = Boolean(data.requiresBootstrap);
+      byId("otpRequestForm").hidden = true;
+      byId("otpVerifyForm").hidden = false;
+      byId("authNameRow").hidden = !data.requiresBootstrap;
+      byId("authName").required = Boolean(data.requiresBootstrap);
       if (data.demoCode) {
-        document.querySelector("#demoCode").textContent = faDigits(data.demoCode);
-        document.querySelector("#demoCodeBox").hidden = false;
+        byId("demoCode").textContent = faDigits(data.demoCode);
+        byId("demoCodeBox").hidden = false;
       }
-      document.querySelector("#authCode").focus();
+      byId("authCode").focus();
     } catch (err) {
       error.textContent = err.message;
     } finally {
@@ -210,10 +217,10 @@ export function wireManager() {
       button.textContent = "دریافت کد ورود";
     }
   };
-  document.querySelector("#otpVerifyForm").onsubmit = async (event) => {
+  byId("otpVerifyForm").onsubmit = async (event) => {
     event.preventDefault();
-    const button = document.querySelector("#verifyOtp"),
-      error = document.querySelector("#authError");
+    const button = byId("verifyOtp"),
+      error = byId("authError");
     button.disabled = true;
     button.textContent = "در حال بررسی…";
     error.textContent = "";
@@ -225,8 +232,8 @@ export function wireManager() {
             cafeSlug: store.currentCafeSlug,
             challengeId: store.otpChallenge?.id,
             mobile: store.otpChallenge?.mobile,
-            code: latinDigits(document.querySelector("#authCode").value),
-            name: document.querySelector("#authName").value,
+            code: latinDigits(byId("authCode").value),
+            name: byId("authName").value,
           }),
         }),
         data = await response.json();
@@ -242,15 +249,15 @@ export function wireManager() {
       button.textContent = "ورود به پنل";
     }
   };
-  document.querySelector("#retryOtp").onclick = resetAuthForm;
-  document.querySelector("#logoutEverywhere").onclick = async () => {
+  byId("retryOtp").onclick = resetAuthForm;
+  byId("logoutEverywhere").onclick = async () => {
     if (!confirm("از همه دستگاه‌ها، از جمله همین دستگاه، خارج شوید؟")) return;
     await fetch("/api/auth/logout-all", { method: "POST" });
     store.managerSession = null;
     adminDialog.close();
     showManagerLogin();
   };
-  document.querySelector("#logoutManager").onclick = async () => {
+  byId("logoutManager").onclick = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     store.managerSession = null;
     adminDialog.close();

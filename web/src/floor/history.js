@@ -1,4 +1,3 @@
-// @ts-check
 import { visibleAreas } from "../map-model.js";
 import { store } from "../state.js";
 

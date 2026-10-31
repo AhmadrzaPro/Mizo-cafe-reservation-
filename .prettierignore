@@ -1,3 +1,4 @@
 dist/
 node_modules/
 drizzle/
+web/src/element-ids.d.ts

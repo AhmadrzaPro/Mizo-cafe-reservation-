@@ -1,4 +1,5 @@
 import { editor } from "../dialogs.js";
+import { byId } from "../dom.js";
 import { renderEditor, renderMapCanvas, renderProperties, selectedTable } from "../editor.js";
 import { fitFloorZoom } from "./geometry.js";
 import { travelMapHistory } from "./history.js";
@@ -16,31 +17,36 @@ export function fitMap() {
 }
 export function openTableInspector() {
   if (!selectedTable()) return;
-  document.querySelector("#propertyPanel").classList.add("inspector-open");
+  byId("propertyPanel").classList.add("inspector-open");
   renderProperties();
 }
 
 export function wireFloorEditorTools() {
-  document.querySelector("#editSelectedTable").onclick = openTableInspector;
-  document.querySelector("#closeInspector").onclick = () =>
-    document.querySelector("#propertyPanel").classList.remove("inspector-open");
-  document.querySelector("#fitMap").onclick = fitMap;
-  document.querySelector("#mapUndo").onclick = () => travelMapHistory(-1, renderEditor);
-  document.querySelector("#mapRedo").onclick = () => travelMapHistory(1, renderEditor);
-  document.querySelector("#snapMap").onclick = (event) => {
+  byId("editSelectedTable").onclick = openTableInspector;
+  byId("closeInspector").onclick = () => byId("propertyPanel").classList.remove("inspector-open");
+  byId("fitMap").onclick = fitMap;
+  byId("mapUndo").onclick = () => travelMapHistory(-1, renderEditor);
+  byId("mapRedo").onclick = () => travelMapHistory(1, renderEditor);
+  byId("snapMap").onclick = (event) => {
     store.mapSnap = !store.mapSnap;
-    event.currentTarget.setAttribute("aria-pressed", String(store.mapSnap));
+    /** @type {HTMLElement} */ (event.currentTarget).setAttribute(
+      "aria-pressed",
+      String(store.mapSnap),
+    );
   };
-  document.querySelector("#materialMap").onclick = (event) => {
+  byId("materialMap").onclick = (event) => {
     store.mapMaterial = !store.mapMaterial;
-    event.currentTarget.setAttribute("aria-pressed", String(store.mapMaterial));
+    /** @type {HTMLElement} */ (event.currentTarget).setAttribute(
+      "aria-pressed",
+      String(store.mapMaterial),
+    );
     renderMapCanvas();
   };
   document.addEventListener("keydown", (event) => {
     if (
       !editor.open ||
       document.querySelector("dialog[open]:not(#mapEditorDialog)") ||
-      event.target.closest("input,textarea,select")
+      /** @type {HTMLElement} */ (event.target).closest("input,textarea,select")
     )
       return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {

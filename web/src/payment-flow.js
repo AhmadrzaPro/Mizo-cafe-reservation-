@@ -1,6 +1,6 @@
-// @ts-check
 // Deposit payment in the customer flow: button labels for the active payment mode, sending the
 // customer to the gateway, and the message shown when the gateway sends them back.
+import { byId } from "./dom.js";
 import { pageParams, store } from "./state.js";
 
 /** True when deposits go through a real gateway rather than the demo simulation. */
@@ -50,14 +50,14 @@ export function showPaymentReturn() {
   if (!result) return;
   const [tone, text] = returnMessages[result] || returnMessages.failed,
     code = pageParams.get("code") || "",
-    message = /** @type {HTMLElement} */ (document.querySelector("#paymentReturn")),
-    dialog = /** @type {HTMLDialogElement} */ (document.querySelector("#trackingDialog"));
-  /** @type {HTMLInputElement} */ (document.querySelector("#trackingCode")).value = code;
+    message = /** @type {HTMLElement} */ (byId("paymentReturn")),
+    dialog = /** @type {HTMLDialogElement} */ (byId("trackingDialog"));
+  /** @type {HTMLInputElement} */ (byId("trackingCode")).value = code;
   message.textContent = text;
   message.dataset.tone = tone;
   message.hidden = false;
-  /** @type {HTMLElement} */ (document.querySelector("#trackingResult")).hidden = true;
-  /** @type {HTMLElement} */ (document.querySelector("#trackingError")).hidden = true;
+  /** @type {HTMLElement} */ (byId("trackingResult")).hidden = true;
+  /** @type {HTMLElement} */ (byId("trackingError")).hidden = true;
   dialog.showModal();
   // Drop the result from the address so a reload does not show it again.
   const url = new URL(globalThis.location.href);

@@ -1,10 +1,11 @@
 import { adminDialog, staffDialog, staffFormDialog } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export function renderStaff() {
-  const list = document.querySelector("#staffList");
+  const list = byId("staffList");
   list.innerHTML = "";
   if (!store.staffMembers.length) {
     list.innerHTML = '<div class="branch-empty">هنوز پرسنلی ثبت نشده است.</div>';
@@ -19,7 +20,7 @@ export function renderStaff() {
   });
 }
 export async function fetchStaff() {
-  const error = document.querySelector("#staffError");
+  const error = byId("staffError");
   error.textContent = "";
   try {
     const response = await fetch("/api/staff"),
@@ -32,7 +33,7 @@ export async function fetchStaff() {
   }
 }
 export function syncStaffRole() {
-  const role = document.querySelector("#staffRole").value,
+  const role = byId("staffRole").value,
     owner = role === "owner",
     details =
       {
@@ -56,18 +57,18 @@ export function syncStaffRole() {
         ],
         barista: ["فقط شعبه انتخاب‌شده", "مشاهده نقشه زنده سالن", "تغییر وضعیت میزها"],
       }[role] || [];
-  document.querySelector("#staffBranchRow").hidden = owner;
-  document.querySelector("#staffBranch").required = !owner;
-  document.querySelector("#staffPermissionPreview").innerHTML =
+  byId("staffBranchRow").hidden = owner;
+  byId("staffBranch").required = !owner;
+  byId("staffPermissionPreview").innerHTML =
     `<b>این نقش چه دسترسی‌هایی دارد؟</b><ul>${details.map((item) => `<li>${item}</li>`).join("")}</ul>`;
 }
 export function openStaffForm(member = null) {
-  document.querySelector("#staffFormTitle").textContent = member ? "ویرایش دسترسی" : "افزودن پرسنل";
-  document.querySelector("#staffId").value = member?.id || "";
-  document.querySelector("#staffName").value = member?.name || "";
-  document.querySelector("#staffMobile").value = member?.mobile || "";
-  document.querySelector("#staffRole").value = member?.role || "reception";
-  const branchSelect = document.querySelector("#staffBranch");
+  byId("staffFormTitle").textContent = member ? "ویرایش دسترسی" : "افزودن پرسنل";
+  byId("staffId").value = member?.id || "";
+  byId("staffName").value = member?.name || "";
+  byId("staffMobile").value = member?.mobile || "";
+  byId("staffRole").value = member?.role || "reception";
+  const branchSelect = byId("staffBranch");
   branchSelect.innerHTML = "";
   store.cafeProfile.branches
     .filter((branch) => branch.active !== false)
@@ -78,35 +79,35 @@ export function openStaffForm(member = null) {
       option.selected = branch.id === member?.branchId;
       branchSelect.appendChild(option);
     });
-  document.querySelector("#staffIsActive").checked = member?.active !== false;
+  byId("staffIsActive").checked = member?.active !== false;
   const self = member?.id === store.managerSession?.id;
-  document.querySelector("#staffRole").disabled = self;
-  document.querySelector("#staffIsActive").disabled = self;
-  document.querySelector("#staffFormError").textContent = "";
-  document.querySelector("#saveStaff").textContent = member ? "ذخیره تغییرات" : "افزودن به تیم";
+  byId("staffRole").disabled = self;
+  byId("staffIsActive").disabled = self;
+  byId("staffFormError").textContent = "";
+  byId("saveStaff").textContent = member ? "ذخیره تغییرات" : "افزودن به تیم";
   syncStaffRole();
   staffFormDialog.showModal();
 }
 
 export function wireStaff() {
-  document.querySelector("#staffRole").onchange = syncStaffRole;
-  document.querySelector("#openStaff").onclick = async () => {
+  byId("staffRole").onchange = syncStaffRole;
+  byId("openStaff").onclick = async () => {
     adminDialog.close();
     staffDialog.showModal();
     await fetchStaff();
   };
-  document.querySelector("#addStaff").onclick = () => openStaffForm();
-  document.querySelector("#staffForm").onsubmit = async (event) => {
+  byId("addStaff").onclick = () => openStaffForm();
+  byId("staffForm").onsubmit = async (event) => {
     event.preventDefault();
-    const id = document.querySelector("#staffId").value,
-      button = document.querySelector("#saveStaff"),
-      error = document.querySelector("#staffFormError"),
+    const id = byId("staffId").value,
+      button = byId("saveStaff"),
+      error = byId("staffFormError"),
       payload = {
-        name: document.querySelector("#staffName").value,
-        mobile: latinDigits(document.querySelector("#staffMobile").value),
-        role: document.querySelector("#staffRole").value,
-        branchId: document.querySelector("#staffBranch").value,
-        active: document.querySelector("#staffIsActive").checked,
+        name: byId("staffName").value,
+        mobile: latinDigits(byId("staffMobile").value),
+        role: byId("staffRole").value,
+        branchId: byId("staffBranch").value,
+        active: byId("staffIsActive").checked,
       };
     button.disabled = true;
     button.textContent = "در حال ذخیره…";

@@ -1,4 +1,5 @@
 import { adminDialog, subscriptionDialog } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
@@ -11,29 +12,21 @@ export const subscriptionStatusLabel = (status) =>
   ] || status;
 export function renderSubscription() {
   if (!store.subscriptionData) return;
-  document.querySelector("#subscriptionDisabled").hidden = store.subscriptionData.enabled;
-  document.querySelector("#subscriptionEnabled").hidden = !store.subscriptionData.enabled;
+  byId("subscriptionDisabled").hidden = store.subscriptionData.enabled;
+  byId("subscriptionEnabled").hidden = !store.subscriptionData.enabled;
   if (!store.subscriptionData.enabled) return renderSubscriptionNotice();
-  document.querySelector("#subscriptionStatus").textContent = subscriptionStatusLabel(
-    store.subscriptionData.status,
-  );
+  byId("subscriptionStatus").textContent = subscriptionStatusLabel(store.subscriptionData.status);
   const period =
     store.subscriptionData.endsAt ||
     (store.subscriptionData.status === "trial"
       ? store.subscriptionData.trialEndsAt
       : store.subscriptionData.currentPeriodEndsAt);
-  document.querySelector("#subscriptionPeriod").textContent = period
-    ? formatPersianDate(period)
-    : "تعیین نشده";
-  document.querySelector("#subscriptionBranchCount").textContent = faDigits(
-    store.subscriptionData.activeBranchCount,
-  );
-  document.querySelector("#subscriptionUnitPrice").textContent = formatToman(
-    store.subscriptionData.unitPriceRials,
-  );
-  document.querySelector("#subscriptionMonthlyTotal").textContent =
+  byId("subscriptionPeriod").textContent = period ? formatPersianDate(period) : "تعیین نشده";
+  byId("subscriptionBranchCount").textContent = faDigits(store.subscriptionData.activeBranchCount);
+  byId("subscriptionUnitPrice").textContent = formatToman(store.subscriptionData.unitPriceRials);
+  byId("subscriptionMonthlyTotal").textContent =
     `${formatToman(store.subscriptionData.monthlyPriceRials)} / ماه`;
-  const events = document.querySelector("#subscriptionEvents");
+  const events = byId("subscriptionEvents");
   events.innerHTML = store.subscriptionData.events.length
     ? store.subscriptionData.events
         .map(
@@ -51,8 +44,8 @@ const groupCard = (number) => String(number).replace(/(\d{4})(?=\d)/g, "$1 ");
 function renderSubscriptionPayment() {
   const data = store.subscriptionData,
     payment = data.payment || {},
-    section = document.querySelector("#subscriptionCardPayment");
-  document.querySelector("#renewSubscription").hidden = !payment.demo;
+    section = byId("subscriptionCardPayment");
+  byId("renewSubscription").hidden = !payment.demo;
   section.hidden = !payment.card && !payment.pending;
   if (payment.pending) {
     section.innerHTML = `<b class="payment-review">پرداخت ${formatToman(payment.pending.amountRials)} با شماره پیگیری <span dir="ltr">${escapeHtml(payment.pending.reference)}</span> ثبت شد و پس از تأیید میزو، اشتراک تمدید می‌شود.</b>`;
@@ -60,7 +53,7 @@ function renderSubscriptionPayment() {
   }
   if (!payment.card) return;
   section.innerHTML = `<h3>پرداخت اشتراک با کارت به کارت</h3><p>مبلغ یک ماه، <b>${formatToman(data.monthlyPriceRials)}</b>، را به این کارت واریز کنید و شماره پیگیری را ثبت کنید. پس از تأیید واریز، اشتراک ۳۰ روز تمدید می‌شود.</p><div class="card-number"><strong dir="ltr">${groupCard(payment.card.cardNumber)}</strong><button type="button" data-copy-card>کپی</button></div>${payment.card.cardHolder ? `<small>به نام ${escapeHtml(payment.card.cardHolder)}</small>` : ""}<form class="card-transfer-form"><label>شماره پیگیری انتقال<input name="reference" inputmode="numeric" maxlength="40" required dir="ltr"></label><label>۴ رقم آخر کارت شما<input name="cardLast4" inputmode="numeric" maxlength="4" dir="ltr"></label><button class="publish-btn" type="submit">ثبت پرداخت</button></form>`;
-  const copy = section.querySelector("[data-copy-card]");
+  const copy = /** @type {HTMLButtonElement} */ (section.querySelector("[data-copy-card]"));
   copy.onclick = async () => {
     try {
       await navigator.clipboard.writeText(payment.card.cardNumber);
@@ -72,7 +65,7 @@ function renderSubscriptionPayment() {
   const form = section.querySelector("form");
   form.onsubmit = async (event) => {
     event.preventDefault();
-    const error = document.querySelector("#subscriptionError"),
+    const error = byId("subscriptionError"),
       button = form.querySelector("button"),
       fields = new FormData(form);
     error.textContent = "";
@@ -101,7 +94,7 @@ const persianDate = (iso) =>
 // The owner's warning once a trial or paid period has ended without payment.
 export function renderSubscriptionNotice() {
   const data = store.subscriptionData,
-    notice = document.querySelector("#subscriptionNotice"),
+    notice = byId("subscriptionNotice"),
     show = store.managerSession?.role === "owner" && data?.enabled && data.status === "past_due";
   notice.hidden = !show;
   if (!show) return;
@@ -124,7 +117,7 @@ export async function refreshSubscriptionNotice() {
   renderSubscriptionNotice();
 }
 export async function fetchSubscription() {
-  const error = document.querySelector("#subscriptionError");
+  const error = byId("subscriptionError");
   error.textContent = "";
   try {
     const response = await fetch("/api/subscription"),
@@ -137,7 +130,7 @@ export async function fetchSubscription() {
   }
 }
 export async function changeSubscription(payload) {
-  const error = document.querySelector("#subscriptionError");
+  const error = byId("subscriptionError");
   error.textContent = "";
   try {
     const response = await fetch("/api/subscription", {
@@ -160,16 +153,15 @@ export function wireSubscription() {
     subscriptionDialog.showModal();
     await fetchSubscription();
   };
-  document.querySelector("#openSubscription").onclick = openSubscription;
-  document.querySelector("#subscriptionNoticePay").onclick = openSubscription;
-  document.querySelector("#enableSubscription").onclick = () =>
-    changeSubscription({ enabled: true });
-  document.querySelector("#disableSubscription").onclick = () => {
+  byId("openSubscription").onclick = openSubscription;
+  byId("subscriptionNoticePay").onclick = openSubscription;
+  byId("enableSubscription").onclick = () => changeSubscription({ enabled: true });
+  byId("disableSubscription").onclick = () => {
     if (confirm("اشتراک برای این کافه غیرفعال شود؟")) changeSubscription({ enabled: false });
   };
-  document.querySelector("#renewSubscription").onclick = async () => {
-    const button = document.querySelector("#renewSubscription"),
-      error = document.querySelector("#subscriptionError");
+  byId("renewSubscription").onclick = async () => {
+    const button = byId("renewSubscription"),
+      error = byId("subscriptionError");
     button.disabled = true;
     error.textContent = "";
     try {

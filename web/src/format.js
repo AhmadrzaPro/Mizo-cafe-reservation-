@@ -1,4 +1,3 @@
-// @ts-check
 export const faDigits = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 export const latinDigits = (n) =>
   String(n)

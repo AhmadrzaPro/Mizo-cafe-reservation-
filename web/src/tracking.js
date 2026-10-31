@@ -1,21 +1,22 @@
 import { fetchAvailability, money, trackingDialog } from "./booking.js";
+import { byId } from "./dom.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
 import { followGatewayRedirect, payButtonLabel, payingLabel } from "./payment-flow.js";
 
 export function wireTracking() {
-  document.querySelector("#openTracking").onclick = () => {
-    document.querySelector("#trackingResult").hidden = true;
-    document.querySelector("#trackingError").hidden = true;
-    document.querySelector("#paymentReturn").hidden = true;
+  byId("openTracking").onclick = () => {
+    byId("trackingResult").hidden = true;
+    byId("trackingError").hidden = true;
+    byId("paymentReturn").hidden = true;
     trackingDialog.showModal();
   };
-  document.querySelector("#trackingForm").onsubmit = async (e) => {
+  byId("trackingForm").onsubmit = async (e) => {
     e.preventDefault();
-    const code = latinDigits(document.querySelector("#trackingCode").value).toUpperCase().trim(),
-      mobile = latinDigits(document.querySelector("#trackingMobile").value),
-      error = document.querySelector("#trackingError"),
-      result = document.querySelector("#trackingResult");
+    const code = latinDigits(byId("trackingCode").value).toUpperCase().trim(),
+      mobile = latinDigits(byId("trackingMobile").value),
+      error = byId("trackingError"),
+      result = byId("trackingResult");
     error.hidden = true;
     try {
       const response = await fetch(`/api/reservations/${encodeURIComponent(code)}`, {
@@ -41,9 +42,12 @@ export function wireTracking() {
               : "";
       result.innerHTML = `<b>${escapeHtml(labels[data.status] || data.status)}</b><p>${escapeHtml(data.tables.join("، "))} · ${faDigits(data.partySize)} نفر</p><p>${formatPersianDate(data.date)} ساعت ${faDigits(data.time)}</p>${payment}${["pending", "confirmed"].includes(data.status) ? '<button type="button" id="cancelReservation" class="danger-action">لغو رزرو</button>' : ""}`;
       result.hidden = false;
-      document.querySelector("#trackingPay")?.addEventListener("click", async (event) => {
-        event.target.disabled = true;
-        event.target.textContent = payingLabel();
+      /** @type {HTMLButtonElement | null} */ (
+        document.querySelector("#trackingPay")
+      )?.addEventListener("click", async (event) => {
+        const payButton = /** @type {HTMLButtonElement} */ (event.currentTarget);
+        payButton.disabled = true;
+        payButton.textContent = payingLabel();
         const payResponse = await fetch(`/api/reservations/${encodeURIComponent(code)}/pay`, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -53,15 +57,17 @@ export function wireTracking() {
         if (!payResponse.ok) {
           error.textContent = paid.message || "پرداخت انجام نشد";
           error.hidden = false;
-          event.target.disabled = false;
-          event.target.textContent = payButtonLabel();
+          payButton.disabled = false;
+          payButton.textContent = payButtonLabel();
           return;
         }
         if (followGatewayRedirect(paid)) return;
         result.querySelector(".tracking-payment").innerHTML =
           `<b class="payment-success">${paid.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b>`;
       });
-      document.querySelector("#cancelReservation")?.addEventListener("click", async () => {
+      /** @type {HTMLButtonElement | null} */ (
+        document.querySelector("#cancelReservation")
+      )?.addEventListener("click", async () => {
         if (!confirm("این رزرو لغو شود؟")) return;
         const cancelResponse = await fetch(`/api/reservations/${encodeURIComponent(code)}/cancel`, {
           method: "POST",

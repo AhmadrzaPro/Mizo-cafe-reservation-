@@ -7,6 +7,7 @@ import {
   loyaltyDialog,
   scheduleDialog,
 } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { renderEditor } from "./editor.js";
 import { faDigits } from "./format.js";
 import { escapeHtml } from "./operations.js";
@@ -15,12 +16,10 @@ import { fetchSchedule } from "./schedule.js";
 import { store } from "./state.js";
 
 export function renderLoyalty() {
-  document.querySelector("#loyaltyTotal").textContent = faDigits(store.loyaltyData.stats.total);
-  document.querySelector("#loyaltyReturning").textContent = faDigits(
-    store.loyaltyData.stats.returning,
-  );
-  document.querySelector("#loyaltyPoints").textContent = faDigits(store.loyaltyData.stats.points);
-  const list = document.querySelector("#loyaltyList");
+  byId("loyaltyTotal").textContent = faDigits(store.loyaltyData.stats.total);
+  byId("loyaltyReturning").textContent = faDigits(store.loyaltyData.stats.returning);
+  byId("loyaltyPoints").textContent = faDigits(store.loyaltyData.stats.points);
+  const list = byId("loyaltyList");
   if (!store.loyaltyData.customers.length) {
     list.innerHTML = '<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>';
     return;
@@ -39,11 +38,11 @@ export function renderLoyalty() {
   });
 }
 export async function fetchLoyalty() {
-  const error = document.querySelector("#loyaltyError"),
-    query = document.querySelector("#loyaltySearch").value.trim(),
-    list = document.querySelector("#loyaltyList"),
-    refresh = document.querySelector("#refreshLoyalty"),
-    search = document.querySelector("#searchLoyalty");
+  const error = byId("loyaltyError"),
+    query = byId("loyaltySearch").value.trim(),
+    list = byId("loyaltyList"),
+    refresh = byId("refreshLoyalty"),
+    search = byId("searchLoyalty");
   error.textContent = "";
   list.innerHTML = '<div class="insight-empty">در حال دریافت اطلاعات مشتریان…</div>';
   refresh.disabled = true;
@@ -69,34 +68,36 @@ export async function fetchLoyalty() {
   }
 }
 export function openLoyaltyAdjust(customer) {
-  document.querySelector("#loyaltyCustomerId").value = customer.id;
-  document.querySelector("#loyaltyAdjustTitle").textContent = `امتیاز ${customer.name}`;
-  document.querySelector("#loyaltyAdjustment").value = "";
-  document.querySelector("#loyaltyNote").value = "";
-  document.querySelector("#loyaltyAdjustError").textContent = "";
+  byId("loyaltyCustomerId").value = customer.id;
+  byId("loyaltyAdjustTitle").textContent = `امتیاز ${customer.name}`;
+  byId("loyaltyAdjustment").value = "";
+  byId("loyaltyNote").value = "";
+  byId("loyaltyAdjustError").textContent = "";
   loyaltyDialog.close();
   loyaltyAdjustDialog.showModal();
 }
 
 export function wireLoyalty() {
-  document.querySelector("#openLoyalty").onclick = async () => {
+  byId("openLoyalty").onclick = async () => {
     adminDialog.close();
     loyaltyDialog.showModal();
     await fetchLoyalty();
   };
-  document.querySelector("#refreshLoyalty").onclick = fetchLoyalty;
-  document.querySelector("#searchLoyalty").onclick = fetchLoyalty;
-  document.querySelector("#loyaltySearch").onkeydown = (event) => {
+  byId("refreshLoyalty").onclick = fetchLoyalty;
+  byId("searchLoyalty").onclick = fetchLoyalty;
+  byId("loyaltySearch").onkeydown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
       fetchLoyalty();
     }
   };
-  document.querySelector("#loyaltyAdjustForm").onsubmit = async (event) => {
+  byId("loyaltyAdjustForm").onsubmit = async (event) => {
     event.preventDefault();
-    const id = document.querySelector("#loyaltyCustomerId").value,
-      error = document.querySelector("#loyaltyAdjustError"),
-      button = event.currentTarget.querySelector('button[type="submit"]'),
+    const id = byId("loyaltyCustomerId").value,
+      error = byId("loyaltyAdjustError"),
+      button = /** @type {HTMLButtonElement} */ (
+        /** @type {HTMLFormElement} */ (event.currentTarget).querySelector('button[type="submit"]')
+      ),
       originalText = button.textContent;
     button.disabled = true;
     button.textContent = "در حال ثبت…";
@@ -106,8 +107,8 @@ export function wireLoyalty() {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            points: Number(document.querySelector("#loyaltyAdjustment").value),
-            note: document.querySelector("#loyaltyNote").value,
+            points: Number(byId("loyaltyAdjustment").value),
+            note: byId("loyaltyNote").value,
           }),
         }),
         data = await safeResponseJson(response, "تغییر امتیاز انجام نشد.");
@@ -125,18 +126,18 @@ export function wireLoyalty() {
       button.textContent = originalText;
     }
   };
-  document.querySelector("#openMapEditor").onclick = async () => {
+  byId("openMapEditor").onclick = async () => {
     adminDialog.close();
     renderEditor();
     editor.showModal();
     await fetchMap();
   };
-  document.querySelector("#openControlCenter").onclick = async () => {
+  byId("openControlCenter").onclick = async () => {
     adminDialog.close();
     controlDialog.showModal();
     await fetchSettings();
   };
-  document.querySelector("#openSchedule").onclick = async () => {
+  byId("openSchedule").onclick = async () => {
     adminDialog.close();
     scheduleDialog.showModal();
     await fetchSchedule();
