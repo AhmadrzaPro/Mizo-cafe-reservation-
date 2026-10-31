@@ -2,7 +2,7 @@ import { cafeBaseUrl } from "./api.js";
 import { adminDialog, smsDialog } from "./dialogs.js";
 import { byId, html, setHtml } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
-import { faDigits, formatPersianDate } from "./format.js";
+import { faDigits, formatPersianDate, formatTehranTime } from "./format.js";
 import { store } from "./state.js";
 
 export function notificationsUrl(path = "") {
@@ -52,8 +52,8 @@ export function renderSms() {
     const item = document.createElement("article");
     item.className = `sms-row ${message.status}`;
     const moment = message.sentAt
-      ? `ارسال: ${formatPersianDate(message.sentAt)} · ${faDigits(String(message.sentAt).slice(11, 16))}`
-      : `موعد: ${formatPersianDate(message.scheduledAt)} · ${faDigits(String(message.scheduledAt).slice(11, 16))}`;
+      ? `ارسال: ${formatPersianDate(message.sentAt)} · ${formatTehranTime(message.sentAt)}`
+      : `موعد: ${formatPersianDate(message.scheduledAt)} · ${formatTehranTime(message.scheduledAt)}`;
     setHtml(
       item,
       html`<div class="sms-row-top">

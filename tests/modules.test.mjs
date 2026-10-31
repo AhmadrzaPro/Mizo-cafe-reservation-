@@ -293,7 +293,8 @@ test("sms: confirmations go out and reminders queue; settings need write access"
   const byKind = Object.fromEntries(messages.messages.map((m) => [m.kind, m]));
   assert.equal(byKind.confirmation.status, "demo_sent");
   assert.equal(byKind.reminder.status, "queued");
-  assert.match(byKind.reminder.scheduledAt, /T10:00$/);
+  // 12:00 in Tehran less two hours is 10:00 Tehran, 06:30 UTC.
+  assert.match(byKind.reminder.scheduledAt, /T06:30:00\.000Z$/);
   assert.match(byKind.confirmation.mobile, /\*\*\*/);
 
   assert.equal((await call(path, { cookie: reception })).status, 200);

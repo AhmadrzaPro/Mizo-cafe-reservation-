@@ -105,19 +105,19 @@ export const otpChallenges = sqliteTable("otp_challenges", {
   mobile: text("mobile").notNull(),
   salt: text("salt").notNull(),
   codeHash: text("code_hash").notNull(),
-  expiresAt: integer("expires_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
   attempts: integer("attempts").notNull().default(0),
-  consumedAt: integer("consumed_at"),
-  createdAt: integer("created_at").notNull(),
+  consumedAt: text("consumed_at"),
+  createdAt: text("created_at").notNull(),
 }, (table) => [index("idx_otp_mobile_created").on(table.mobile, table.createdAt), index("idx_otp_cafe_mobile_created").on(table.cafeId, table.mobile, table.createdAt)]);
 
 export const staffSessions = sqliteTable("staff_sessions", {
   id: text("id").primaryKey(),
   staffId: text("staff_id").notNull().references(() => staffMembers.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull(),
-  expiresAt: integer("expires_at").notNull(),
-  createdAt: integer("created_at").notNull(),
-  lastSeenAt: integer("last_seen_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+  lastSeenAt: text("last_seen_at").notNull(),
 }, (table) => [uniqueIndex("idx_staff_sessions_token_hash").on(table.tokenHash), index("idx_staff_sessions_staff_id").on(table.staffId)]);
 
 export const operatingHours = sqliteTable("operating_hours", {

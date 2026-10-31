@@ -11,7 +11,7 @@ test("requests send due reminders at most once a minute", async (t) => {
   const due = () => {
     f.DB.raw
       .prepare(
-        "UPDATE sms_messages SET scheduled_at='2000-01-01T00:00' WHERE kind='reminder' AND status='queued'",
+        "UPDATE sms_messages SET scheduled_at='2000-01-01T00:00:00.000Z' WHERE kind='reminder' AND status='queued'",
       )
       .run();
   };

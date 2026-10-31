@@ -13,7 +13,7 @@ test("a session's last use is recorded, at most every five minutes", async (t) =
   const cafe = await f.setupCafe(),
     cookie = await f.login(cafe);
   const lastSeen = () =>
-    f.DB.raw.prepare("SELECT last_seen_at FROM staff_sessions").get().last_seen_at;
+    Date.parse(f.DB.raw.prepare("SELECT last_seen_at FROM staff_sessions").get().last_seen_at);
   const start = lastSeen();
   t.mock.timers.tick(2 * MINUTE);
   await session(f, cookie);
@@ -73,10 +73,10 @@ test("the scheduled job removes expired sessions and old OTP challenges", async 
   await f.login(cafe);
   f.DB.raw
     .prepare(
-      "UPDATE staff_sessions SET expires_at=1 WHERE rowid=(SELECT MAX(rowid) FROM staff_sessions)",
+      "UPDATE staff_sessions SET expires_at='1970-01-01T00:00:00.001Z' WHERE rowid=(SELECT MAX(rowid) FROM staff_sessions)",
     )
     .run();
-  f.DB.raw.prepare("UPDATE otp_challenges SET expires_at=1").run();
+  f.DB.raw.prepare("UPDATE otp_challenges SET expires_at='1970-01-01T00:00:00.001Z'").run();
   const pending = [];
   await worker.scheduled({}, f.env, { waitUntil: (p) => pending.push(p) });
   await Promise.all(pending);

@@ -3,7 +3,7 @@ import { byId, fragment, html, setHtml } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
-import { faDigits } from "./format.js";
+import { faDigits, formatTehranTime } from "./format.js";
 import { visibleAreas } from "./map-model.js";
 import { tehranClientNow } from "./operations.js";
 import { payButtonLabel } from "./payment-flow.js";
@@ -201,7 +201,7 @@ export function showDepositPayment(payment, trackingCode, mobile) {
   if (!payment?.required) return;
   byId("successDepositAmount").textContent = money(payment.amountRials);
   byId("depositDeadline").textContent =
-    `مهلت پرداخت: ${faDigits(payment.dueAt ? new Date(payment.dueAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }) : "—")}`;
+    `مهلت پرداخت: ${faDigits(payment.dueAt ? formatTehranTime(payment.dueAt) : "—")}`;
   byId("depositPolicy").textContent = payment.refundPolicy || "";
   byId("payDeposit").textContent = payButtonLabel(true);
 }

@@ -3,7 +3,7 @@ import { availableTables, bookingTimeError, lockTimes } from "./availability.js"
 import { reply } from "./http.js";
 import { awardLoyaltyVisit } from "./loyalty.js";
 import { dayRules } from "./settings.js";
-import { minutes, subtractLocalMinutes, tehranNow, validDate, validTime } from "./util/dates.js";
+import { minutes, tehranInstant, tehranNow, validDate, validTime } from "./util/dates.js";
 import { randomId } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
 export function operationalReservation(row) {
@@ -289,12 +289,7 @@ export async function updateOperationalReservation(db, branch, code, body, setti
         .prepare(
           "UPDATE sms_messages SET scheduled_at=?,mobile=?,customer_name=? WHERE reservation_id=? AND kind='reminder' AND status='queued'",
         )
-        .bind(
-          subtractLocalMinutes(`${date}T${time}`, settings.smsReminderMinutes),
-          mobile,
-          name,
-          row.id,
-        ),
+        .bind(tehranInstant(`${date}T${time}`, settings.smsReminderMinutes), mobile, name, row.id),
     );
   for (const table of tables)
     statements.push(

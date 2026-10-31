@@ -1,4 +1,5 @@
 import { cookieValue, reply, replyWithHeaders } from "../http.js";
+import { isoInstant } from "../util/dates.js";
 import { sha256 } from "../util/ids.js";
 // A session's last use is recorded at most this often, so ordinary requests do not each write.
 const SEEN_EVERY = 5 * 60000;
@@ -6,14 +7,15 @@ export async function sessionStaff(db, request) {
   const token = cookieValue(request, "mizo_session");
   if (!token) return null;
   const tokenHash = await sha256(token),
-    now = Date.now();
+    nowMs = Date.now(),
+    now = isoInstant(nowMs);
   const staff = await db
     .prepare(
       "SELECT s.id,s.cafe_id,s.branch_id,s.mobile,s.name,s.role,s.active,c.slug AS cafe_slug,ss.id AS session_id,ss.last_seen_at FROM staff_sessions ss JOIN staff_members s ON s.id=ss.staff_id JOIN cafes c ON c.id=s.cafe_id WHERE ss.token_hash=? AND ss.expires_at>? AND s.active=1 LIMIT 1",
     )
     .bind(tokenHash, now)
     .first();
-  if (staff && now - Number(staff.last_seen_at) >= SEEN_EVERY)
+  if (staff && nowMs - Date.parse(String(staff.last_seen_at)) >= SEEN_EVERY)
     await db
       .prepare("UPDATE staff_sessions SET last_seen_at=? WHERE id=?")
       .bind(now, staff.session_id)
@@ -121,12 +123,12 @@ export async function listSessions(db, session) {
     .prepare(
       "SELECT id,created_at,last_seen_at FROM staff_sessions WHERE staff_id=? AND expires_at>? ORDER BY last_seen_at DESC",
     )
-    .bind(session.id, Date.now())
+    .bind(session.id, isoInstant())
     .all();
   return reply({
     sessions: (result.results || []).map((row) => ({
-      createdAt: new Date(Number(row.created_at)).toISOString(),
-      lastSeenAt: new Date(Number(row.last_seen_at)).toISOString(),
+      createdAt: row.created_at,
+      lastSeenAt: row.last_seen_at,
       current: row.id === session.session_id,
     })),
   });
@@ -146,8 +148,8 @@ export async function logoutEverywhere(db, session) {
 // Scheduled: drops expired sessions and OTP challenges, which are never read again.
 export async function cleanupAuth(db, now = Date.now()) {
   await db.batch([
-    db.prepare("DELETE FROM staff_sessions WHERE expires_at<=?").bind(now),
-    db.prepare("DELETE FROM otp_challenges WHERE expires_at<=?").bind(now - 86400000),
+    db.prepare("DELETE FROM staff_sessions WHERE expires_at<=?").bind(isoInstant(now)),
+    db.prepare("DELETE FROM otp_challenges WHERE expires_at<=?").bind(isoInstant(now - 86400000)),
   ]);
 }
 export async function logout(env, request) {

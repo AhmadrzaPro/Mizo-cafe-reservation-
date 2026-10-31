@@ -131,7 +131,11 @@ function renderSubscriptionPayment() {
   };
 }
 const persianDate = (iso) =>
-  new Date(iso).toLocaleDateString("fa-IR", { day: "numeric", month: "long" });
+  new Date(iso).toLocaleDateString("fa-IR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "Asia/Tehran",
+  });
 // The owner's warning once a trial or paid period has ended without payment.
 export function renderSubscriptionNotice() {
   const data = store.subscriptionData,
