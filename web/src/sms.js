@@ -1,9 +1,8 @@
 import { cafeBaseUrl } from "./api.js";
 import { adminDialog, smsDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits, formatPersianDate } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export function notificationsUrl(path = "") {
@@ -39,10 +38,14 @@ export function renderSms() {
   byId("smsQueued").textContent = faDigits(store.smsData.stats.queued);
   byId("smsFailed").textContent = faDigits(store.smsData.stats.failed);
   const list = byId("smsList");
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!store.smsData.messages.length) {
-    list.innerHTML =
-      '<div class="sms-empty">هنوز پیامکی ثبت نشده است.<br>با ثبت رزرو جدید، پیام تأیید اینجا نمایش داده می‌شود.</div>';
+    setHtml(
+      list,
+      html`<div class="sms-empty">
+        هنوز پیامکی ثبت نشده است.<br />با ثبت رزرو جدید، پیام تأیید اینجا نمایش داده می‌شود.
+      </div>`,
+    );
     return;
   }
   store.smsData.messages.forEach((message) => {
@@ -51,7 +54,16 @@ export function renderSms() {
     const moment = message.sentAt
       ? `ارسال: ${formatPersianDate(message.sentAt)} · ${faDigits(String(message.sentAt).slice(11, 16))}`
       : `موعد: ${formatPersianDate(message.scheduledAt)} · ${faDigits(String(message.scheduledAt).slice(11, 16))}`;
-    item.innerHTML = `<div class="sms-row-top"><span class="sms-kind">${message.kind === "confirmation" ? "تأیید رزرو" : "یادآوری"}</span><em>${smsStatusLabel(message.status)}</em></div><h3>${escapeHtml(message.customerName)} · ${faDigits(message.mobile)}</h3><p>${escapeHtml(message.message)}</p><small>${moment}${message.error ? ` · ${escapeHtml(message.error)}` : ""}</small>`;
+    setHtml(
+      item,
+      html`<div class="sms-row-top">
+          <span class="sms-kind">${message.kind === "confirmation" ? "تأیید رزرو" : "یادآوری"}</span
+          ><em>${smsStatusLabel(message.status)}</em>
+        </div>
+        <h3>${message.customerName} · ${faDigits(message.mobile)}</h3>
+        <p>${message.message}</p>
+        <small>${moment}${message.error && ` · ${message.error}`}</small>`,
+    );
     list.appendChild(item);
   });
 }

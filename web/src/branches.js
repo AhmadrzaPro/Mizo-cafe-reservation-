@@ -1,10 +1,9 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, branchFormDialog, branchesDialog, editor } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { renderEditor } from "./editor.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import {
   activeBranchProfile,
   activeBranches,
@@ -21,15 +20,32 @@ export function renderBranches() {
   byId("branchTotal").textContent = faDigits(branches.length);
   byId("branchActive").textContent = faDigits(active);
   byId("branchInactive").textContent = faDigits(branches.length - active);
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!branches.length) {
-    list.innerHTML = '<div class="branch-empty">هنوز شعبه‌ای ساخته نشده است.</div>';
+    setHtml(list, html`<div class="branch-empty">هنوز شعبه‌ای ساخته نشده است.</div>`);
     return;
   }
   branches.forEach((branch) => {
     const card = document.createElement("article");
     card.className = `branch-card${branch.active === false ? " inactive" : ""}`;
-    card.innerHTML = `<span class="branch-icon">${escapeHtml(branch.name.trim().charAt(0) || "ش")}</span><div><h3>${escapeHtml(branch.name)}</h3><p>${escapeHtml(branch.city)}${branch.address ? ` · ${escapeHtml(branch.address)}` : ""}</p><span class="branch-state">${branch.active === false ? "غیرفعال" : "فعال و آماده رزرو"}</span></div><div class="branch-actions">${branch.active === false ? "" : `<button class="branch-enter">انتخاب شعبه</button><button class="branch-map">ویرایش نقشه</button>`}<button class="branch-edit">ویرایش</button></div>`;
+    setHtml(
+      card,
+      html`<span class="branch-icon">${branch.name.trim().charAt(0) || "ش"}</span>
+        <div>
+          <h3>${branch.name}</h3>
+          <p>${branch.city}${branch.address ? ` · ${branch.address}` : ""}</p>
+          <span class="branch-state"
+            >${branch.active === false ? "غیرفعال" : "فعال و آماده رزرو"}</span
+          >
+        </div>
+        <div class="branch-actions">
+          ${branch.active === false ? "" : html`<button class="branch-enter">انتخاب شعبه</button><button class="branch-map">ویرایش نقشه</button>`}<button
+            class="branch-edit"
+          >
+            ویرایش
+          </button>
+        </div>`,
+    );
     /** @type {HTMLButtonElement} */ (card.querySelector(".branch-edit")).onclick = () =>
       openBranchForm(branch);
     card.querySelector(".branch-enter")?.addEventListener("click", async () => {

@@ -1,10 +1,9 @@
 import { settingsUrl } from "./api.js";
 import { fetchAvailability, money } from "./booking.js";
 import { adminDialog, paymentsCard, paymentsDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits, formatPersianDate } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { activeBranchProfile } from "./profile.js";
 import { store } from "./state.js";
 
@@ -55,14 +54,31 @@ export async function fetchPayments() {
     byId("paymentsRefunded").textContent = money(data.summary.refunded);
     const list = byId("paymentsList");
     if (!data.transactions.length) {
-      list.innerHTML = '<div class="insight-empty">هنوز تراکنشی برای این شعبه ثبت نشده است.</div>';
+      setHtml(
+        list,
+        html`<div class="insight-empty">هنوز تراکنشی برای این شعبه ثبت نشده است.</div>`,
+      );
       return;
     }
-    list.innerHTML = "";
+    list.replaceChildren();
     data.transactions.forEach((item) => {
       const row = document.createElement("article"),
         isRefund = item.type === "refund";
-      row.innerHTML = `<span class="transaction-icon ${isRefund ? "refund" : "paid"}">${isRefund ? "↩" : "✓"}</span><div><b>${escapeHtml(item.customerName)}</b><small>${escapeHtml(item.trackingCode)} · ${escapeHtml(item.branchName)} · ${formatPersianDate(item.createdAt)}</small></div><strong>${isRefund ? "−" : "+"}${money(item.amountRials)}</strong>${!isRefund && data.canWrite ? '<button type="button">بازپرداخت</button>' : ""}`;
+      setHtml(
+        row,
+        html`<span class="transaction-icon ${isRefund ? "refund" : "paid"}"
+            >${isRefund ? "↩" : "✓"}</span
+          >
+          <div>
+            <b>${item.customerName}</b
+            ><small
+              >${item.trackingCode} · ${item.branchName} ·
+              ${formatPersianDate(item.createdAt)}</small
+            >
+          </div>
+          <strong>${isRefund ? "−" : "+"}${money(item.amountRials)}</strong
+          >${!isRefund && data.canWrite && html`<button type="button">بازپرداخت</button>`}`,
+      );
       row.querySelector("button")?.addEventListener("click", async () => {
         if (
           !confirm(

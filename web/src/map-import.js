@@ -1,5 +1,5 @@
 import { apiUrl } from "./api.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { renderEditor, setMapTools, showPublishedToast, tableSize } from "./editor.js";
 import { areaBounds } from "./floor/zoom.js";
 import { faDigits } from "./format.js";
@@ -16,7 +16,7 @@ export function resetImageImport() {
   byId("mapImageFile").value = "";
   byId("imageImportPreview").hidden = true;
   byId("imageImportPreview").classList.remove("marking");
-  byId("importMarkers").innerHTML = "";
+  byId("importMarkers").replaceChildren();
   byId("analyzeMapImage").disabled = true;
   byId("markMapImage").disabled = true;
   byId("markMapImage").classList.remove("active");
@@ -25,13 +25,20 @@ export function resetImageImport() {
 }
 export function renderImageMarkers() {
   const layer = byId("importMarkers");
-  layer.innerHTML = "";
+  layer.replaceChildren();
   store.mapImageDraft.forEach((t, i) => {
     const label = document.createElement("label");
     label.className = "import-marker";
     label.style.left = `${t.x}%`;
     label.style.top = `${t.y}%`;
-    label.innerHTML = `<input type="checkbox" ${t.confidence === "low" ? "" : "checked"} aria-label="افزودن میز ${faDigits(i + 1)}"><span>${faDigits(i + 1)}</span>`;
+    setHtml(
+      label,
+      html`<input
+          type="checkbox"
+          ${t.confidence !== "low" && "checked"}
+          aria-label="افزودن میز ${faDigits(i + 1)}"
+        /><span>${faDigits(i + 1)}</span>`,
+    );
     label.onclick = (event) => event.stopPropagation();
     layer.appendChild(label);
   });

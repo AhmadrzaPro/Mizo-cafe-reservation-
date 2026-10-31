@@ -1,20 +1,28 @@
 import { adminDialog, staffDialog, staffFormDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export function renderStaff() {
   const list = byId("staffList");
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!store.staffMembers.length) {
-    list.innerHTML = '<div class="branch-empty">هنوز پرسنلی ثبت نشده است.</div>';
+    setHtml(list, html`<div class="branch-empty">هنوز پرسنلی ثبت نشده است.</div>`);
     return;
   }
   store.staffMembers.forEach((member) => {
     const card = document.createElement("article");
     card.className = `staff-card${member.active ? "" : " inactive"}`;
-    card.innerHTML = `<span class="staff-avatar">${escapeHtml(member.name.trim().charAt(0) || "پ")}</span><div><h3>${escapeHtml(member.name)}</h3><p>${faDigits(member.mobile)} · ${escapeHtml(member.branchName)}</p><span class="staff-role">${escapeHtml(member.roleLabel)}${member.active ? "" : " · غیرفعال"}</span></div><button>ویرایش دسترسی</button>`;
+    setHtml(
+      card,
+      html`<span class="staff-avatar">${member.name.trim().charAt(0) || "پ"}</span>
+        <div>
+          <h3>${member.name}</h3>
+          <p>${faDigits(member.mobile)} · ${member.branchName}</p>
+          <span class="staff-role">${member.roleLabel}${!member.active && " · غیرفعال"}</span>
+        </div>
+        <button>ویرایش دسترسی</button>`,
+    );
     card.querySelector("button").onclick = () => openStaffForm(member);
     list.appendChild(card);
   });
@@ -59,8 +67,13 @@ export function syncStaffRole() {
       }[role] || [];
   byId("staffBranchRow").hidden = owner;
   byId("staffBranch").required = !owner;
-  byId("staffPermissionPreview").innerHTML =
-    `<b>این نقش چه دسترسی‌هایی دارد؟</b><ul>${details.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+  setHtml(
+    byId("staffPermissionPreview"),
+    html`<b>این نقش چه دسترسی‌هایی دارد؟</b>
+      <ul>
+        ${details.map((item) => html`<li>${item}</li>`)}
+      </ul>`,
+  );
 }
 export function openStaffForm(member = null) {
   byId("staffFormTitle").textContent = member ? "ویرایش دسترسی" : "افزودن پرسنل";
@@ -69,7 +82,7 @@ export function openStaffForm(member = null) {
   byId("staffMobile").value = member?.mobile || "";
   byId("staffRole").value = member?.role || "reception";
   const branchSelect = byId("staffBranch");
-  branchSelect.innerHTML = "";
+  branchSelect.replaceChildren();
   store.cafeProfile.branches
     .filter((branch) => branch.active !== false)
     .forEach((branch) => {

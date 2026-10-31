@@ -1,7 +1,7 @@
 import { cafeBaseUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
 import { adminDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { switchBranch } from "./editor-nav.js";
 import { tableFurniture } from "./floor/furniture.js";
@@ -14,11 +14,6 @@ import { store } from "./state.js";
 export const opsDialog = byId("opsDialog"),
   opsReservationDialog = byId("opsReservationDialog"),
   waitlistDialog = byId("waitlistDialog");
-export const escapeHtml = (value) =>
-  String(value ?? "").replace(
-    /[&<>'"]/g,
-    (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-  );
 export function operationsUrl(path = "") {
   return `${cafeBaseUrl()}/operations${path}`;
 }
@@ -85,16 +80,31 @@ export function renderOperationalReservations() {
         (filter === "all" || r.status === filter) &&
         (!query || `${r.customerName} ${r.mobile} ${r.trackingCode}`.toLowerCase().includes(query)),
     );
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!rows.length) {
-    list.innerHTML =
-      '<div class="ops-empty">رزروی با این فیلتر پیدا نشد.<br>رزرو تلفنی یا حضوری را از دکمه بالا ثبت کنید.</div>';
+    setHtml(
+      list,
+      html`<div class="ops-empty">
+        رزروی با این فیلتر پیدا نشد.<br />رزرو تلفنی یا حضوری را از دکمه بالا ثبت کنید.
+      </div>`,
+    );
     return;
   }
   rows.forEach((r) => {
     const row = document.createElement("div");
     row.className = "ops-reservation-row";
-    row.innerHTML = `<time>${faDigits(r.time)}</time><div><h4>${escapeHtml(r.customerName)}</h4><p>${faDigits(r.partySize)} نفر · ${escapeHtml(r.tables.join("، ") || "بدون میز")} <span class="source">${sourceLabel(r.source)}</span></p></div><em class="ops-status ${r.status}">${opsStatusLabel(r.status)}</em>`;
+    setHtml(
+      row,
+      html`<time>${faDigits(r.time)}</time>
+        <div>
+          <h4>${r.customerName}</h4>
+          <p>
+            ${faDigits(r.partySize)} نفر · ${r.tables.join("، ") || "بدون میز"}
+            <span class="source">${sourceLabel(r.source)}</span>
+          </p>
+        </div>
+        <em class="ops-status ${r.status}">${opsStatusLabel(r.status)}</em>`,
+    );
     if (hasManagerPermission("reservations.write")) row.onclick = () => openOpsReservation(r);
     else row.classList.add("readonly");
     list.appendChild(row);
@@ -111,7 +121,7 @@ export function renderOpsAreas() {
       ).values(),
     ];
   if (!areas.some((area) => area.id === store.opsAreaId)) store.opsAreaId = areas[0]?.id || "";
-  tabs.innerHTML = "";
+  tabs.replaceChildren();
   tabs.hidden = areas.length < 2;
   areas.forEach((area) => {
     const button = document.createElement("button");
@@ -131,7 +141,7 @@ export function renderOpsAreas() {
 export function renderOpsMap() {
   document.querySelector("#opsMapViewport .table-popover")?.remove();
   const floor = byId("opsFloor");
-  floor.innerHTML = "";
+  floor.replaceChildren();
   const tables = store.opsData.tables.filter(
       (table) => !store.opsAreaId || table.areaId === store.opsAreaId,
     ),
@@ -146,11 +156,14 @@ export function renderOpsMap() {
     b.style.width = `${size.w}px`;
     b.style.height = `${size.h}px`;
     const reservationLabel = t.reservation
-      ? `${t.reservation.customerName ? escapeHtml(t.reservation.customerName) + " · " : ""}${faDigits(t.reservation.time)}`
+      ? `${t.reservation.customerName ? t.reservation.customerName + " · " : ""}${faDigits(t.reservation.time)}`
       : `${faDigits(t.capacity)} نفره`;
-    b.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name)}</b><small>${reservationLabel}</small></span>`;
+    setHtml(
+      b,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name}</b><small>${reservationLabel}</small></span
+        >`,
+    );
     b.onclick = (e) => {
       if (t.canQuickLock && hasManagerPermission("reservations.write")) quickLockTable(t, b);
       else openTablePopover(e, t);
@@ -219,7 +232,13 @@ export function openTablePopover(event, table) {
       table.reservation?.source === "walk_in" &&
       table.reservation?.customerName === "مهمان حضوری";
   box.className = "table-popover";
-  box.innerHTML = `<b>${escapeHtml(table.name)}</b><small>${table.reservation ? `${table.reservation.customerName ? escapeHtml(table.reservation.customerName) + " · " : ""}ساعت ${faDigits(table.reservation.time)}` : "بدون رزرو فعال"}</small>${canRelease ? '<button class="quick-release">آزادکردن میز</button>' : ""}${canEdit ? `<div><button data-status="available" class="${table.manualStatus === "available" ? "active" : ""}">آماده</button><button data-status="dirty" class="${table.manualStatus === "dirty" ? "active" : ""}">نظافت</button><button data-status="inactive" class="${table.manualStatus === "inactive" ? "active" : ""}">غیرفعال</button></div>` : "<p>دسترسی شما فقط برای مشاهده است.</p>"}`;
+  setHtml(
+    box,
+    html`<b>${table.name}</b
+      ><small
+        >${table.reservation ? `${table.reservation.customerName ? table.reservation.customerName + " · " : ""}ساعت ${faDigits(table.reservation.time)}` : "بدون رزرو فعال"}</small
+      >${canRelease && html`<button class="quick-release">آزادکردن میز</button>`}${canEdit ? html`<div><button data-status="available" class="${table.manualStatus === "available" ? "active" : ""}">آماده</button><button data-status="dirty" class="${table.manualStatus === "dirty" ? "active" : ""}">نظافت</button><button data-status="inactive" class="${table.manualStatus === "inactive" ? "active" : ""}">غیرفعال</button></div>` : html`<p>دسترسی شما فقط برای مشاهده است.</p>`}`,
+  );
   const floor = byId("opsMapViewport"),
     rect = floor.getBoundingClientRect();
   box.style.left = `${floor.scrollLeft + Math.max(8, Math.min(floor.clientWidth - 220, event.clientX - rect.left - 105))}px`;
@@ -250,16 +269,26 @@ export function renderWaitlist() {
   byId("waitCount").textContent = waiting.length
     ? `${faDigits(waiting.length)} گروه منتظر`
     : "بدون مشتری منتظر";
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!store.opsData.waitlist.length) {
-    list.innerHTML = '<div class="ops-empty">لیست انتظار خالی است</div>';
+    setHtml(list, html`<div class="ops-empty">لیست انتظار خالی است</div>`);
     return;
   }
   store.opsData.waitlist.forEach((w) => {
     const item = document.createElement("div");
     item.className = "wait-row";
     const elapsed = Math.max(0, Math.floor((Date.now() - new Date(w.createdAt).getTime()) / 60000));
-    item.innerHTML = `<header><b>${escapeHtml(w.customerName)}</b><time>${faDigits(elapsed)} دقیقه</time></header><p>${faDigits(w.partySize)} نفر · انتظار اعلامی ${faDigits(w.quotedMinutes)} دقیقه</p><div class="wait-actions"><button data-status="seated">میز گرفت</button><button data-status="${w.status === "called" ? "waiting" : "called"}">${w.status === "called" ? "بازگشت به انتظار" : "اعلام به مشتری"}</button></div>`;
+    setHtml(
+      item,
+      html`<header><b>${w.customerName}</b><time>${faDigits(elapsed)} دقیقه</time></header>
+        <p>${faDigits(w.partySize)} نفر · انتظار اعلامی ${faDigits(w.quotedMinutes)} دقیقه</p>
+        <div class="wait-actions">
+          <button data-status="seated">میز گرفت</button
+          ><button data-status="${w.status === "called" ? "waiting" : "called"}">
+            ${w.status === "called" ? "بازگشت به انتظار" : "اعلام به مشتری"}
+          </button>
+        </div>`,
+    );
     item
       .querySelectorAll("button")
       .forEach((btn) => (btn.onclick = () => updateWaitlist(w.id, btn.dataset.status)));
@@ -276,7 +305,7 @@ export async function updateWaitlist(id, status) {
 }
 export function fillOpsTables(selected = "") {
   const select = byId("opsTableSelect");
-  select.innerHTML = '<option value="">انتخاب میز</option>';
+  setHtml(select, html`<option value="">انتخاب میز</option>`);
   (store.opsData?.tables || [])
     .filter((t) => t.reservable && t.manualStatus !== "inactive")
     .forEach((t) => {

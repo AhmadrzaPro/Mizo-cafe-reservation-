@@ -1,8 +1,7 @@
 import { reservationsUrl } from "./api.js";
 import { customerDialog, fetchAvailability, showDepositPayment, successDialog } from "./booking.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { followGatewayRedirect, payingLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
@@ -79,8 +78,12 @@ export function wireReservationForm() {
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "پرداخت انجام نشد.");
       if (followGatewayRedirect(data)) return;
-      byId("depositPayment").innerHTML =
-        `<b class="payment-success">${data.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b><small>شماره پیگیری: ${escapeHtml(data.reference || "آزمایشی")}</small>`;
+      setHtml(
+        byId("depositPayment"),
+        html`<b class="payment-success"
+            >${data.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b
+          ><small>شماره پیگیری: ${data.reference || "آزمایشی"}</small>`,
+      );
       document.querySelector(".success-dialog h2").textContent =
         data.status === "confirmed" ? "میزت رزرو شد!" : "پرداخت ثبت شد؛ منتظر تأیید کافه";
       byId("successText").textContent =

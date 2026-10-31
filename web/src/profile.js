@@ -1,7 +1,7 @@
 import { apiUrl, readableError, safeResponseJson, settingsUrl } from "./api.js";
 import { renderCustomerMap } from "./booking.js";
 import { renderControls } from "./controls.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { renderEditor, showPublishedToast } from "./editor.js";
 import { recordMapHistory, resetMapHistory } from "./floor/history.js";
 import { faDigits } from "./format.js";
@@ -34,7 +34,7 @@ export function syncBranchSelectors() {
   ["branchSelect", "controlBranch", "opsBranch", "smsBranch", "paymentsBranch"].forEach((id) => {
     const select = /** @type {HTMLSelectElement} */ (document.querySelector(`#${id}`));
     if (!select) return;
-    select.innerHTML = "";
+    select.replaceChildren();
     branches.forEach((branch) => {
       const option = document.createElement("option");
       option.value = branch.slug;
@@ -98,7 +98,10 @@ export function applySettingsToCustomer() {
   // Paused by the café, or by an unpaid subscription past its grace period.
   const open = store.cafeSettings.reservationsEnabled && !store.cafeSettings.onlineBookingPaused;
   continueBtn.disabled = !open;
-  continueBtn.innerHTML = open ? "ادامه و انتخاب میز <span>←</span>" : "رزرو موقتاً متوقف است";
+  setHtml(
+    continueBtn,
+    open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
+  );
   document.querySelector(".booking-card").classList.toggle("booking-paused", !open);
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;

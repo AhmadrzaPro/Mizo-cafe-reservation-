@@ -1,12 +1,11 @@
 import { adminDialog, reportsDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, formatPersianDate } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export function setupReportBranches() {
   const select = byId("reportsBranch");
-  select.innerHTML = "";
+  select.replaceChildren();
   if (store.managerSession?.role === "owner") {
     const all = document.createElement("option");
     all.value = "";
@@ -36,32 +35,55 @@ export function renderReports() {
   byId("reportNoShow").textContent = `${faDigits(summary.noShowRate)}٪`;
   const chart = byId("reportChart"),
     max = Math.max(1, ...store.reportsData.daily.map((item) => item.reservations));
-  chart.innerHTML = store.reportsData.daily.length
-    ? store.reportsData.daily
-        .map(
+  setHtml(
+    chart,
+    store.reportsData.daily.length
+      ? html`${store.reportsData.daily.map(
           (item) =>
-            `<div class="report-column"><span style="height:${Math.max(8, Math.round((item.reservations / max) * 100))}%" title="${faDigits(item.reservations)} رزرو"></span><small>${formatPersianDate(item.date).replace(/^....\//, "")}</small></div>`,
-        )
-        .join("")
-    : '<div class="insight-empty">در این بازه رزروی ثبت نشده است.</div>';
+            html`<div class="report-column">
+              <span
+                style="height:${Math.max(8, Math.round((item.reservations / max) * 100))}%"
+                title="${faDigits(item.reservations)} رزرو"
+              ></span
+              ><small>${formatPersianDate(item.date).replace(/^....\//, "")}</small>
+            </div>`,
+        )}`
+      : html`<div class="insight-empty">در این بازه رزروی ثبت نشده است.</div>`,
+  );
   const hours = byId("reportHours"),
     hourMax = Math.max(1, ...store.reportsData.busyHours.map((item) => item.reservations));
-  hours.innerHTML = store.reportsData.busyHours.length
-    ? store.reportsData.busyHours
-        .map(
+  setHtml(
+    hours,
+    store.reportsData.busyHours.length
+      ? html`${store.reportsData.busyHours.map(
           (item) =>
-            `<div><span>${faDigits(item.hour)}</span><i><b style="width:${Math.round((item.reservations / hourMax) * 100)}%"></b></i><strong>${faDigits(item.reservations)}</strong></div>`,
-        )
-        .join("")
-    : '<div class="insight-empty">داده کافی وجود ندارد.</div>';
+            html`<div>
+              <span>${faDigits(item.hour)}</span
+              ><i><b style="width:${Math.round((item.reservations / hourMax) * 100)}%"></b></i
+              ><strong>${faDigits(item.reservations)}</strong>
+            </div>`,
+        )}`
+      : html`<div class="insight-empty">داده کافی وجود ندارد.</div>`,
+  );
   const branches = byId("reportBranches");
-  branches.innerHTML =
-    store.reportsData.branches
-      .map(
-        (item) =>
-          `<article><div><b>${escapeHtml(item.name)}</b><span>${faDigits(item.reservations)} رزرو · ${faDigits(item.guests)} مهمان</span></div><strong>${item.reservations ? faDigits(Math.round((item.completed / item.reservations) * 100)) : faDigits(0)}٪ تکمیل</strong></article>`,
-      )
-      .join("") || '<div class="insight-empty">شعبه فعالی پیدا نشد.</div>';
+  setHtml(
+    branches,
+    store.reportsData.branches.length
+      ? html`${store.reportsData.branches.map(
+          (item) =>
+            html`<article>
+              <div>
+                <b>${item.name}</b
+                ><span>${faDigits(item.reservations)} رزرو · ${faDigits(item.guests)} مهمان</span>
+              </div>
+              <strong
+                >${item.reservations ? faDigits(Math.round((item.completed / item.reservations) * 100)) : faDigits(0)}٪
+                تکمیل</strong
+              >
+            </article>`,
+        )}`
+      : html`<div class="insight-empty">شعبه فعالی پیدا نشد.</div>`,
+  );
 }
 export async function fetchReports() {
   const error = byId("reportsError"),

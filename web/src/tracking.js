@@ -1,7 +1,6 @@
 import { fetchAvailability, money, trackingDialog } from "./booking.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { followGatewayRedirect, payButtonLabel, payingLabel } from "./payment-flow.js";
 
 export function wireTracking() {
@@ -36,11 +35,22 @@ export function wireTracking() {
         },
         payment =
           data.payment?.status === "pending" && ["pending", "confirmed"].includes(data.status)
-            ? `<div class="tracking-payment"><b>بیعانه ${money(data.payment.amountRials)}</b><button type="button" id="trackingPay" class="primary-btn">${payButtonLabel()}</button></div>`
+            ? html`<div class="tracking-payment">
+                <b>بیعانه ${money(data.payment.amountRials)}</b
+                ><button type="button" id="trackingPay" class="primary-btn">
+                  ${payButtonLabel()}
+                </button>
+              </div>`
             : data.payment?.status === "paid"
-              ? '<p class="paid-label">بیعانه پرداخت شده</p>'
+              ? html`<p class="paid-label">بیعانه پرداخت شده</p>`
               : "";
-      result.innerHTML = `<b>${escapeHtml(labels[data.status] || data.status)}</b><p>${escapeHtml(data.tables.join("، "))} · ${faDigits(data.partySize)} نفر</p><p>${formatPersianDate(data.date)} ساعت ${faDigits(data.time)}</p>${payment}${["pending", "confirmed"].includes(data.status) ? '<button type="button" id="cancelReservation" class="danger-action">لغو رزرو</button>' : ""}`;
+      setHtml(
+        result,
+        html`<b>${labels[data.status] || data.status}</b>
+          <p>${data.tables.join("، ")} · ${faDigits(data.partySize)} نفر</p>
+          <p>${formatPersianDate(data.date)} ساعت ${faDigits(data.time)}</p>
+          ${payment}${["pending", "confirmed"].includes(data.status) && html`<button type="button" id="cancelReservation" class="danger-action">لغو رزرو</button>`}`,
+      );
       result.hidden = false;
       /** @type {HTMLButtonElement | null} */ (
         document.querySelector("#trackingPay")
@@ -62,8 +72,12 @@ export function wireTracking() {
           return;
         }
         if (followGatewayRedirect(paid)) return;
-        result.querySelector(".tracking-payment").innerHTML =
-          `<b class="payment-success">${paid.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b>`;
+        setHtml(
+          /** @type {HTMLElement} */ (result.querySelector(".tracking-payment")),
+          html`<b class="payment-success"
+            >${paid.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b
+          >`,
+        );
       });
       /** @type {HTMLButtonElement | null} */ (
         document.querySelector("#cancelReservation")
@@ -81,7 +95,11 @@ export function wireTracking() {
           return;
         }
         if (cancelResponse.ok) {
-          result.innerHTML = "<b>رزرو با موفقیت لغو شد</b><p>ظرفیت میز دوباره آزاد شد.</p>";
+          setHtml(
+            result,
+            html`<b>رزرو با موفقیت لغو شد</b>
+              <p>ظرفیت میز دوباره آزاد شد.</p>`,
+          );
           await fetchAvailability();
         }
       });

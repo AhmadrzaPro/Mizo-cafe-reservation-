@@ -7,10 +7,9 @@ import {
   loyaltyDialog,
   scheduleDialog,
 } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { renderEditor } from "./editor.js";
 import { faDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { fetchMap, fetchSettings } from "./profile.js";
 import { fetchSchedule } from "./schedule.js";
 import { store } from "./state.js";
@@ -21,10 +20,13 @@ export function renderLoyalty() {
   byId("loyaltyPoints").textContent = faDigits(store.loyaltyData.stats.points);
   const list = byId("loyaltyList");
   if (!store.loyaltyData.customers.length) {
-    list.innerHTML = '<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>';
+    setHtml(
+      list,
+      html`<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>`,
+    );
     return;
   }
-  list.innerHTML = "";
+  list.replaceChildren();
   store.loyaltyData.customers.forEach((customer) => {
     const progress = Math.min(
         100,
@@ -32,7 +34,25 @@ export function renderLoyalty() {
       ),
       item = document.createElement("article");
     item.className = "loyalty-customer";
-    item.innerHTML = `<span class="loyalty-avatar">${escapeHtml(customer.name.trim().charAt(0) || "م")}</span><div class="loyalty-info"><h3>${escapeHtml(customer.name)}</h3><p>${faDigits(customer.mobile)} · ${faDigits(customer.completedVisits)} مراجعه تکمیل‌شده</p><div class="loyalty-progress"><i><b style="width:${progress}%"></b></i><small>${faDigits(customer.points)} از ${faDigits(store.loyaltyData.rewardThreshold)} امتیاز</small></div></div><strong>${faDigits(customer.points)}<small> امتیاز</small></strong>${store.loyaltyData.canWrite ? '<button type="button">تغییر امتیاز</button>' : ""}`;
+    setHtml(
+      item,
+      html`<span class="loyalty-avatar">${customer.name.trim().charAt(0) || "م"}</span>
+        <div class="loyalty-info">
+          <h3>${customer.name}</h3>
+          <p>
+            ${faDigits(customer.mobile)} · ${faDigits(customer.completedVisits)} مراجعه تکمیل‌شده
+          </p>
+          <div class="loyalty-progress">
+            <i><b style="width:${progress}%"></b></i
+            ><small
+              >${faDigits(customer.points)} از ${faDigits(store.loyaltyData.rewardThreshold)}
+              امتیاز</small
+            >
+          </div>
+        </div>
+        <strong>${faDigits(customer.points)}<small> امتیاز</small></strong
+        >${store.loyaltyData.canWrite && html`<button type="button">تغییر امتیاز</button>`}`,
+    );
     item.querySelector("button")?.addEventListener("click", () => openLoyaltyAdjust(customer));
     list.appendChild(item);
   });
@@ -44,7 +64,7 @@ export async function fetchLoyalty() {
     refresh = byId("refreshLoyalty"),
     search = byId("searchLoyalty");
   error.textContent = "";
-  list.innerHTML = '<div class="insight-empty">در حال دریافت اطلاعات مشتریان…</div>';
+  setHtml(list, html`<div class="insight-empty">در حال دریافت اطلاعات مشتریان…</div>`);
   refresh.disabled = true;
   search.disabled = true;
   try {
@@ -56,8 +76,10 @@ export async function fetchLoyalty() {
     store.loyaltyData = data;
     renderLoyalty();
   } catch (err) {
-    list.innerHTML =
-      '<div class="insight-empty">اطلاعات مشتریان دریافت نشد. دوباره تلاش کنید.</div>';
+    setHtml(
+      list,
+      html`<div class="insight-empty">اطلاعات مشتریان دریافت نشد. دوباره تلاش کنید.</div>`,
+    );
     error.textContent = readableError(
       err,
       "ارتباط با باشگاه مشتریان برقرار نشد. دوباره تلاش کنید.",

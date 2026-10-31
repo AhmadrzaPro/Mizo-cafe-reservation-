@@ -1,7 +1,6 @@
 import { adminDialog, subscriptionDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export const formatToman = (rials) =>
@@ -27,14 +26,21 @@ export function renderSubscription() {
   byId("subscriptionMonthlyTotal").textContent =
     `${formatToman(store.subscriptionData.monthlyPriceRials)} / ماه`;
   const events = byId("subscriptionEvents");
-  events.innerHTML = store.subscriptionData.events.length
-    ? store.subscriptionData.events
-        .map(
+  setHtml(
+    events,
+    store.subscriptionData.events.length
+      ? html`${store.subscriptionData.events.map(
           (event) =>
-            `<article><b>${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", payment_submitted: "ثبت کارت به کارت", payment_card: "تأیید پرداخت کارت به کارت", payment_rejected: "رد پرداخت کارت به کارت", expired: "پایان دوره؛ نیازمند پرداخت", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b><span>${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span></article>`,
-        )
-        .join("")
-    : '<div class="subscription-empty">هنوز رویدادی ثبت نشده است.</div>';
+            html`<article>
+              <b
+                >${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", payment_submitted: "ثبت کارت به کارت", payment_card: "تأیید پرداخت کارت به کارت", payment_rejected: "رد پرداخت کارت به کارت", expired: "پایان دوره؛ نیازمند پرداخت", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b
+              ><span
+                >${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span
+              >
+            </article>`,
+        )}`
+      : html`<div class="subscription-empty">هنوز رویدادی ثبت نشده است.</div>`,
+  );
   renderSubscriptionPayment();
   renderSubscriptionNotice();
 }
@@ -48,11 +54,46 @@ function renderSubscriptionPayment() {
   byId("renewSubscription").hidden = !payment.demo;
   section.hidden = !payment.card && !payment.pending;
   if (payment.pending) {
-    section.innerHTML = `<b class="payment-review">پرداخت ${formatToman(payment.pending.amountRials)} با شماره پیگیری <span dir="ltr">${escapeHtml(payment.pending.reference)}</span> ثبت شد و پس از تأیید میزو، اشتراک تمدید می‌شود.</b>`;
+    setHtml(
+      section,
+      html`<b class="payment-review"
+        >پرداخت ${formatToman(payment.pending.amountRials)} با شماره پیگیری
+        <span dir="ltr">${payment.pending.reference}</span> ثبت شد و پس از تأیید میزو، اشتراک تمدید
+        می‌شود.</b
+      >`,
+    );
     return;
   }
   if (!payment.card) return;
-  section.innerHTML = `<h3>پرداخت اشتراک با کارت به کارت</h3><p>مبلغ یک ماه، <b>${formatToman(data.monthlyPriceRials)}</b>، را به این کارت واریز کنید و شماره پیگیری را ثبت کنید. پس از تأیید واریز، اشتراک ۳۰ روز تمدید می‌شود.</p><div class="card-number"><strong dir="ltr">${groupCard(payment.card.cardNumber)}</strong><button type="button" data-copy-card>کپی</button></div>${payment.card.cardHolder ? `<small>به نام ${escapeHtml(payment.card.cardHolder)}</small>` : ""}<form class="card-transfer-form"><label>شماره پیگیری انتقال<input name="reference" inputmode="numeric" maxlength="40" required dir="ltr"></label><label>۴ رقم آخر کارت شما<input name="cardLast4" inputmode="numeric" maxlength="4" dir="ltr"></label><button class="publish-btn" type="submit">ثبت پرداخت</button></form>`;
+  setHtml(
+    section,
+    html`<h3>پرداخت اشتراک با کارت به کارت</h3>
+      <p>
+        مبلغ یک ماه، <b>${formatToman(data.monthlyPriceRials)}</b>، را به این کارت واریز کنید و
+        شماره پیگیری را ثبت کنید. پس از تأیید واریز، اشتراک ۳۰ روز تمدید می‌شود.
+      </p>
+      <div class="card-number">
+        <strong dir="ltr">${groupCard(payment.card.cardNumber)}</strong
+        ><button type="button" data-copy-card>کپی</button>
+      </div>
+      ${payment.card.cardHolder && html`<small>به نام ${payment.card.cardHolder}</small>`}
+      <form class="card-transfer-form">
+        <label
+          >شماره پیگیری انتقال<input
+            name="reference"
+            inputmode="numeric"
+            maxlength="40"
+            required
+            dir="ltr" /></label
+        ><label
+          >۴ رقم آخر کارت شما<input
+            name="cardLast4"
+            inputmode="numeric"
+            maxlength="4"
+            dir="ltr" /></label
+        ><button class="publish-btn" type="submit">ثبت پرداخت</button>
+      </form>`,
+  );
   const copy = /** @type {HTMLButtonElement} */ (section.querySelector("[data-copy-card]"));
   copy.onclick = async () => {
     try {

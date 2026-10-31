@@ -1,18 +1,18 @@
 import { availabilityUrl, readableError } from "./api.js";
-import { byId } from "./dom.js";
+import { byId, fragment, html, setHtml } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
 import { faDigits } from "./format.js";
 import { visibleAreas } from "./map-model.js";
-import { escapeHtml, tehranClientNow } from "./operations.js";
+import { tehranClientNow } from "./operations.js";
 import { payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
 export const dates = byId("dates"),
   times = byId("times");
 export function renderDates() {
-  dates.innerHTML = "";
+  dates.replaceChildren();
   for (let i = 0; i < 5; i++) {
     const d = new Date(tehranClientNow().date + "T12:00:00Z");
     d.setUTCDate(d.getUTCDate() + i);
@@ -34,7 +34,7 @@ export function renderDates() {
       state.dateLabel = parts;
     }
     b.className = "date" + (state.date === date ? " selected" : "");
-    b.innerHTML = `<small>${weekday}</small><b>${day}</b>`;
+    setHtml(b, html`<small>${weekday}</small><b>${day}</b>`);
     b.onclick = async () => {
       state.date = date;
       state.dateLabel = parts;
@@ -46,10 +46,10 @@ export function renderDates() {
   }
 }
 export function renderTimes() {
-  times.innerHTML = "";
+  times.replaceChildren();
   const data = state.availability;
   if (!data) {
-    times.innerHTML = '<span class="slot-message">در حال بررسی ظرفیت…</span>';
+    setHtml(times, html`<span class="slot-message">در حال بررسی ظرفیت…</span>`);
     return;
   }
   if (data.closed || !data.slots.length) {
@@ -111,14 +111,18 @@ export function renderCustomerMap() {
       areas[0]?.id ||
       "";
   const current = areas.find((area) => area.id === store.customerArea);
-  tabs.innerHTML = "";
+  tabs.replaceChildren();
   tabs.hidden = areas.length < 2;
   areas.forEach((area) => {
     const button = document.createElement("button"),
       count = store.cafeMap.tables.filter((table) => table.area === area.id).length;
     button.type = "button";
     button.className = area.id === store.customerArea ? "active" : "";
-    button.innerHTML = `<span>${area.kind === "outdoor" ? "☀" : "⌂"}</span><b>${escapeHtml(area.name)}</b><small>${faDigits(count)} میز</small>`;
+    setHtml(
+      button,
+      html`<span>${area.kind === "outdoor" ? "☀" : "⌂"}</span><b>${area.name}</b
+        ><small>${faDigits(count)} میز</small>`,
+    );
     button.onclick = () => {
       store.customerArea = area.id;
       store.customerMapZoom = 1;
@@ -133,16 +137,22 @@ export function renderCustomerMap() {
     tabs.appendChild(button);
   });
   floor.classList.toggle("outdoor", current?.kind === "outdoor");
-  floor.innerHTML =
+  setHtml(
+    floor,
     current?.kind === "outdoor"
-      ? '<span class="outdoor-label">فضای باز</span>'
-      : '<span class="window-label">پنجره سرتاسری</span><div class="bar">بار و صندوق</div>';
+      ? html`<span class="outdoor-label">فضای باز</span>`
+      : html`<span class="window-label">پنجره سرتاسری</span>
+          <div class="bar">بار و صندوق</div>`,
+  );
   applyFloorViewport(floor, byId("customerMapStage"), areaBounds(current), store.customerMapZoom);
   const areaTables = store.cafeMap.tables.filter((t) => t.area === store.customerArea);
   if (!areaTables.length) {
-    floor.insertAdjacentHTML(
-      "beforeend",
-      '<div class="map-empty"><b>هنوز میزی در این فضا ثبت نشده</b><span>فضای دیگری را انتخاب کنید.</span></div>',
+    floor.append(
+      fragment(
+        html`<div class="map-empty">
+          <b>هنوز میزی در این فضا ثبت نشده</b><span>فضای دیگری را انتخاب کنید.</span>
+        </div>`,
+      ),
     );
   }
   areaTables.forEach((t) => {
@@ -158,9 +168,15 @@ export function renderCustomerMap() {
     if (t.shape !== "round") b.style.borderRadius = "12px";
     b.disabled = store.mapPreviewMode || !free;
     b.dataset.table = `${t.name}، ${current?.name || "فضای کافه"}`;
-    b.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name.replace(/[^۰-۹0-9]/g, "") || "•")}</b><small>${store.mapPreviewMode || free ? `${faDigits(t.capacity)} نفره` : t.capacity < state.guests ? "ظرفیت کم" : "رزرو شده"}</small></span>`;
+    setHtml(
+      b,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name.replace(/[^۰-۹0-9]/g, "") || "•"}</b
+          ><small
+            >${store.mapPreviewMode || free ? `${faDigits(t.capacity)} نفره` : t.capacity < state.guests ? "ظرفیت کم" : "رزرو شده"}</small
+          ></span
+        >`,
+    );
     b.onclick = () => {
       floor.querySelectorAll(".table").forEach((x) => x.classList.remove("selected"));
       b.classList.add("selected");
@@ -173,12 +189,13 @@ export function renderCustomerMap() {
     floor.appendChild(b);
   });
 }
-export const depositTemplate = byId("depositPayment").innerHTML;
+// The deposit box as the page ships it, restored before each booking.
+export const depositTemplate = byId("depositPayment").cloneNode(true);
 export const money = (value) =>
   `${faDigits(Math.round(Number(value || 0) / 10).toLocaleString("en-US"))} تومان`;
 export function showDepositPayment(payment, trackingCode, mobile) {
   const box = byId("depositPayment");
-  box.innerHTML = depositTemplate;
+  box.replaceChildren(...depositTemplate.cloneNode(true).childNodes);
   store.pendingPayment = payment?.required ? { trackingCode, mobile } : null;
   box.hidden = !payment?.required;
   if (!payment?.required) return;

@@ -1,6 +1,6 @@
 import { renderCustomerMap, tableDialog } from "./booking.js";
 import { editor } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { fitMap, openTableInspector } from "./floor/editor-tools.js";
 import { tableFurniture } from "./floor/furniture.js";
 import {
@@ -14,7 +14,6 @@ import { faDigits } from "./format.js";
 import { cloneDefault } from "./map-defaults.js";
 import { activeTables, closeImageImport } from "./map-import.js";
 import { areaKindLabel, derivedSpaceMode, visibleAreas } from "./map-model.js";
-import { escapeHtml } from "./operations.js";
 import { markDirty, saveMap } from "./profile.js";
 import { mapViewportPointers, store } from "./state.js";
 
@@ -40,7 +39,7 @@ export function selectArea(id) {
 export function renderAreas() {
   const list = byId("areaList"),
     fragment = document.createDocumentFragment();
-  list.innerHTML = "";
+  list.replaceChildren();
   visibleAreas().forEach((area) => {
     const row = document.createElement("div"),
       main = document.createElement("button"),
@@ -49,7 +48,18 @@ export function renderAreas() {
     row.dataset.areaId = area.id;
     main.type = "button";
     main.className = "area-main";
-    main.innerHTML = `<span class="area-symbol">${area.kind === "outdoor" ? "☀" : "⌂"}</span><span><b>${escapeHtml(area.name)}</b><small>${areaKindLabel(area.kind)} · ${faDigits(store.cafeMap.tables.filter((table) => table.area === area.id).length)} میز</small></span>`;
+    setHtml(
+      main,
+      html`<span class="area-symbol">${area.kind === "outdoor" ? "☀" : "⌂"}</span
+        ><span
+          ><b>${area.name}</b
+          ><small
+            >${areaKindLabel(area.kind)} ·
+            ${faDigits(store.cafeMap.tables.filter((table) => table.area === area.id).length)}
+            میز</small
+          ></span
+        >`,
+    );
     main.onpointerdown = (event) => {
       if (event.pointerType === "touch") selectArea(area.id);
     };
@@ -88,9 +98,12 @@ export function renderMapCanvas() {
     el.style.left = `${t.x}px`;
     el.style.top = `${t.y}px`;
     el.dataset.id = t.id;
-    el.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name)}</b><small>${faDigits(t.capacity)} صندلی</small></span>`;
+    setHtml(
+      el,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name}</b><small>${faDigits(t.capacity)} صندلی</small></span
+        >`,
+    );
     el.setAttribute("aria-label", `${t.name}، ${faDigits(t.capacity)} صندلی`);
     el.onclick = (event) => {
       event.stopPropagation();

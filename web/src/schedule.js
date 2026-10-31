@@ -1,18 +1,35 @@
 import { scheduleUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { formatPersianDate, isoValue, setJalaliInput } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export const weekNames = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 export function renderSchedule() {
   const wrap = byId("weekHours");
-  wrap.innerHTML = "";
+  wrap.replaceChildren();
   store.cafeSchedule.hours.forEach((h) => {
     const row = document.createElement("div");
     row.className = "hour-row";
-    row.innerHTML = `<b>${weekNames[h.weekday]}</b><label><input type="checkbox" data-closed="${h.weekday}" ${h.closed ? "checked" : ""}> تعطیل</label><input type="time" data-open="${h.weekday}" value="${h.openTime}" ${h.closed ? "disabled" : ""}><span>تا</span><input type="time" data-close="${h.weekday}" value="${h.closeTime}" ${h.closed ? "disabled" : ""}>`;
+    setHtml(
+      row,
+      html`<b>${weekNames[h.weekday]}</b
+        ><label
+          ><input type="checkbox" data-closed="${h.weekday}" ${h.closed && "checked"} />
+          تعطیل</label
+        ><input
+          type="time"
+          data-open="${h.weekday}"
+          value="${h.openTime}"
+          ${h.closed && "disabled"}
+        /><span>تا</span
+        ><input
+          type="time"
+          data-close="${h.weekday}"
+          value="${h.closeTime}"
+          ${h.closed && "disabled"}
+        />`,
+    );
     /** @type {HTMLInputElement} */ (row.querySelector("[data-closed]")).onchange = (e) => {
       h.closed = /** @type {HTMLInputElement} */ (e.target).checked;
       renderSchedule();
@@ -24,10 +41,16 @@ export function renderSchedule() {
     wrap.appendChild(row);
   });
   const list = byId("closureList");
-  list.innerHTML = "";
+  list.replaceChildren();
   store.cafeSchedule.closures.forEach((c, index) => {
     const item = document.createElement("div");
-    item.innerHTML = `<span>${formatPersianDate(c.startDate)} تا ${formatPersianDate(c.endDate)}${c.reason ? ` · ${escapeHtml(c.reason)}` : ""}</span><button type="button">حذف</button>`;
+    setHtml(
+      item,
+      html`<span
+          >${formatPersianDate(c.startDate)} تا
+          ${formatPersianDate(c.endDate)}${c.reason && ` · ${c.reason}`}</span
+        ><button type="button">حذف</button>`,
+    );
     item.querySelector("button").onclick = () => {
       store.cafeSchedule.closures.splice(index, 1);
       renderSchedule();

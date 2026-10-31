@@ -17,7 +17,7 @@ export function renderJalaliPicker() {
   store.jalaliAnchor = new Date(first);
   byId("jalaliMonthTitle").textContent = persianMonthFormatter.format(first);
   const grid = byId("jalaliDays");
-  grid.innerHTML = "";
+  grid.replaceChildren();
   const leading = (first.getDay() + 1) % 7;
   for (let i = 0; i < leading; i++) {
     const blank = document.createElement("span");

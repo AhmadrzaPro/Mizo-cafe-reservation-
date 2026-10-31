@@ -1,6 +1,6 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, authDialog, paymentsCard, setupDialog } from "./dialogs.js";
-import { byId } from "./dom.js";
+import { byId, html, setHtml } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import {
   activeBranchProfile,
@@ -131,8 +131,11 @@ export function wireManager() {
   paymentsCard.className = "admin-feature payments-feature";
   paymentsCard.id = "openPayments";
   paymentsCard.dataset.permission = "payments.read";
-  paymentsCard.innerHTML =
-    "<b>پرداخت و بیعانه</b><span>قوانین بیعانه و تراکنش‌های هر شعبه</span><em>مدیریت پرداخت‌ها ←</em>";
+  setHtml(
+    paymentsCard,
+    html`<b>پرداخت و بیعانه</b><span>قوانین بیعانه و تراکنش‌های هر شعبه</span
+      ><em>مدیریت پرداخت‌ها ←</em>`,
+  );
   document.querySelector(".admin-grid").appendChild(paymentsCard);
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-open-demo]")).forEach(
     (b) => (b.onclick = openManager),
