@@ -1,6 +1,6 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, authDialog, paymentsCard, setupDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import {
   activeBranchProfile,
@@ -47,11 +47,11 @@ export function hasManagerPermission(permission) {
   return Boolean(store.managerSession?.permissions?.includes(permission));
 }
 export function applyManagerAccess() {
-  if (!store.managerSession) return;
-  byId("managerIdentity").textContent =
-    `${store.managerSession.name} · ${store.managerSession.roleLabel}`;
+  const session = store.managerSession;
+  if (!session) return;
+  byId("managerIdentity").textContent = `${session.name} · ${session.roleLabel}`;
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-owner-only]")).forEach(
-    (element) => (element.hidden = store.managerSession.role !== "owner"),
+    (element) => (element.hidden = session.role !== "owner"),
   );
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-manage-only]")).forEach(
     (element) => {
@@ -67,10 +67,8 @@ export function applyManagerAccess() {
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-permission]")).forEach(
     (element) => (element.hidden = !hasManagerPermission(element.dataset.permission)),
   );
-  if (store.managerSession.branchId) {
-    const branch = store.cafeProfile.branches.find(
-      (item) => item.id === store.managerSession.branchId,
-    );
+  if (session.branchId) {
+    const branch = store.cafeProfile.branches.find((item) => item.id === session.branchId);
     if (branch) store.currentBranch = branch.slug;
   }
   applyCafeProfile(store.cafeProfile);
@@ -106,7 +104,7 @@ export function showManagerLogin() {
   if (!authDialog.open) authDialog.showModal();
 }
 export async function openManager() {
-  if (pageParams.get("new") !== "1" && (await loadManagerSession())) {
+  if (pageParams.get("new") !== "1" && (await loadManagerSession()) && store.managerSession) {
     store.currentCafeSlug = store.managerSession.cafeSlug;
     const own = await loadCafeProfile();
     if (own.configured) {
@@ -136,7 +134,7 @@ export function wireManager() {
     html`<b>پرداخت و بیعانه</b><span>قوانین بیعانه و تراکنش‌های هر شعبه</span
       ><em>مدیریت پرداخت‌ها ←</em>`,
   );
-  document.querySelector(".admin-grid").appendChild(paymentsCard);
+  required(".admin-grid").appendChild(paymentsCard);
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-open-demo]")).forEach(
     (b) => (b.onclick = openManager),
   );

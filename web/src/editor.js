@@ -1,6 +1,6 @@
 import { renderCustomerMap, tableDialog } from "./booking.js";
 import { editor } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { fitMap, openTableInspector } from "./floor/editor-tools.js";
 import { tableFurniture } from "./floor/furniture.js";
 import {
@@ -288,8 +288,8 @@ export function setAreaAddPanel(open) {
   areaAddToggle.textContent = open ? "× بستن" : "+ بخش جدید";
 }
 export function setMapTools(open) {
-  document.querySelector(".editor-sidebar").classList.toggle("mobile-open", open);
-  document.querySelector(".editor-shell").classList.toggle("tools-open", open);
+  required(".editor-sidebar").classList.toggle("mobile-open", open);
+  required(".editor-shell").classList.toggle("tools-open", open);
 }
 export function changeCapacity(delta) {
   const t = selectedTable();

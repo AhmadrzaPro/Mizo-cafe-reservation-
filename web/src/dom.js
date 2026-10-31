@@ -57,3 +57,17 @@ export function fragment(markup) {
   setHtml(template, markup);
   return template.content;
 }
+
+/**
+ * The first element inside `root` matching `selector`. Throws a clear error when the markup no
+ * longer has it, rather than a later "cannot read properties of null".
+ * @template {Element} [E=HTMLElement]
+ * @param {string} selector
+ * @param {ParentNode} [root]
+ * @returns {E}
+ */
+export function required(selector, root = document) {
+  const element = root.querySelector(selector);
+  if (!element) throw new Error(`Missing element: ${selector}`);
+  return /** @type {E} */ (/** @type {unknown} */ (element));
+}

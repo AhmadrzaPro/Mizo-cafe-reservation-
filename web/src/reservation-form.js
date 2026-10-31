@@ -1,6 +1,6 @@
 import { reservationsUrl } from "./api.js";
 import { customerDialog, fetchAvailability, showDepositPayment, successDialog } from "./booking.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import { followGatewayRedirect, payingLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
@@ -31,7 +31,7 @@ export function wireReservationForm() {
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "ثبت رزرو انجام نشد.");
       customerDialog.close();
-      document.querySelector(".success-dialog h2").textContent = data.payment?.required
+      required(".success-dialog h2").textContent = data.payment?.required
         ? "رزرو در انتظار پرداخت است"
         : data.status === "confirmed"
           ? "میزت رزرو شد!"
@@ -84,7 +84,7 @@ export function wireReservationForm() {
             >${data.status === "confirmed" ? "پرداخت موفق · رزرو تأیید شد" : "پرداخت موفق · در انتظار تأیید کافه"}</b
           ><small>شماره پیگیری: ${data.reference || "آزمایشی"}</small>`,
       );
-      document.querySelector(".success-dialog h2").textContent =
+      required(".success-dialog h2").textContent =
         data.status === "confirmed" ? "میزت رزرو شد!" : "پرداخت ثبت شد؛ منتظر تأیید کافه";
       byId("successText").textContent =
         `${state.table} برای ${faDigits(state.guests)} نفر در ساعت ${faDigits(state.time)} ${data.status === "confirmed" ? "تأیید شد." : "در انتظار تأیید کافه است."}`;

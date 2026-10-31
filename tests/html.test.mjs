@@ -1,7 +1,7 @@
 // The html`` tag escapes everything it did not build itself.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { html, SafeHtml, escapeHtml } from "../web/src/dom.js";
+import { html, required, SafeHtml, escapeHtml } from "../web/src/dom.js";
 
 test("interpolated text is escaped, in content and attributes", () => {
   const name = `<img src=x onerror="alert(1)">'&`;
@@ -19,4 +19,11 @@ test("nested html`` stays markup; arrays join; null, undefined and false render 
   assert.equal(html`${[1].length > 0 && html`<i>x</i>`}`.value, "<i>x</i>");
   assert.ok(html`` instanceof SafeHtml);
   assert.equal(escapeHtml(undefined), "");
+});
+
+test("required() returns the element, and names the selector when it is missing", () => {
+  const found = { id: "x" },
+    root = { querySelector: (selector) => (selector === "b" ? found : null) };
+  assert.equal(required("b", root), found);
+  assert.throws(() => required(".gone", root), /Missing element: \.gone/);
 });

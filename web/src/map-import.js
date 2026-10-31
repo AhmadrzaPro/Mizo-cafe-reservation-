@@ -90,7 +90,9 @@ export function wireMapImport() {
         ratio = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
       canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
       canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("خواندن تصویر ممکن نشد.");
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       bitmap.close();
       if (requestId !== store.mapImageRequest) return;
       store.mapImageData = canvas.toDataURL("image/jpeg", 0.76);
@@ -147,9 +149,7 @@ export function wireMapImport() {
   byId("markMapImage").onclick = () => {
     const mark = byId("markMapImage");
     mark.classList.toggle("active");
-    document
-      .querySelector("#imageImportPreview")
-      .classList.toggle("marking", mark.classList.contains("active"));
+    byId("imageImportPreview").classList.toggle("marking", mark.classList.contains("active"));
     byId("imageImportStatus").textContent = mark.classList.contains("active")
       ? "روی مرکز هر میز در تصویر بزنید. برای پایان دوباره همین دکمه را بزنید."
       : "میزها را بررسی و به نقشه اضافه کنید.";
@@ -176,9 +176,7 @@ export function wireMapImport() {
         .../** @type {NodeListOf<HTMLInputElement>} */ (
           document.querySelectorAll("#importMarkers input")
         ),
-      ]
-        .map((input, i) => (input.checked ? store.mapImageDraft[i] : null))
-        .filter(Boolean),
+      ].flatMap((input, i) => (input.checked ? [store.mapImageDraft[i]] : [])),
       img = byId("mapImagePreview"),
       bounds = areaBounds(),
       ratio = Math.min(bounds.width / img.naturalWidth, bounds.height / img.naturalHeight),

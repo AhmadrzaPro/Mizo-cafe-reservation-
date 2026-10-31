@@ -1,5 +1,5 @@
 import { adminDialog, subscriptionDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { store } from "./state.js";
 
@@ -49,8 +49,9 @@ const groupCard = (number) => String(number).replace(/(\d{4})(?=\d)/g, "$1 ");
 // Paying the platform: the Mizo card for card-to-card transfers, or the pending transfer's status.
 function renderSubscriptionPayment() {
   const data = store.subscriptionData,
-    payment = data.payment || {},
     section = byId("subscriptionCardPayment");
+  if (!data) return;
+  const payment = data.payment;
   byId("renewSubscription").hidden = !payment.demo;
   section.hidden = !payment.card && !payment.pending;
   if (payment.pending) {
@@ -64,7 +65,8 @@ function renderSubscriptionPayment() {
     );
     return;
   }
-  if (!payment.card) return;
+  const card = payment.card;
+  if (!card) return;
   setHtml(
     section,
     html`<h3>پرداخت اشتراک با کارت به کارت</h3>
@@ -73,10 +75,10 @@ function renderSubscriptionPayment() {
         شماره پیگیری را ثبت کنید. پس از تأیید واریز، اشتراک ۳۰ روز تمدید می‌شود.
       </p>
       <div class="card-number">
-        <strong dir="ltr">${groupCard(payment.card.cardNumber)}</strong
+        <strong dir="ltr">${groupCard(card.cardNumber)}</strong
         ><button type="button" data-copy-card>کپی</button>
       </div>
-      ${payment.card.cardHolder && html`<small>به نام ${payment.card.cardHolder}</small>`}
+      ${card.cardHolder && html`<small>به نام ${card.cardHolder}</small>`}
       <form class="card-transfer-form">
         <label
           >شماره پیگیری انتقال<input
@@ -97,17 +99,17 @@ function renderSubscriptionPayment() {
   const copy = /** @type {HTMLButtonElement} */ (section.querySelector("[data-copy-card]"));
   copy.onclick = async () => {
     try {
-      await navigator.clipboard.writeText(payment.card.cardNumber);
+      await navigator.clipboard.writeText(card.cardNumber);
       copy.textContent = "کپی شد ✓";
     } catch {
       copy.textContent = "کپی نشد";
     }
   };
-  const form = section.querySelector("form");
+  const form = /** @type {HTMLFormElement} */ (section.querySelector("form"));
   form.onsubmit = async (event) => {
     event.preventDefault();
     const error = byId("subscriptionError"),
-      button = form.querySelector("button"),
+      button = /** @type {HTMLButtonElement} */ (required("button", form)),
       fields = new FormData(form);
     error.textContent = "";
     button.disabled = true;
@@ -144,7 +146,7 @@ export function renderSubscriptionNotice() {
   notice.hidden = !show;
   if (!show) return;
   notice.dataset.paused = String(Boolean(data.bookingPaused));
-  notice.querySelector("p").textContent = data.payment?.pending
+  required("p", notice).textContent = data.payment?.pending
     ? "دوره اشتراک تمام شده و پرداخت شما در انتظار تأیید میزو است."
     : data.bookingPaused
       ? "دوره اشتراک تمام شده و رزرو آنلاین مشتریان بسته شده است. پس از پرداخت و تأیید، دوباره باز می‌شود. پنل و رزرو تلفنی کار می‌کنند."

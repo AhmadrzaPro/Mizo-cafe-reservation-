@@ -38,9 +38,11 @@ export function renderJalaliPicker() {
     button.classList.toggle("selected", value === selected);
     button.classList.toggle("today", value === today);
     button.onclick = () => {
-      setJalaliInput(store.jalaliTarget, value);
+      const target = store.jalaliTarget;
+      if (!target) return;
+      setJalaliInput(target, value);
       byId("jalaliPicker").close();
-      store.jalaliTarget.dispatchEvent(new Event("change", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
     };
     grid.appendChild(button);
   }
@@ -71,10 +73,12 @@ export function wireJalaliPicker() {
     renderJalaliPicker();
   };
   byId("jalaliToday").onclick = () => {
-    const value = isoDate(new Date());
-    setJalaliInput(store.jalaliTarget, value);
+    const value = isoDate(new Date()),
+      target = store.jalaliTarget;
+    if (!target) return;
+    setJalaliInput(target, value);
     byId("jalaliPicker").close();
-    store.jalaliTarget.dispatchEvent(new Event("change", { bubbles: true }));
+    target.dispatchEvent(new Event("change", { bubbles: true }));
   };
   byId("jalaliCancel").onclick = () => byId("jalaliPicker").close();
 }

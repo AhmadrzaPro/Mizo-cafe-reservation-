@@ -64,6 +64,8 @@ A failure is logged and never affects the request that started it.
 
 Markup is built only with the `html` tagged template and written only with `setHtml()` (`web/src/dom.js`). Every interpolated value is escaped unless it was itself built with `html`, so text from customers or staff never becomes markup. ESLint rejects `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `createContextualFragment` and `document.write` anywhere else in `web/src`.
 
+The frontend is type-checked with `strictNullChecks`. API answers kept in `store` are typed in `web/src/types.d.ts`; a render function reads its data into a local and returns when it has not loaded yet. An element the markup must contain is found with `required(selector, root)`, which throws a clear error naming the selector instead of a later "cannot read properties of null".
+
 Page elements are looked up with `byId("id")`, whose type comes from `web/src/element-ids.d.ts`. `node scripts/element-types.mjs` generates that file from `web/index.html`; run it after adding or renaming an id. `npm run typecheck` fails while it is out of date, and on a misspelt id.
 
 ## Stylesheets

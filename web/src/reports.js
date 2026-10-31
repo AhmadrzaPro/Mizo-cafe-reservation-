@@ -27,18 +27,20 @@ export function setupReportBranches() {
   select.disabled = store.managerSession?.role !== "owner";
 }
 export function renderReports() {
-  const summary = store.reportsData.summary;
+  const data = store.reportsData;
+  if (!data) return;
+  const summary = data.summary;
   byId("reportReservations").textContent = faDigits(summary.reservations);
   byId("reportGuests").textContent = faDigits(summary.guests);
   byId("reportCompletion").textContent = `${faDigits(summary.completionRate)}٪`;
   byId("reportRepeat").textContent = faDigits(summary.repeatCustomers);
   byId("reportNoShow").textContent = `${faDigits(summary.noShowRate)}٪`;
   const chart = byId("reportChart"),
-    max = Math.max(1, ...store.reportsData.daily.map((item) => item.reservations));
+    max = Math.max(1, ...data.daily.map((item) => item.reservations));
   setHtml(
     chart,
-    store.reportsData.daily.length
-      ? html`${store.reportsData.daily.map(
+    data.daily.length
+      ? html`${data.daily.map(
           (item) =>
             html`<div class="report-column">
               <span
@@ -51,11 +53,11 @@ export function renderReports() {
       : html`<div class="insight-empty">در این بازه رزروی ثبت نشده است.</div>`,
   );
   const hours = byId("reportHours"),
-    hourMax = Math.max(1, ...store.reportsData.busyHours.map((item) => item.reservations));
+    hourMax = Math.max(1, ...data.busyHours.map((item) => item.reservations));
   setHtml(
     hours,
-    store.reportsData.busyHours.length
-      ? html`${store.reportsData.busyHours.map(
+    data.busyHours.length
+      ? html`${data.busyHours.map(
           (item) =>
             html`<div>
               <span>${faDigits(item.hour)}</span
@@ -68,8 +70,8 @@ export function renderReports() {
   const branches = byId("reportBranches");
   setHtml(
     branches,
-    store.reportsData.branches.length
-      ? html`${store.reportsData.branches.map(
+    data.branches.length
+      ? html`${data.branches.map(
           (item) =>
             html`<article>
               <div>

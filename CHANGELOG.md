@@ -32,7 +32,7 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Frontend markup is built only with the escaping `html` tag; ESLint forbids `innerHTML` and its relatives.
 - Stylesheets are split by feature; `!important` is gone outside `prefers-reduced-motion`, and lint rejects it.
 - Assets carry content hashes and are cached as immutable; the Vazirmatn font is self-hosted; pages send a CSP, `Permissions-Policy` and HSTS.
-- The whole Worker and frontend are type-checked; element lookups are typed from `web/index.html`.
+- The whole Worker and frontend are type-checked with `strictNullChecks`; API answers kept by the page are typed in `web/src/types.d.ts`, and element lookups are typed from `web/index.html`.
 - A café's page shows only its own data; without a café the page introduces Mizo.
 - Background work also runs on café API requests, for hosts without a cron.
 

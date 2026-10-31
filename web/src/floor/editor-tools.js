@@ -1,5 +1,5 @@
 import { editor } from "../dialogs.js";
-import { byId } from "../dom.js";
+import { byId, required } from "../dom.js";
 import { renderEditor, renderMapCanvas, renderProperties, selectedTable } from "../editor.js";
 import { fitFloorZoom } from "./geometry.js";
 import { travelMapHistory } from "./history.js";
@@ -8,7 +8,7 @@ import { formatPersianDate } from "../format.js";
 import { store } from "../state.js";
 
 export function fitMap() {
-  const wrap = document.querySelector(".canvas-wrap"),
+  const wrap = required(".canvas-wrap"),
     bounds = areaBounds();
   store.zoom = fitFloorZoom(bounds, wrap.clientWidth, wrap.clientHeight);
   renderMapCanvas();
@@ -54,5 +54,5 @@ export function wireFloorEditorTools() {
       travelMapHistory(event.shiftKey ? 1 : -1, renderEditor);
     }
   });
-  document.querySelector(".dash-top span").textContent = `امروز، ${formatPersianDate(new Date())}`;
+  required(".dash-top span").textContent = `امروز، ${formatPersianDate(new Date())}`;
 }

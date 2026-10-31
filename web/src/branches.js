@@ -63,6 +63,7 @@ export function renderBranches() {
   });
   byId("branchesError").textContent = "";
 }
+/** @param {import("./types").CafeBranch | null} [branch] */
 export function openBranchForm(branch = null) {
   byId("branchFormTitle").textContent = branch ? "ویرایش شعبه" : "افزودن شعبه جدید";
   byId("branchSlug").value = branch?.slug || "";

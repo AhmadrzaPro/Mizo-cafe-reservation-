@@ -1,4 +1,4 @@
-import { byId } from "../dom.js";
+import { byId, required } from "../dom.js";
 import { renderEditor, tableSize } from "../editor.js";
 import { fitMap } from "./editor-tools.js";
 import { fitFloorZoom } from "./geometry.js";
@@ -55,7 +55,7 @@ export function resizeArea(width, height) {
   return "";
 }
 export function tableInsertPosition(shape) {
-  const wrap = document.querySelector(".canvas-wrap"),
+  const wrap = required(".canvas-wrap"),
     canvas = byId("mapCanvas"),
     rect = canvas.getBoundingClientRect(),
     view = wrap.getBoundingClientRect(),
@@ -92,7 +92,7 @@ export function zoomFloorAt(wrap, canvas, scale, previous, apply, point) {
   wrap.scrollTop += next.top + worldY * actual - clientY;
 }
 export function zoomEditor(value, point) {
-  const wrap = document.querySelector(".canvas-wrap"),
+  const wrap = required(".canvas-wrap"),
     canvas = byId("mapCanvas");
   zoomFloorAt(
     wrap,

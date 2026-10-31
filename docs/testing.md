@@ -26,7 +26,7 @@ New API tests should use the shared fixture in `tests/helpers/worker.mjs`: `setu
 | `time-formats.test.mjs` | Every stored instant is ISO UTC, reminder times, migration `0018`, and Tehran-clock display |
 | `openapi.test.mjs` | `docs/openapi.yaml` documents exactly the routes the API serves, and its references resolve |
 | `configuration-docs.test.mjs` | Every environment variable the Worker reads is in `docs/configuration.md` and `.env.example` |
-| `html.test.mjs` | Escaping in the `html` tag |
+| `html.test.mjs` | Escaping in the `html` tag, and `required()` |
 | `floor-studio.test.mjs` | Floor-studio furniture, undo and redo, zoom and gestures, without a browser |
 | `static-assets.test.mjs` | Hashed asset URLs, caching headers and the CSP |
 

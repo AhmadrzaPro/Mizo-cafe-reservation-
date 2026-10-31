@@ -1,7 +1,7 @@
 import { cafeBaseUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
 import { adminDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { switchBranch } from "./editor-nav.js";
 import { tableFurniture } from "./floor/furniture.js";
@@ -52,15 +52,15 @@ export function renderOperations() {
   if (!store.opsData) return;
   const s = store.opsData.stats,
     cards = document.querySelectorAll("#opsKpis article");
-  [
+  /** @type {[string | number, string][]} */ ([
     [s.reservations, "رزرو امروز"],
     [s.guests, "مهمان"],
     [`${s.occupiedTables}/${s.totalTables}`, "میز قفل‌شده"],
     [s.remainingCapacity, "صندلی آزاد"],
     [s.delayed + s.waiting, "نیازمند توجه"],
-  ].forEach(([value, label], i) => {
-    cards[i].querySelector("span").textContent = label;
-    cards[i].querySelector("strong").textContent = faDigits(value);
+  ]).forEach(([value, label], i) => {
+    required("span", cards[i]).textContent = label;
+    required("strong", cards[i]).textContent = faDigits(value);
   });
   byId("opsNextReservation").textContent = store.opsData.nextReservation
     ? `رزرو بعدی: ${store.opsData.nextReservation.customerName}، ساعت ${faDigits(store.opsData.nextReservation.time)}`
@@ -72,10 +72,12 @@ export function renderOperations() {
   fillOpsTables();
 }
 export function renderOperationalReservations() {
+  const data = store.opsData;
+  if (!data) return;
   const list = byId("opsReservationList"),
     query = latinDigits(byId("opsSearch").value).trim().toLowerCase(),
     filter = byId("opsStatusFilter").value,
-    rows = store.opsData.reservations.filter(
+    rows = data.reservations.filter(
       (r) =>
         (filter === "all" || r.status === filter) &&
         (!query || `${r.customerName} ${r.mobile} ${r.trackingCode}`.toLowerCase().includes(query)),
@@ -111,13 +113,12 @@ export function renderOperationalReservations() {
   });
 }
 export function renderOpsAreas() {
+  const data = store.opsData;
+  if (!data) return;
   const tabs = byId("opsAreaTabs"),
     areas = [
       ...new Map(
-        store.opsData.tables.map((table) => [
-          table.areaId,
-          { id: table.areaId, name: table.areaName },
-        ]),
+        data.tables.map((table) => [table.areaId, { id: table.areaId, name: table.areaName }]),
       ).values(),
     ];
   if (!areas.some((area) => area.id === store.opsAreaId)) store.opsAreaId = areas[0]?.id || "";
@@ -139,10 +140,12 @@ export function renderOpsAreas() {
   });
 }
 export function renderOpsMap() {
+  const data = store.opsData;
+  if (!data) return;
   document.querySelector("#opsMapViewport .table-popover")?.remove();
   const floor = byId("opsFloor");
   floor.replaceChildren();
-  const tables = store.opsData.tables.filter(
+  const tables = data.tables.filter(
       (table) => !store.opsAreaId || table.areaId === store.opsAreaId,
     ),
     area = { width: tables[0]?.areaWidth, height: tables[0]?.areaHeight };
@@ -264,17 +267,19 @@ export async function updateTableStatus(id, status) {
   if (response.ok) await fetchOperations();
 }
 export function renderWaitlist() {
+  const data = store.opsData;
+  if (!data) return;
   const list = byId("opsWaitlist"),
-    waiting = store.opsData.waitlist.filter((w) => w.status === "waiting");
+    waiting = data.waitlist.filter((w) => w.status === "waiting");
   byId("waitCount").textContent = waiting.length
     ? `${faDigits(waiting.length)} گروه منتظر`
     : "بدون مشتری منتظر";
   list.replaceChildren();
-  if (!store.opsData.waitlist.length) {
+  if (!data.waitlist.length) {
     setHtml(list, html`<div class="ops-empty">لیست انتظار خالی است</div>`);
     return;
   }
-  store.opsData.waitlist.forEach((w) => {
+  data.waitlist.forEach((w) => {
     const item = document.createElement("div");
     item.className = "wait-row";
     const elapsed = Math.max(0, Math.floor((Date.now() - new Date(w.createdAt).getTime()) / 60000));
@@ -316,6 +321,7 @@ export function fillOpsTables(selected = "") {
       select.appendChild(option);
     });
 }
+/** @param {import("./types").OpsReservation | null} [reservation] */
 export function openOpsReservation(reservation = null) {
   byId("opsReservationForm").reset();
   byId("opsTrackingCode").value = reservation?.trackingCode || "";
@@ -336,7 +342,7 @@ export function openOpsReservation(reservation = null) {
       minute: "2-digit",
       hourCycle: "h23",
     }).format(new Date());
-  byId("opsPartySize").value = reservation?.partySize || 2;
+  byId("opsPartySize").value = String(reservation?.partySize || 2);
   byId("opsCustomerNote").value = reservation?.notes || "";
   byId("opsInternalNote").value = reservation?.internalNotes || "";
   byId("opsFormError").textContent = "";
@@ -381,13 +387,13 @@ export async function openOperations() {
   byId("opsBranch").value = store.currentBranch;
   opsDialog.showModal();
   await fetchOperations();
-  clearInterval(store.opsRefreshTimer);
+  clearInterval(store.opsRefreshTimer ?? undefined);
   store.opsRefreshTimer = setInterval(() => {
     if (opsDialog.open) fetchOperations();
   }, 45000);
 }
 export function exitOperations() {
-  clearInterval(store.opsRefreshTimer);
+  clearInterval(store.opsRefreshTimer ?? undefined);
   opsDialog.close();
   adminDialog.showModal();
 }

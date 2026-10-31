@@ -1,5 +1,5 @@
 import { adminDialog, staffDialog, staffFormDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import { store } from "./state.js";
 
@@ -23,7 +23,7 @@ export function renderStaff() {
         </div>
         <button>ویرایش دسترسی</button>`,
     );
-    card.querySelector("button").onclick = () => openStaffForm(member);
+    required("button", card).onclick = () => openStaffForm(member);
     list.appendChild(card);
   });
 }
@@ -75,6 +75,7 @@ export function syncStaffRole() {
       </ul>`,
   );
 }
+/** @param {import("./types").StaffMember | null} [member] */
 export function openStaffForm(member = null) {
   byId("staffFormTitle").textContent = member ? "ویرایش دسترسی" : "افزودن پرسنل";
   byId("staffId").value = member?.id || "";

@@ -59,7 +59,7 @@ To browse the API reference, run `npx @redocly/cli preview-docs docs/openapi.yam
 | `npm test` | Builds, then runs the unit and API tests |
 | `npm run test:e2e` | Builds, then runs the browser tests in Chromium |
 | `npm run lint` | ESLint, and a check that stylesheets use no `!important` |
-| `npm run typecheck` | TypeScript over the JavaScript, no build step |
+| `npm run typecheck` | TypeScript, with `strictNullChecks`, over the JavaScript; no build step |
 | `npm run format` / `format:check` | Prettier |
 | `npm run validate` | Checks the build output |
 

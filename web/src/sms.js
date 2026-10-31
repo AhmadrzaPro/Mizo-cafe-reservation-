@@ -1,6 +1,6 @@
 import { cafeBaseUrl } from "./api.js";
 import { adminDialog, smsDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits, formatPersianDate, formatTehranTime } from "./format.js";
 import { store } from "./state.js";
@@ -25,9 +25,9 @@ export function renderSms() {
   if (!store.smsData) return;
   const mode = byId("smsMode");
   mode.classList.toggle("connected", store.smsData.mode === "kavenegar");
-  mode.querySelector("b").textContent =
+  required("b", mode).textContent =
     store.smsData.mode === "kavenegar" ? "کاوه‌نگار متصل است" : "حالت آزمایشی";
-  mode.querySelector("small").textContent =
+  required("small", mode).textContent =
     store.smsData.mode === "kavenegar"
       ? "پیام‌ها از طریق قالب‌های تأییدشده کاوه‌نگار ارسال می‌شوند."
       : "متن پیامک ثبت می‌شود اما پیام واقعی ارسال نمی‌شود.";

@@ -180,7 +180,7 @@ export function renderCustomerMap() {
     b.onclick = () => {
       floor.querySelectorAll(".table").forEach((x) => x.classList.remove("selected"));
       b.classList.add("selected");
-      state.table = b.dataset.table;
+      state.table = b.dataset.table || "";
       state.tableId = fullId;
       const c = byId("confirmBtn");
       c.disabled = false;
@@ -216,7 +216,7 @@ export function wireBooking() {
       setTimeout(() => times.classList.remove("attention"), 700);
       return;
     }
-    const selected = state.availability.slots.find((s) => s.time === state.time),
+    const selected = state.availability?.slots.find((s) => s.time === state.time),
       areas = visibleAreas();
     state.availableTableIds = new Set(selected?.tableIds || []);
     state.table = "";
@@ -246,7 +246,7 @@ export function wireBooking() {
   /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(".dialog-close")).forEach(
     (button) =>
       (button.onclick = () => {
-        button.closest("dialog").close();
+        button.closest("dialog")?.close();
         const target =
           button.dataset.backTo &&
           /** @type {HTMLDialogElement | null} */ (

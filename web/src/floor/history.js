@@ -1,3 +1,4 @@
+import { required } from "../dom.js";
 import { visibleAreas } from "../map-model.js";
 import { store } from "../state.js";
 
@@ -31,7 +32,7 @@ export function travelMapHistory(delta, render, root = document) {
     store.activeArea = visibleAreas()[0]?.id;
   store.selectedId = null;
   store.dirty = true;
-  root.querySelector("#saveStatus").textContent = "تغییرات منتشر نشده";
+  required("#saveStatus", root).textContent = "تغییرات منتشر نشده";
   syncHistoryButtons(root);
   render();
 }

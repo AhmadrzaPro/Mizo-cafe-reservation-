@@ -1,7 +1,7 @@
 import { apiUrl, readableError, safeResponseJson, settingsUrl } from "./api.js";
 import { renderCustomerMap } from "./booking.js";
 import { renderControls } from "./controls.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { renderEditor, showPublishedToast } from "./editor.js";
 import { recordMapHistory, resetMapHistory } from "./floor/history.js";
 import { faDigits } from "./format.js";
@@ -63,16 +63,16 @@ export function applyCafeProfile(profile) {
   syncBranchSelectors();
   const branch = activeBranchProfile();
   if (!branch) return;
-  document.querySelector(".cafe-meta span:first-child").textContent = profile.cafe.name;
-  document.querySelector(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
+  required(".cafe-meta span:first-child").textContent = profile.cafe.name;
+  required(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
     .filter(Boolean)
     .join("، ");
   document.body.dataset.mode = "cafe";
   document.title = `${profile.cafe.name} — رزرو میز`;
   byId("adminCafeName").textContent = profile.cafe.name;
   byId("adminCafeLocation").textContent = `${branch.city} · ${branch.name}`;
-  document.querySelector(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
-  document.querySelector(".editor-header b").textContent = `چیدمان ${profile.cafe.name}`;
+  required(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
+  required(".editor-header b").textContent = `چیدمان ${profile.cafe.name}`;
 }
 export async function loadCafeProfile() {
   if (pageParams.get("new") === "1") return { configured: false };
@@ -102,7 +102,7 @@ export function applySettingsToCustomer() {
     continueBtn,
     open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
   );
-  document.querySelector(".booking-card").classList.toggle("booking-paused", !open);
+  required(".booking-card").classList.toggle("booking-paused", !open);
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;
     byId("guestCount").textContent = faDigits(state.guests);

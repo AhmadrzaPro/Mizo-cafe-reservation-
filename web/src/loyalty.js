@@ -15,11 +15,13 @@ import { fetchSchedule } from "./schedule.js";
 import { store } from "./state.js";
 
 export function renderLoyalty() {
-  byId("loyaltyTotal").textContent = faDigits(store.loyaltyData.stats.total);
-  byId("loyaltyReturning").textContent = faDigits(store.loyaltyData.stats.returning);
-  byId("loyaltyPoints").textContent = faDigits(store.loyaltyData.stats.points);
+  const data = store.loyaltyData;
+  if (!data) return;
+  byId("loyaltyTotal").textContent = faDigits(data.stats.total);
+  byId("loyaltyReturning").textContent = faDigits(data.stats.returning);
+  byId("loyaltyPoints").textContent = faDigits(data.stats.points);
   const list = byId("loyaltyList");
-  if (!store.loyaltyData.customers.length) {
+  if (!data.customers.length) {
     setHtml(
       list,
       html`<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>`,
@@ -27,11 +29,8 @@ export function renderLoyalty() {
     return;
   }
   list.replaceChildren();
-  store.loyaltyData.customers.forEach((customer) => {
-    const progress = Math.min(
-        100,
-        Math.round((customer.points / store.loyaltyData.rewardThreshold) * 100),
-      ),
+  data.customers.forEach((customer) => {
+    const progress = Math.min(100, Math.round((customer.points / data.rewardThreshold) * 100)),
       item = document.createElement("article");
     item.className = "loyalty-customer";
     setHtml(
@@ -44,14 +43,11 @@ export function renderLoyalty() {
           </p>
           <div class="loyalty-progress">
             <i><b style="width:${progress}%"></b></i
-            ><small
-              >${faDigits(customer.points)} از ${faDigits(store.loyaltyData.rewardThreshold)}
-              امتیاز</small
-            >
+            ><small>${faDigits(customer.points)} از ${faDigits(data.rewardThreshold)} امتیاز</small>
           </div>
         </div>
         <strong>${faDigits(customer.points)}<small> امتیاز</small></strong
-        >${store.loyaltyData.canWrite && html`<button type="button">تغییر امتیاز</button>`}`,
+        >${data.canWrite && html`<button type="button">تغییر امتیاز</button>`}`,
     );
     item.querySelector("button")?.addEventListener("click", () => openLoyaltyAdjust(customer));
     list.appendChild(item);

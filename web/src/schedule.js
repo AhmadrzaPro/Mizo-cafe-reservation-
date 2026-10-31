@@ -1,6 +1,6 @@
 import { scheduleUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { formatPersianDate, isoValue, setJalaliInput } from "./format.js";
 import { store } from "./state.js";
 
@@ -51,7 +51,7 @@ export function renderSchedule() {
           ${formatPersianDate(c.endDate)}${c.reason && ` · ${c.reason}`}</span
         ><button type="button">حذف</button>`,
     );
-    item.querySelector("button").onclick = () => {
+    required("button", item).onclick = () => {
       store.cafeSchedule.closures.splice(index, 1);
       renderSchedule();
     };

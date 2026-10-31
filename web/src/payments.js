@@ -1,7 +1,7 @@
 import { settingsUrl } from "./api.js";
 import { fetchAvailability, money } from "./booking.js";
 import { adminDialog, paymentsCard, paymentsDialog } from "./dialogs.js";
-import { byId, html, setHtml } from "./dom.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { switchBranch } from "./editor-nav.js";
 import { faDigits, formatPersianDate } from "./format.js";
 import { activeBranchProfile } from "./profile.js";
@@ -33,8 +33,8 @@ const paymentModes = {
 function showPaymentMode(mode) {
   const [title, text] = paymentModes[mode] || paymentModes.none,
     box = byId("paymentMode");
-  box.querySelector("b").textContent = title;
-  box.querySelector("small").textContent = text;
+  required("b", box).textContent = title;
+  required("small", box).textContent = text;
   box.dataset.mode = mode;
 }
 export async function fetchPayments() {
