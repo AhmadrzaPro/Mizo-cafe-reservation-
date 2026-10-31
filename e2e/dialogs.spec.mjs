@@ -1,6 +1,6 @@
 // Editable dialogs open only once their data has loaded, so a slow response can never overwrite
 // what was already changed in them.
-import { api, createCafe, expect, signInOwner, test } from "./fixtures.mjs";
+import { createCafe, expect, signInOwner, test } from "./fixtures.mjs";
 
 const SLOW = 1500;
 

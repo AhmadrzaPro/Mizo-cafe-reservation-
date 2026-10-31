@@ -1,4 +1,4 @@
-import { api, createCafe, expect, signInOwner, test } from "./fixtures.mjs";
+import { createCafe, expect, signInOwner, test } from "./fixtures.mjs";
 
 test("a café pays its subscription card to card and the platform owner approves it", async ({
   page,
