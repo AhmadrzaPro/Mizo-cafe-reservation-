@@ -86,15 +86,4 @@ dialog.map-editor-dialog[open] {
   .ops-header-controls .ops-primary {
     grid-column: auto;
   }
-  .editor-mobile-exit {
-    display: block;
-    border: 1px solid #d7cec5;
-    background: #fff;
-    color: #3e342e;
-    border-radius: 9px;
-    padding: 8px 10px;
-    font: inherit;
-    font-size: 0.7rem;
-    font-weight: 700;
-  }
 }

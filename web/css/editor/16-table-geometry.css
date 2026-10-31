@@ -2,10 +2,10 @@
 .studio-table,
 .ops-table {
   isolation: isolate;
-  overflow: visible !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 .studio-table.round .table-surface,
 .ops-table.round .table-surface {

@@ -448,8 +448,8 @@
   font-size: 1.1rem;
   cursor: pointer;
 }
-.switch-row {
-  display: flex !important;
+.table-properties > .switch-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid #eee8e2;
@@ -863,8 +863,8 @@
 .schedule-dialog h2 {
   margin: 7px 0;
 }
-.form-dialog > p,
-.schedule-dialog > p {
+.form-dialog > p:not(.form-error),
+.schedule-dialog > p:not(.form-error) {
   color: #7a7068;
   font-size: 0.76rem;
   line-height: 1.8;
@@ -900,9 +900,9 @@
   color: #9a9087;
 }
 .form-error {
-  font-size: 0.7rem !important;
-  color: #a84638 !important;
-  margin: 4px 0 !important;
+  font-size: 0.7rem;
+  color: #a84638;
+  margin: 4px 0;
   min-height: 18px;
 }
 .slot-message {
@@ -1010,10 +1010,10 @@
   margin-top: 10px;
 }
 .closure-list {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 6px !important;
-  margin-top: 12px !important;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 12px;
 }
 .closure-list > div {
   display: flex;

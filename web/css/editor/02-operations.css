@@ -271,8 +271,8 @@
   position: relative;
 }
 .ops-map-legend {
-  display: flex !important;
-  gap: 8px !important;
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .ops-map-legend span {
@@ -318,15 +318,12 @@
   display: grid;
   place-items: center;
   text-align: center;
-  border: 2px solid #8dbc9d;
-  background: #edf8f1;
   color: #275e3d;
   width: 62px;
   height: 62px;
   border-radius: 50%;
   font: inherit;
   cursor: pointer;
-  box-shadow: 0 5px 14px #604b3e18;
   transition: 0.18s;
 }
 .ops-table.square {
@@ -353,23 +350,15 @@
 }
 .ops-table.upcoming,
 .ops-table.awaiting {
-  background: #fff4df;
-  border-color: #d9a15c;
   color: #84571e;
 }
 .ops-table.occupied {
-  background: #51423a;
-  border-color: #51423a;
   color: #fff;
 }
 .ops-table.dirty {
-  background: #fff0ed;
-  border-color: #bd695b;
   color: #9b4034;
 }
 .ops-table.inactive {
-  background: #ddd8d3;
-  border-color: #a49b94;
   color: #716a65;
   opacity: 0.72;
 }
@@ -599,7 +588,7 @@
     min-height: 0;
   }
   .ops-map-legend {
-    display: none !important;
+    display: none;
   }
   .ops-floor {
     margin: 9px;

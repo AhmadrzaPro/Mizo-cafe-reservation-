@@ -624,19 +624,16 @@
   .map-tools-toggle {
     padding-inline: 8px;
   }
-  .editor-mobile-exit {
-    display: none !important;
-  }
 }
 
 /* Fast floor control */
 .ops-map-head {
   gap: 12px;
 }
-.ops-floor-time {
-  display: flex !important;
-  align-items: flex-end !important;
-  gap: 6px !important;
+.ops-map-head > .ops-floor-time {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
 }
 .ops-floor-time label {
   display: block;
@@ -765,8 +762,8 @@
   opacity: 0.55;
 }
 @media (max-width: 700px) {
-  .ops-map-head {
-    align-items: flex-start !important;
+  .ops-card > .ops-map-head {
+    align-items: flex-start;
   }
   .ops-floor-time input {
     font-size: 16px;

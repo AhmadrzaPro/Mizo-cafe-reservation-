@@ -174,8 +174,8 @@
   font-size: 0.68rem;
   cursor: pointer;
 }
-.single-branch {
-  display: none !important;
+select.single-branch {
+  display: none;
 }
 @media (max-width: 600px) {
   .setup-dialog {

@@ -156,7 +156,7 @@
   color: #332a25;
 }
 .branch-active-row {
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   background: #fff;
@@ -235,5 +235,5 @@
   }
 }
 .branch-active-row[hidden] {
-  display: none !important;
+  display: none;
 }

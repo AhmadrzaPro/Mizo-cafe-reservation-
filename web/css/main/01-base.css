@@ -410,8 +410,6 @@ dialog::backdrop {
   position: absolute;
   width: 76px;
   height: 76px;
-  border: 2px solid #c9beb2;
-  background: #fffaf5;
   border-radius: 50%;
   font: inherit;
   cursor: pointer;
@@ -424,14 +422,8 @@ dialog::backdrop {
 .table small {
   font-size: 0.6rem;
 }
-.table.selected {
-  border-color: var(--copper);
-  background: #f2d4b8;
-  box-shadow: 0 0 0 5px #c8814533;
-}
 .table.reserved {
   opacity: 0.45;
-  background: #cfc7be;
   cursor: not-allowed;
 }
 .t1 {

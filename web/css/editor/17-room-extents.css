@@ -9,7 +9,7 @@
   direction: ltr;
 }
 .floor-panning {
-  cursor: grabbing !important;
+  cursor: grabbing;
 }
 #customerMapViewport,
 #opsMapViewport {
@@ -32,10 +32,10 @@
   position: relative;
   flex-shrink: 0;
   transform-origin: top left;
-  margin: 0 !important;
+  margin: 0;
   max-width: none;
   min-width: 0;
-  overflow: visible !important;
+  overflow: visible;
 }
 #opsFloor {
   height: 520px;
@@ -47,7 +47,7 @@
 #mapCanvas,
 #customerFloorPlan,
 #opsFloor {
-  transition: none !important;
+  transition: none;
 }
 .floor-overview .furniture-chair,
 .floor-overview .table-surface small {
@@ -91,7 +91,7 @@
   flex-shrink: 0;
 }
 .area-dimensions[hidden] {
-  display: none !important;
+  display: none;
 }
 .area-dimensions label {
   flex: 1;

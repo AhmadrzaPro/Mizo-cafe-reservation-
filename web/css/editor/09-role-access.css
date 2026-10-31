@@ -41,5 +41,5 @@
 .ops-dialog [hidden],
 .admin-dialog [hidden],
 .sms-dialog [hidden] {
-  display: none !important;
+  display: none;
 }

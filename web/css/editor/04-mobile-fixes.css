@@ -22,13 +22,14 @@
     gap: 7px;
   }
   .ops-header-controls select,
-  .ops-header-controls input {
-    display: block !important;
+  .ops-header-controls input,
+  .ops-header-controls > select.single-branch {
+    display: block;
     width: 100%;
     min-width: 0;
   }
   .ops-header-controls .jalali-input {
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
   }
   .hour-row {
     grid-template-columns: 1fr 84px 1fr 22px 1fr;
@@ -55,7 +56,7 @@
   }
 }
 @media (max-width: 600px) {
-  dialog:not(.ops-dialog):not(.map-editor-dialog) {
+  dialog:not(.ops-dialog):not(.map-editor-dialog):not(.jalali-picker) {
     width: 100vw;
     max-width: none;
     max-height: calc(100dvh - 10px);
@@ -154,12 +155,15 @@
     padding: 13px;
   }
   .jalali-picker {
-    margin: auto !important;
-    inset: 0 !important;
-    width: calc(100vw - 24px) !important;
-    border-radius: 20px !important;
-    max-height: none !important;
-    padding: 16px !important;
+    margin: auto;
+    inset: 0;
+    width: calc(100vw - 24px);
+    border-radius: 20px;
+    max-width: none;
+    max-height: none;
+    padding: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .jalali-picker .dialog-close {
     position: absolute;
