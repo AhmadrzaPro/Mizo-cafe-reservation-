@@ -139,7 +139,7 @@ Cafés pay their monthly subscription to the platform owner by card transfer. Se
 - **After the grace:** public online booking pauses. The booking page reads "booking temporarily paused" and `POST …/reservations` returns `409 online_booking_paused`. The staff panel, existing reservations, tracking and phone/walk-in bookings keep working.
 - **Reopening:** approving a payment in the SaaS console reopens booking at once.
 
-An owner cannot switch the subscription off while it is past due. Cafés without a subscription, and cafés the SaaS admin set active without an end date, never pause. The SaaS console shows past-due and paused cafés.
+The subscription is required. Every new café starts a 14-day trial at setup, and migration `0017_required_subscription.sql` gives cafés that had none (or had switched it off) a 14-day trial from the time it runs. Owners cannot switch it off. To make a café free, switch its subscription off in the SaaS console, or set it active without an end date; such cafés never pause. The SaaS console shows past-due and paused cafés.
 
 Customer deposits do not use card to card: with many cafés, transfers to each café's card cannot be matched to who paid, so deposits go through the gateway.
 
@@ -155,6 +155,7 @@ Before going live, make one sandbox payment end to end: set `ZARINPAL_SANDBOX=tr
 6. Apply `0014_rate_limits.sql` before serving a Worker with abuse protection. It only adds the `rate_limits` table and does not change existing data.
 7. Apply `0015_payment_attempts.sql` before serving a Worker with gateway payments. It only adds the `payment_attempts` table.
 8. Apply `0016_subscription_payments.sql` before serving a Worker with card-to-card subscription payments. It only adds the `subscription_payments` table.
+9. Apply `0017_required_subscription.sql` to make the subscription required. Cafés without a subscription, or with it off, get a 14-day trial from that moment; trials and paid periods already running are unchanged.
 
 ### Abuse protection
 

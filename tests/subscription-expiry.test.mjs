@@ -117,30 +117,27 @@ test("the scheduled job records the expiry once", async () => {
   assert.equal(expired.length, 1);
 });
 
-test("an unpaid café cannot switch the subscription off to escape payment", async () => {
-  const f = await trialCafe();
-  f.endTrial(1);
-  const off = await f.call("/api/subscription", {
-    method: "PUT",
-    cookie: f.owner,
-    body: { enabled: false },
-  });
-  assert.equal(off.status, 409);
-  assert.equal(off.data.error, "payment_required");
-
-  const running = await trialCafe();
-  const ok = await running.call("/api/subscription", {
-    method: "PUT",
-    cookie: running.owner,
-    body: { enabled: false },
-  });
-  assert.equal(ok.data.enabled, false);
+test("an owner cannot switch the subscription off, unpaid or not", async () => {
+  for (const daysAgo of [1, -5]) {
+    const f = await trialCafe();
+    f.endTrial(daysAgo);
+    const off = await f.call("/api/subscription", {
+      method: "PUT",
+      cookie: f.owner,
+      body: { enabled: false },
+    });
+    assert.equal(off.status, 409);
+    assert.equal(off.data.error, "subscription_required");
+    assert.equal((await f.subscription()).enabled, true);
+  }
 });
 
-test("cafés without a subscription, or comped by the SaaS admin, never pause", async () => {
-  const f = await fixture();
-  const cafe = await f.setupCafe();
-  assert.equal((await f.call(`${cafe.base}/settings`)).data.onlineBookingPaused, false);
+test("cafés the SaaS admin made free never pause", async () => {
+  // Switched off in the SaaS console, long after the trial ended.
+  const free = await trialCafe();
+  free.endTrial(30);
+  free.DB.raw.prepare("UPDATE saas_subscriptions SET enabled=0").run();
+  assert.equal(await free.paused(), false);
 
   const comped = await trialCafe();
   comped.DB.raw

@@ -7,7 +7,6 @@ test("a café pays its subscription card to card and the platform owner approves
 }) => {
   const cafe = await createCafe(request);
   await signInOwner(page, cafe);
-  await api(page, "PUT", "/api/subscription", { enabled: true });
   await page.goto(cafe.url);
   await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
   await page.locator("#openSubscription").click();
@@ -42,7 +41,6 @@ test("after the grace period the café's online booking pauses and the owner is 
 }) => {
   const cafe = await createCafe(request);
   await signInOwner(page, cafe);
-  await api(page, "PUT", "/api/subscription", { enabled: true });
   await page.request.get(`/__e2e/trial-ended?cafe=${cafe.slug}&days=5`);
   await page.goto(cafe.url);
   await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();

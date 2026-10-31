@@ -24,7 +24,6 @@ test("slow loads never overwrite edits in the SMS, schedule, control and subscri
 }) => {
   const cafe = await createCafe(request);
   await signInOwner(page, cafe);
-  await api(page, "PUT", "/api/subscription", { enabled: true });
 
   await slowDown(page, "**/notifications");
   await openPanel(page, cafe, "#openSms");

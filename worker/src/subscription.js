@@ -118,7 +118,7 @@ export async function readSubscription(db, cafeId, options = {}) {
     standing = subscriptionStanding(subscription),
     offer = pricedSubscription(branches.results?.[0]?.count);
   return {
-    optional: true,
+    optional: false,
     enabled: Boolean(subscription?.enabled),
     plan: "standard",
     status: standing.status,
@@ -172,12 +172,12 @@ export async function updateSubscription(db, session, body, options = {}) {
     ]),
     current = currentRow.results?.[0],
     enabled = body.enabled === true;
-  // Turning the subscription off must not become a way around an unpaid period.
-  if (!enabled && subscriptionStanding(current).status === "past_due")
+  // The subscription is required: only the platform owner (SaaS console) can switch it off.
+  if (!enabled)
     return reply(
       {
-        error: "payment_required",
-        message: "دوره اشتراک تمام شده است؛ پیش از غیرفعال‌کردن، اشتراک را پرداخت کنید.",
+        error: "subscription_required",
+        message: "اشتراک برای همه کافه‌ها لازم است و از این‌جا غیرفعال نمی‌شود.",
       },
       409,
     );

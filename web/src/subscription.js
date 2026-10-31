@@ -129,24 +129,6 @@ export async function fetchSubscription() {
     error.textContent = err.message;
   }
 }
-export async function changeSubscription(payload) {
-  const error = byId("subscriptionError");
-  error.textContent = "";
-  try {
-    const response = await fetch("/api/subscription", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      }),
-      data = await response.json();
-    if (!response.ok) throw new Error(data.message || "تغییر اشتراک انجام نشد.");
-    store.subscriptionData = data;
-    renderSubscription();
-  } catch (err) {
-    error.textContent = err.message;
-  }
-}
-
 export function wireSubscription() {
   const openSubscription = async () => {
     adminDialog.close();
@@ -155,10 +137,6 @@ export function wireSubscription() {
   };
   byId("openSubscription").onclick = openSubscription;
   byId("subscriptionNoticePay").onclick = openSubscription;
-  byId("enableSubscription").onclick = () => changeSubscription({ enabled: true });
-  byId("disableSubscription").onclick = () => {
-    if (confirm("اشتراک برای این کافه غیرفعال شود؟")) changeSubscription({ enabled: false });
-  };
   byId("renewSubscription").onclick = async () => {
     const button = byId("renewSubscription"),
       error = byId("subscriptionError");

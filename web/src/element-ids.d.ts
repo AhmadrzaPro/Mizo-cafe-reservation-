@@ -90,7 +90,6 @@ export interface ElementIds {
   "depositPeakOnly": HTMLInputElement;
   "depositPeakStart": HTMLInputElement;
   "depositPolicy": HTMLElement;
-  "disableSubscription": HTMLButtonElement;
   "doneBtn": HTMLButtonElement;
   "duplicateTable": HTMLButtonElement;
   "durationLabel": HTMLElement;
@@ -99,7 +98,6 @@ export interface ElementIds {
   "editorMobileExit": HTMLButtonElement;
   "editorToast": HTMLElement;
   "editSelectedTable": HTMLButtonElement;
-  "enableSubscription": HTMLButtonElement;
   "experience": HTMLElement;
   "features": HTMLElement;
   "fitMap": HTMLButtonElement;

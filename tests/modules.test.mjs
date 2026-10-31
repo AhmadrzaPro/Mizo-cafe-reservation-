@@ -308,34 +308,32 @@ test("sms: confirmations go out and reminders queue; settings need write access"
   assert.equal((await call(path)).status, 403);
 });
 
-test("subscription: the owner starts a trial and renews in demo mode; staff cannot", async () => {
+test("subscription: every café starts on a 14-day trial; the owner renews in demo mode; staff cannot", async () => {
   const { call, setupCafe, login, staffSession, env } = await fixture();
   const cafe = await setupCafe(),
     owner = await login(cafe),
     manager = await staffSession(cafe, owner, "branch_manager", "09120000001");
-  const initial = await call("/api/subscription", { cookie: owner });
-  assert.equal(initial.data.enabled, false);
-  assert.equal(initial.data.status, "inactive");
-  assert.equal(
-    (await call("/api/subscription/renew", { method: "POST", cookie: owner })).data.error,
-    "subscription_disabled",
-  );
-
-  const trial = await call("/api/subscription", {
-    method: "PUT",
-    cookie: owner,
-    body: { enabled: true },
-  });
+  const trial = await call("/api/subscription", { cookie: owner });
+  assert.equal(trial.data.enabled, true);
   assert.equal(trial.data.status, "trial");
+  assert.equal(trial.data.optional, false);
   const trialDays = (Date.parse(trial.data.trialEndsAt) - Date.now()) / 86400000;
   assert.ok(trialDays > 13.9 && trialDays <= 14, String(trialDays));
+  assert.ok(trial.data.events.some((e) => e.type === "activated"));
+
+  const off = await call("/api/subscription", {
+    method: "PUT",
+    cookie: owner,
+    body: { enabled: false },
+  });
+  assert.equal(off.data.error, "subscription_required");
 
   const renewed = await call("/api/subscription/renew", { method: "POST", cookie: owner });
   assert.equal(renewed.data.status, "active");
   assert.ok(renewed.data.events.some((e) => e.type === "payment_demo"));
 
   assert.equal(
-    (await call("/api/subscription", { method: "PUT", cookie: manager, body: { enabled: false } }))
+    (await call("/api/subscription", { method: "PUT", cookie: manager, body: { enabled: true } }))
       .status,
     403,
   );

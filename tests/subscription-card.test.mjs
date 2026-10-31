@@ -116,12 +116,9 @@ test("transfers are validated, owner-only, and flagged when a reference repeats"
     [true, true],
   );
 
+  // Only the platform owner can switch a subscription off (the café is then free).
   const off = await subscribedCafe();
-  await off.call("/api/subscription", {
-    method: "PUT",
-    cookie: off.owner,
-    body: { enabled: false },
-  });
+  off.DB.raw.prepare("UPDATE saas_subscriptions SET enabled=0").run();
   assert.equal((await off.transfer({ reference: "666666" })).data.error, "subscription_disabled");
 });
 

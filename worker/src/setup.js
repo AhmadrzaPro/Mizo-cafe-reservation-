@@ -177,6 +177,17 @@ export async function writeSetup(db, body, session = null) {
         "INSERT INTO staff_members (id,cafe_id,mobile,name,role,active,created_at,updated_at) VALUES (?,?,?,?,'owner',1,?,?)",
       )
       .bind(randomId("staff"), cafeId, mobile, ownerName, now, now),
+    // Every café is on the subscription, starting with a 14-day trial.
+    db
+      .prepare(
+        "INSERT INTO saas_subscriptions (cafe_id,enabled,plan,status,monthly_price_rials,trial_ends_at,current_period_ends_at,created_at,updated_at) VALUES (?,1,'standard','trial',0,?,NULL,?,?)",
+      )
+      .bind(cafeId, new Date(Date.now() + 14 * 86400000).toISOString(), now, now),
+    db
+      .prepare(
+        "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) VALUES (?,?,'activated',NULL,'standard',0,'شروع دوره آزمایشی ۱۴ روزه',?)",
+      )
+      .bind(randomId("subevent"), cafeId, now),
   ];
   for (const area of starterMap.areas)
     statements.push(
