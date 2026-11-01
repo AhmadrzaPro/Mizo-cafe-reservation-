@@ -1,6 +1,8 @@
 import { renderCustomerMap, tableDialog } from "./booking.js";
 import { editor } from "./dialogs.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { fitMap, openTableInspector } from "./floor/editor-tools.js";
+import { placeVenueFeatures } from "./floor/venue-features.js";
 import { tableFurniture } from "./floor/furniture.js";
 import {
   applyFloorViewport,
@@ -13,34 +15,32 @@ import { faDigits } from "./format.js";
 import { cloneDefault } from "./map-defaults.js";
 import { activeTables, closeImageImport } from "./map-import.js";
 import { areaKindLabel, derivedSpaceMode, visibleAreas } from "./map-model.js";
-import { escapeHtml } from "./operations.js";
 import { markDirty, saveMap } from "./profile.js";
 import { mapViewportPointers, store } from "./state.js";
 
 export function syncSpaceModeUI() {
   store.cafeMap.spaceMode = store.cafeMap.spaceMode || derivedSpaceMode();
-  document
-    .querySelectorAll("[data-space-mode]")
-    .forEach((button) =>
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-space-mode]")).forEach(
+    (button) =>
       button.classList.toggle("active", button.dataset.spaceMode === store.cafeMap.spaceMode),
-    );
+  );
 }
 export function selectArea(id) {
   if (id === store.activeArea) return;
   closeImageImport();
   store.activeArea = id;
   store.selectedId = null;
-  document
-    .querySelectorAll(".area-row")
-    .forEach((row) => row.classList.toggle("active", row.dataset.areaId === id));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".area-row")).forEach((row) =>
+    row.classList.toggle("active", row.dataset.areaId === id),
+  );
   renderMapCanvas();
   renderProperties();
   fitMap();
 }
 export function renderAreas() {
-  const list = document.querySelector("#areaList"),
+  const list = byId("areaList"),
     fragment = document.createDocumentFragment();
-  list.innerHTML = "";
+  list.replaceChildren();
   visibleAreas().forEach((area) => {
     const row = document.createElement("div"),
       main = document.createElement("button"),
@@ -49,7 +49,18 @@ export function renderAreas() {
     row.dataset.areaId = area.id;
     main.type = "button";
     main.className = "area-main";
-    main.innerHTML = `<span class="area-symbol">${area.kind === "outdoor" ? "☀" : "⌂"}</span><span><b>${escapeHtml(area.name)}</b><small>${areaKindLabel(area.kind)} · ${faDigits(store.cafeMap.tables.filter((table) => table.area === area.id).length)} میز</small></span>`;
+    setHtml(
+      main,
+      html`<span class="area-symbol">${area.kind === "outdoor" ? "☀" : "⌂"}</span
+        ><span
+          ><b>${area.name}</b
+          ><small
+            >${areaKindLabel(area.kind)} ·
+            ${faDigits(store.cafeMap.tables.filter((table) => table.area === area.id).length)}
+            میز</small
+          ></span
+        >`,
+    );
     main.onpointerdown = (event) => {
       if (event.pointerType === "touch") selectArea(area.id);
     };
@@ -68,29 +79,33 @@ export function renderAreas() {
   syncSpaceModeUI();
 }
 export function renderMapCanvas() {
-  const canvas = document.querySelector("#mapCanvas"),
+  const canvas = byId("mapCanvas"),
     area = store.cafeMap.areas.find((item) => item.id === store.activeArea) || visibleAreas()[0],
     fragment = document.createDocumentFragment();
   canvas.querySelectorAll(".editor-table").forEach((x) => x.remove());
   canvas.classList.toggle("outdoor", area?.kind === "outdoor");
+  if (area) placeVenueFeatures(canvas, area);
   canvas.dataset.areaName = area?.name || "";
   canvas.style.transform = `scale(${store.zoom})`;
   canvas.classList.toggle("material-view", store.mapMaterial);
-  applyFloorViewport(canvas, document.querySelector("#mapStage"), areaBounds(area), store.zoom);
+  applyFloorViewport(canvas, byId("mapStage"), areaBounds(area), store.zoom);
   syncAreaDimensions();
-  document.querySelector("#studioAreaName").textContent = area?.name || "نقشه سالن";
-  document.querySelector("#studioCounts").textContent =
+  byId("studioAreaName").textContent = area?.name || "نقشه سالن";
+  byId("studioCounts").textContent =
     `${faDigits(activeTables().length)} میز · ${faDigits(activeTables().reduce((n, t) => n + Number(t.capacity), 0))} صندلی`;
-  document.querySelector("#zoomValue").textContent = `${faDigits(Math.round(store.zoom * 100))}٪`;
+  byId("zoomValue").textContent = `${faDigits(Math.round(store.zoom * 100))}٪`;
   activeTables().forEach((t) => {
     const el = document.createElement("button");
     el.className = `editor-table ${t.shape}${t.reservable ? "" : " off"}${t.id === store.selectedId ? " selected" : ""}`;
     el.style.left = `${t.x}px`;
     el.style.top = `${t.y}px`;
     el.dataset.id = t.id;
-    el.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name)}</b><small>${faDigits(t.capacity)} صندلی</small></span>`;
+    setHtml(
+      el,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name}</b><small>${faDigits(t.capacity)} صندلی</small></span
+        >`,
+    );
     el.setAttribute("aria-label", `${t.name}، ${faDigits(t.capacity)} صندلی`);
     el.onclick = (event) => {
       event.stopPropagation();
@@ -110,26 +125,26 @@ export function renderEditor() {
 }
 export function selectTable(id) {
   store.selectedId = id;
-  document
-    .querySelectorAll(".editor-table")
-    .forEach((el) => el.classList.toggle("selected", el.dataset.id === id));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(".editor-table")).forEach(
+    (el) => el.classList.toggle("selected", el.dataset.id === id),
+  );
   renderProperties();
 }
 export function selectedTable() {
   return store.cafeMap.tables.find((t) => t.id === store.selectedId);
 }
 export function renderProperties() {
-  document.querySelector("#editSelectedTable").disabled = !selectedTable();
-  const empty = document.querySelector(".empty-properties"),
-    form = document.querySelector(".table-properties"),
+  byId("editSelectedTable").disabled = !selectedTable();
+  const empty = /** @type {HTMLElement} */ (document.querySelector(".empty-properties")),
+    form = /** @type {HTMLElement} */ (document.querySelector(".table-properties")),
     t = selectedTable();
   empty.hidden = !!t;
   form.hidden = !t;
   if (!t) return;
-  document.querySelector("#tableName").value = t.name;
-  document.querySelector("#capacityValue").textContent = faDigits(t.capacity);
-  document.querySelector("#tableShape").value = t.shape;
-  document.querySelector("#tableReservable").checked = t.reservable;
+  byId("tableName").value = t.name;
+  byId("capacityValue").textContent = faDigits(t.capacity);
+  byId("tableShape").value = t.shape;
+  byId("tableReservable").checked = t.reservable;
 }
 export function tableSize(t) {
   return t.shape === "rect" ? { w: 118, h: 70 } : { w: 76, h: 76 };
@@ -265,18 +280,18 @@ export function setSpaceMode(mode) {
   markDirty();
   renderEditor();
 }
-export const areaAddPanel = document.querySelector("#areaAddPanel"),
-  areaAddToggle = document.querySelector("#areaAddToggle"),
-  areaPreset = document.querySelector("#areaPreset"),
-  customAreaFields = document.querySelector("#customAreaFields");
+export const areaAddPanel = byId("areaAddPanel"),
+  areaAddToggle = byId("areaAddToggle"),
+  areaPreset = byId("areaPreset"),
+  customAreaFields = byId("customAreaFields");
 export function setAreaAddPanel(open) {
   areaAddPanel.hidden = !open;
   areaAddToggle.setAttribute("aria-expanded", String(open));
   areaAddToggle.textContent = open ? "× بستن" : "+ بخش جدید";
 }
 export function setMapTools(open) {
-  document.querySelector(".editor-sidebar").classList.toggle("mobile-open", open);
-  document.querySelector(".editor-shell").classList.toggle("tools-open", open);
+  required(".editor-sidebar").classList.toggle("mobile-open", open);
+  required(".editor-shell").classList.toggle("tools-open", open);
 }
 export function changeCapacity(delta) {
   const t = selectedTable();
@@ -286,31 +301,31 @@ export function changeCapacity(delta) {
   renderEditor();
 }
 export function showPublishedToast(message = "نقشه با موفقیت منتشر شد") {
-  const toast = document.querySelector("#editorToast");
+  const toast = byId("editorToast");
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
 export function wireEditor() {
-  document
-    .querySelectorAll("[data-add-shape]")
-    .forEach((b) => (b.onclick = () => addTable(b.dataset.addShape)));
-  document
-    .querySelectorAll("[data-space-mode]")
-    .forEach((button) => (button.onclick = () => setSpaceMode(button.dataset.spaceMode)));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-add-shape]")).forEach(
+    (b) => (b.onclick = () => addTable(b.dataset.addShape)),
+  );
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-space-mode]")).forEach(
+    (button) => (button.onclick = () => setSpaceMode(button.dataset.spaceMode)),
+  );
   areaAddToggle.onclick = () => setAreaAddPanel(areaAddPanel.hidden);
   areaPreset.onchange = () => {
     const custom = areaPreset.value.startsWith("custom|");
     customAreaFields.hidden = !custom;
-    if (custom) document.querySelector("#customAreaName").focus();
+    if (custom) byId("customAreaName").focus();
   };
-  document.querySelector("#addArea").onclick = () => {
+  byId("addArea").onclick = () => {
     const [presetName, presetKind] = areaPreset.value.split("|"),
       custom = presetName === "custom",
-      input = document.querySelector("#customAreaName"),
+      input = byId("customAreaName"),
       name = custom ? input.value : presetName,
-      kind = custom ? document.querySelector("#customAreaKind").value : presetKind;
+      kind = custom ? byId("customAreaKind").value : presetKind;
     if (!String(name || "").trim()) {
       input.focus();
       return;
@@ -319,44 +334,44 @@ export function wireEditor() {
     input.value = "";
     setAreaAddPanel(false);
   };
-  document.querySelector("#customAreaName").onkeydown = (event) => {
+  byId("customAreaName").onkeydown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      document.querySelector("#addArea").click();
+      byId("addArea").click();
     }
   };
-  document.querySelector("#mapToolsToggle").onclick = () => setMapTools(true);
-  document.querySelector("#closeMapTools").onclick = () => setMapTools(false);
-  document.querySelector("#tableName").oninput = (e) => {
+  byId("mapToolsToggle").onclick = () => setMapTools(true);
+  byId("closeMapTools").onclick = () => setMapTools(false);
+  byId("tableName").oninput = (e) => {
     const t = selectedTable();
     if (!t) return;
-    t.name = e.target.value || "بدون نام";
+    t.name = /** @type {HTMLInputElement} */ (e.target).value || "بدون نام";
     markDirty();
     renderEditor();
   };
-  document.querySelector("#capacityMinus").onclick = () => changeCapacity(-1);
-  document.querySelector("#capacityPlus").onclick = () => changeCapacity(1);
-  document.querySelector("#tableShape").onchange = (e) => {
+  byId("capacityMinus").onclick = () => changeCapacity(-1);
+  byId("capacityPlus").onclick = () => changeCapacity(1);
+  byId("tableShape").onchange = (e) => {
     const t = selectedTable();
     if (!t) return;
-    t.shape = e.target.value;
+    t.shape = /** @type {HTMLSelectElement} */ (e.target).value;
     markDirty();
     renderEditor();
   };
-  document.querySelector("#tableReservable").onchange = (e) => {
+  byId("tableReservable").onchange = (e) => {
     const t = selectedTable();
     if (!t) return;
-    t.reservable = e.target.checked;
+    t.reservable = /** @type {HTMLInputElement} */ (e.target).checked;
     markDirty();
     renderEditor();
   };
-  document.querySelector("#deleteTable").onclick = () => {
+  byId("deleteTable").onclick = () => {
     store.cafeMap.tables = store.cafeMap.tables.filter((t) => t.id !== store.selectedId);
     store.selectedId = null;
     markDirty();
     renderEditor();
   };
-  document.querySelector("#duplicateTable").onclick = () => {
+  byId("duplicateTable").onclick = () => {
     const t = selectedTable();
     if (!t) return;
     const copy = {
@@ -371,10 +386,10 @@ export function wireEditor() {
     markDirty();
     renderEditor();
   };
-  document.querySelector("#zoomIn").onclick = () => zoomEditor(store.zoom * 1.25);
-  document.querySelector("#zoomOut").onclick = () => zoomEditor(store.zoom / 1.25);
-  document.querySelector("#resetMap").onclick = () => {
-    if (!confirm("چیدمان دمو بازنشانی شود؟")) return;
+  byId("zoomIn").onclick = () => zoomEditor(store.zoom * 1.25);
+  byId("zoomOut").onclick = () => zoomEditor(store.zoom / 1.25);
+  byId("resetMap").onclick = () => {
+    if (!confirm("چیدمان این بخش به حالت پیش‌فرض برگردد؟")) return;
     store.cafeMap = cloneDefault();
     store.activeArea = "main";
     store.customerArea = "main";
@@ -382,17 +397,17 @@ export function wireEditor() {
     markDirty();
     renderEditor();
   };
-  document.querySelector("#publishMap").onclick = async () => {
+  byId("publishMap").onclick = async () => {
     if (await saveMap()) {
       renderCustomerMap();
       showPublishedToast();
     }
   };
-  document.querySelector("#previewMap").onclick = () => {
+  byId("previewMap").onclick = () => {
     store.mapPreviewMode = true;
-    document.querySelector("#selectionSummary").textContent =
+    byId("selectionSummary").textContent =
       "پیش‌نمایش چیدمان این شعبه · تغییرات هنوز منتشر نشده‌اند";
-    document.querySelector("#confirmBtn").hidden = true;
+    byId("confirmBtn").hidden = true;
     editor.close();
     tableDialog.showModal();
     renderCustomerMap();
@@ -400,7 +415,7 @@ export function wireEditor() {
   tableDialog.addEventListener("close", () => {
     if (!store.mapPreviewMode) return;
     store.mapPreviewMode = false;
-    document.querySelector("#confirmBtn").hidden = false;
+    byId("confirmBtn").hidden = false;
     renderCustomerMap();
     if (!editor.open) editor.showModal();
   });

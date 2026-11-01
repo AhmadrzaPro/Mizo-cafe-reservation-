@@ -1,5 +1,6 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, editor } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { setMapTools } from "./editor.js";
 import { closeImageImport } from "./map-import.js";
 import { fetchOperations } from "./operations.js";
@@ -41,8 +42,7 @@ export async function switchBranch(slug, includeOperations = false) {
 }
 
 export function wireEditorNav() {
-  document.querySelector("#editorExit").onclick = exitMapEditor;
-  document.querySelector("#editorMobileExit").onclick = exitMapEditor;
-  document.querySelector("#branchSelect").onchange = (e) => switchBranch(e.target.value);
-  document.querySelector("#controlBranch").onchange = (e) => switchBranch(e.target.value);
+  byId("editorExit").onclick = exitMapEditor;
+  byId("branchSelect").onchange = () => switchBranch(byId("branchSelect").value);
+  byId("controlBranch").onchange = () => switchBranch(byId("controlBranch").value);
 }

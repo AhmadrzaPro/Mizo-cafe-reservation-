@@ -65,7 +65,8 @@ async function fixture(overrides = {}) {
     env = { DB, DEMO_MODE: "true", ...overrides },
     pending = [];
   // `ip` sets the default client IP header; pass null to send no IP header at all.
-  async function call(path, { method = "GET", body, ip = "198.51.100.1", headers = {} } = {}) {
+  // `raw` sends a body string as-is, for malformed-JSON cases.
+  async function call(path, { method = "GET", body, raw, ip = "198.51.100.1", headers = {} } = {}) {
     const response = await worker.fetch(
       new Request("https://test.local" + path, {
         method,
@@ -74,7 +75,7 @@ async function fixture(overrides = {}) {
           ...(ip ? { "CF-Connecting-IP": ip } : {}),
           ...headers,
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
       }),
       env,
       { waitUntil: (p) => pending.push(p) },
@@ -303,7 +304,7 @@ test("the daily SMS cap skips messages without failing bookings, per café", asy
   );
   // Reminders count against the same cap.
   DB.raw
-    .prepare("UPDATE sms_messages SET scheduled_at='2000-01-01T00:00' WHERE kind='reminder'")
+    .prepare("UPDATE sms_messages SET scheduled_at='2000-01-01T00:00:00.000Z' WHERE kind='reminder'")
     .run();
   await call(a.base + "/availability?date=2090-01-20&party_size=2");
   const reminders = DB.raw
@@ -370,4 +371,110 @@ test("the scheduled handler removes expired rate-limit windows", async () => {
   await Promise.all(pending);
   assert.equal(DB.raw.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE key='old'").get().n, 0);
   assert.equal(DB.raw.prepare("SELECT COUNT(*) AS n FROM rate_limits").get().n, before - 1);
+});
+
+test("OTP verification is limited per IP across challenges", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const { a, call } = await fixture();
+  const verify = (ip) =>
+    call("/api/auth/verify", {
+      method: "POST",
+      ip,
+      body: { cafeSlug: a.slug, mobile: owner, challengeId: "otp:none", code: "000000" },
+    });
+  for (let i = 0; i < 30; i++) assert.equal((await verify()).status, 400);
+  isRateLimited(await verify());
+  assert.equal((await verify("198.51.100.2")).status, 400);
+  t.mock.timers.tick(HOUR);
+  assert.equal((await verify()).status, 400);
+});
+
+test("reservation tracking is limited per IP, including misses", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const { a, book, call } = await fixture();
+  const created = await book(a, 1);
+  assert.equal(created.status, 201);
+  const path = `/api/reservations/${created.data.trackingCode}`;
+  for (let i = 0; i < 29; i++)
+    assert.equal(
+      (await call("/api/reservations/RMA-NOPE00", { method: "POST", body: { mobile: owner } }))
+        .status,
+      404,
+    );
+  assert.equal((await call(path, { method: "POST", body: { mobile: "09121110000" } })).status, 200);
+  isRateLimited(await call(path, { method: "POST", body: { mobile: "09121110000" } }));
+  isRateLimited(await call(`${path}/cancel`, { method: "POST", body: { mobile: "09121110000" } }));
+  assert.equal(
+    (await call(path, { method: "POST", body: { mobile: "09121110000" }, ip: "198.51.100.2" }))
+      .status,
+    200,
+  );
+  t.mock.timers.tick(HOUR);
+  assert.equal((await call(path, { method: "POST", body: { mobile: "09121110000" } })).status, 200);
+});
+
+test("malformed or non-object JSON bodies return 400, not a server error", async () => {
+  const { a, call } = await fixture();
+  for (const raw of ["{not json", "null", "[]", '"text"', ""]) {
+    const r = await call(a.base + "/reservations", { method: "POST", raw });
+    assert.equal(r.status, 400, raw);
+    assert.equal(r.data.error, "invalid_json");
+    assert.match(r.data.message, /[؀-ۿ]/);
+  }
+  assert.equal((await call("/api/auth/verify", { method: "POST", raw: "{" })).status, 400);
+});
+
+test("an unexpected failure returns 500 internal_error", async (t) => {
+  const { env, call } = await fixture();
+  t.mock.method(console, "error", () => {});
+  env.DB.prepare = () => {
+    throw new Error("boom");
+  };
+  const r = await call("/api/auth/verify", { method: "POST", body: {} });
+  assert.equal(r.status, 500);
+  assert.equal(r.data.error, "internal_error");
+});
+
+test("public bodies with wrong types or oversized fields return 400 invalid_request", async () => {
+  const { a, book, call } = await fixture();
+  for (const [path, body, field] of [
+    [a.base + "/reservations", { customerName: { x: 1 } }, "customerName"],
+    [a.base + "/reservations", { tableIds: "t1" }, "tableIds"],
+    [a.base + "/reservations", { tableIds: Array(11).fill("t") }, "tableIds"],
+    [a.base + "/reservations", { notes: "x".repeat(1001) }, "notes"],
+    ["/api/auth/request", { cafeSlug: a.slug, mobile: ["0912"] }, "mobile"],
+    ["/api/auth/verify", { cafeSlug: a.slug, code: true }, "code"],
+    ["/api/setup", { cafeName: "x".repeat(201) }, "cafeName"],
+    ["/api/reservations/RMA-AAAAAA/cancel", { mobile: { x: 1 } }, "mobile"],
+  ]) {
+    const r = await call(path, { method: "POST", body, ip: "198.51.100.9" });
+    assert.equal(r.status, 400, path);
+    assert.equal(r.data.error, "invalid_request", path);
+    assert.ok(r.data.fields.includes(field), `${path} ${r.data.fields}`);
+    assert.match(r.data.message, /[؀-ۿ]/);
+  }
+  // Business errors keep their specific codes, and a valid booking still succeeds.
+  const missingName = await call(a.base + "/reservations", {
+    method: "POST",
+    body: { mobile: "09121110000" },
+  });
+  assert.equal(missingName.data.error, "name_required");
+  assert.equal((await book(a, 3)).status, 201);
+});
+
+test("an unsupported method on an existing route returns 405", async () => {
+  const { a, call } = await fixture();
+  for (const [path, method] of [
+    [a.base + "/availability?date=2090-01-02", "POST"],
+    [a.base + "/map", "DELETE"],
+    ["/api/setup", "DELETE"],
+    ["/api/reservations/RMA-AAAAAA", "PATCH"],
+    ["/api/reservations/RMA-AAAAAA?mobile=09121110000", "GET"],
+  ])
+    assert.equal(
+      (await call(path, { method, body: method === "GET" ? undefined : {} })).status,
+      405,
+      `${method} ${path}`,
+    );
+  assert.equal((await call("/api/nope")).status, 404);
 });

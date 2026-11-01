@@ -25,3 +25,16 @@ export function clientIp(request, env) {
     ip = values[values.length - 1].trim();
   return /^[0-9A-Fa-f:.]{2,45}$/.test(ip) ? ip : "unknown";
 }
+// Thrown for a request body that is not a JSON object; the API router answers it with 400.
+export class InvalidJsonError extends Error {}
+export async function readJson(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    throw new InvalidJsonError("invalid_json");
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    throw new InvalidJsonError("invalid_json");
+  return body;
+}

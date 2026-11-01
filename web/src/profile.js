@@ -1,17 +1,19 @@
 import { apiUrl, readableError, safeResponseJson, settingsUrl } from "./api.js";
 import { renderCustomerMap } from "./booking.js";
 import { renderControls } from "./controls.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { renderEditor, showPublishedToast } from "./editor.js";
 import { recordMapHistory, resetMapHistory } from "./floor/history.js";
 import { faDigits } from "./format.js";
 import { cloneDefault } from "./map-defaults.js";
 import { visibleAreas } from "./map-model.js";
 import { pageParams, state, store, studioDemo } from "./state.js";
+import { applyVirtualCafeSetting } from "./virtual-cafe/index.js";
 
 export function markDirty() {
   recordMapHistory();
   store.dirty = true;
-  document.querySelector("#saveStatus").textContent = "تغییرات منتشر نشده";
+  byId("saveStatus").textContent = "تغییرات منتشر نشده";
 }
 export function activeBranches() {
   return store.cafeProfile.branches.filter(
@@ -31,9 +33,9 @@ export function syncBranchSelectors() {
   const branches = activeBranches(),
     single = branches.length === 1;
   ["branchSelect", "controlBranch", "opsBranch", "smsBranch", "paymentsBranch"].forEach((id) => {
-    const select = document.querySelector(`#${id}`);
+    const select = /** @type {HTMLSelectElement} */ (document.querySelector(`#${id}`));
     if (!select) return;
-    select.innerHTML = "";
+    select.replaceChildren();
     branches.forEach((branch) => {
       const option = document.createElement("option");
       option.value = branch.slug;
@@ -62,13 +64,16 @@ export function applyCafeProfile(profile) {
   syncBranchSelectors();
   const branch = activeBranchProfile();
   if (!branch) return;
-  document.querySelector(".cafe-meta span:first-child").textContent = profile.cafe.name;
-  document.querySelector(".cafe-meta span:nth-child(2)").textContent =
-    `${branch.city}، ${branch.name}`;
-  document.querySelector("#adminCafeName").textContent = profile.cafe.name;
-  document.querySelector("#adminCafeLocation").textContent = `${branch.city} · ${branch.name}`;
-  document.querySelector(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
-  document.querySelector(".editor-header b").textContent = `چیدمان ${profile.cafe.name}`;
+  required(".cafe-meta span:first-child").textContent = profile.cafe.name;
+  required(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
+    .filter(Boolean)
+    .join("، ");
+  document.body.dataset.mode = "cafe";
+  document.title = `${profile.cafe.name} — رزرو میز`;
+  byId("adminCafeName").textContent = profile.cafe.name;
+  byId("adminCafeLocation").textContent = `${branch.city} · ${branch.name}`;
+  required(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
+  required(".editor-header b").textContent = `چیدمان ${profile.cafe.name}`;
 }
 export async function loadCafeProfile() {
   if (pageParams.get("new") === "1") return { configured: false };
@@ -85,22 +90,24 @@ export async function loadCafeProfile() {
   }
 }
 export function applySettingsToCustomer() {
-  const notice = document.querySelector("#customerNoticeBanner"),
-    continueBtn = document.querySelector("#continueBtn");
+  const notice = /** @type {HTMLElement} */ (byId("customerNoticeBanner")),
+    continueBtn = /** @type {HTMLButtonElement} */ (byId("continueBtn"));
   notice.textContent = store.cafeSettings.customerNotice;
   notice.hidden = !store.cafeSettings.customerNotice;
-  document.querySelector("#durationLabel").textContent =
+  byId("durationLabel").textContent =
     `مدت رزرو: ${faDigits(store.cafeSettings.reservationDuration)} دقیقه`;
-  continueBtn.disabled = !store.cafeSettings.reservationsEnabled;
-  continueBtn.innerHTML = store.cafeSettings.reservationsEnabled
-    ? "ادامه و انتخاب میز <span>←</span>"
-    : "رزرو موقتاً متوقف است";
-  document
-    .querySelector(".booking-card")
-    .classList.toggle("booking-paused", !store.cafeSettings.reservationsEnabled);
+  // Paused by the café, or by an unpaid subscription past its grace period.
+  const open = store.cafeSettings.reservationsEnabled && !store.cafeSettings.onlineBookingPaused;
+  continueBtn.disabled = !open;
+  setHtml(
+    continueBtn,
+    open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
+  );
+  required(".booking-card").classList.toggle("booking-paused", !open);
+  applyVirtualCafeSetting();
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;
-    document.querySelector("#guestCount").textContent = faDigits(state.guests);
+    byId("guestCount").textContent = faDigits(state.guests);
   }
 }
 export async function fetchSettings() {
@@ -113,12 +120,12 @@ export async function fetchSettings() {
       return true;
     }
   } catch {}
-  document.querySelector("#controlSaveStatus").textContent = "دریافت تنظیمات ممکن نیست";
+  byId("controlSaveStatus").textContent = "دریافت تنظیمات ممکن نیست";
   return false;
 }
 export async function fetchMap() {
   if (studioDemo) return;
-  document.querySelector("#saveStatus").textContent = "در حال دریافت از دیتابیس…";
+  byId("saveStatus").textContent = "در حال دریافت از دیتابیس…";
   const requestedBranch = store.currentBranch,
     requestedCafe = store.currentCafeSlug;
   try {
@@ -127,11 +134,11 @@ export async function fetchMap() {
     if (response.status === 404) {
       store.cafeMap = cloneDefault();
       store.dirty = true;
-      document.querySelector("#saveStatus").textContent = "شعبه جدید؛ آماده انتشار";
+      byId("saveStatus").textContent = "شعبه جدید؛ آماده انتشار";
     } else if (response.ok) {
       store.cafeMap = await response.json();
       store.dirty = false;
-      document.querySelector("#saveStatus").textContent = "همگام با دیتابیس";
+      byId("saveStatus").textContent = "همگام با دیتابیس";
     } else throw new Error("load");
     store.activeArea = visibleAreas()[0]?.id || store.cafeMap.areas[0]?.id || "main";
     store.customerArea = store.activeArea;
@@ -141,7 +148,7 @@ export async function fetchMap() {
     renderCustomerMap();
   } catch {
     if (requestedBranch !== store.currentBranch) return;
-    document.querySelector("#saveStatus").textContent = "اتصال برقرار نشد؛ دوباره تلاش کنید";
+    byId("saveStatus").textContent = "اتصال برقرار نشد؛ دوباره تلاش کنید";
     showPublishedToast("خطا در دریافت نقشه");
   }
 }
@@ -150,7 +157,7 @@ export async function saveMap() {
     showPublishedToast("این یک دمو است؛ اطلاعات کافه تغییر نمی‌کند.");
     return false;
   }
-  document.querySelector("#saveStatus").textContent = "در حال ذخیره در دیتابیس…";
+  byId("saveStatus").textContent = "در حال ذخیره در دیتابیس…";
   const branch = activeBranchProfile();
   try {
     const response = await fetch(apiUrl(), {
@@ -168,10 +175,10 @@ export async function saveMap() {
     if (!response.ok) throw new Error(data.message || "ذخیره نقشه انجام نشد.");
     store.cafeMap = data;
     store.dirty = false;
-    document.querySelector("#saveStatus").textContent = "همگام با دیتابیس";
+    byId("saveStatus").textContent = "همگام با دیتابیس";
     return true;
   } catch (error) {
-    document.querySelector("#saveStatus").textContent = "ذخیره نشد؛ تغییرات حفظ شده‌اند";
+    byId("saveStatus").textContent = "ذخیره نشد؛ تغییرات حفظ شده‌اند";
     showPublishedToast(readableError(error, "خطا در ذخیره نقشه"));
     return false;
   }

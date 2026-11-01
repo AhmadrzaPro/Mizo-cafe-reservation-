@@ -2,7 +2,7 @@ import { branchRow } from "./branches.js";
 import { reply } from "./http.js";
 import { readSettings } from "./settings.js";
 import { deliverSmsMessage, smsText } from "./sms.js";
-import { subtractLocalMinutes, tehranNow } from "./util/dates.js";
+import { isoInstant, tehranInstant } from "./util/dates.js";
 import { randomId } from "./util/ids.js";
 import { maskMobile } from "./util/mobile.js";
 export async function queueReservationMessages(env, branch, reservation, settings) {
@@ -40,7 +40,7 @@ export async function queueReservationMessages(env, branch, reservation, setting
     ).status;
   }
   if (settings.smsReminderEnabled) {
-    const scheduledAt = subtractLocalMinutes(
+    const scheduledAt = tehranInstant(
         `${reservation.date}T${reservation.time}`,
         settings.smsReminderMinutes,
       ),
@@ -65,8 +65,9 @@ export async function queueReservationMessages(env, branch, reservation, setting
   }
   return results;
 }
+/** @param {import("./types").Env} env @param {string | null} [branchId] */
 export async function processDueReminders(env, branchId = null) {
-  const now = tehranNow().key,
+  const now = isoInstant(),
     condition = branchId ? "AND m.branch_id=?" : "",
     query = `SELECT m.id,m.kind,m.mobile,r.tracking_code,r.reserved_at,b.name AS branch_name,b.cafe_id FROM sms_messages m JOIN reservations r ON r.id=m.reservation_id JOIN branches b ON b.id=m.branch_id WHERE m.kind='reminder' AND m.status='queued' AND m.scheduled_at<=? AND r.status NOT IN ('cancelled','completed','no_show') ${condition} ORDER BY m.scheduled_at LIMIT 25`,
     statement = env.DB.prepare(query),

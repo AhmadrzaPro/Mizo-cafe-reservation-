@@ -84,6 +84,7 @@ export const branchSettings = sqliteTable("branch_settings", {
   depositPeakEnd: text("deposit_peak_end").notNull().default("22:00"),
   paymentDeadlineMinutes: integer("payment_deadline_minutes").notNull().default(15),
   refundPolicy: text("refund_policy").notNull().default("تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود."),
+  virtualCafeEnabled: integer("virtual_cafe_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: text("updated_at").notNull(),
 });
 
@@ -105,19 +106,19 @@ export const otpChallenges = sqliteTable("otp_challenges", {
   mobile: text("mobile").notNull(),
   salt: text("salt").notNull(),
   codeHash: text("code_hash").notNull(),
-  expiresAt: integer("expires_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
   attempts: integer("attempts").notNull().default(0),
-  consumedAt: integer("consumed_at"),
-  createdAt: integer("created_at").notNull(),
+  consumedAt: text("consumed_at"),
+  createdAt: text("created_at").notNull(),
 }, (table) => [index("idx_otp_mobile_created").on(table.mobile, table.createdAt), index("idx_otp_cafe_mobile_created").on(table.cafeId, table.mobile, table.createdAt)]);
 
 export const staffSessions = sqliteTable("staff_sessions", {
   id: text("id").primaryKey(),
   staffId: text("staff_id").notNull().references(() => staffMembers.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull(),
-  expiresAt: integer("expires_at").notNull(),
-  createdAt: integer("created_at").notNull(),
-  lastSeenAt: integer("last_seen_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+  lastSeenAt: text("last_seen_at").notNull(),
 }, (table) => [uniqueIndex("idx_staff_sessions_token_hash").on(table.tokenHash), index("idx_staff_sessions_staff_id").on(table.staffId)]);
 
 export const operatingHours = sqliteTable("operating_hours", {
@@ -237,7 +238,20 @@ export const areas = sqliteTable("areas", {
   width: integer("width").notNull().default(820),
   height: integer("height").notNull().default(520),
   sortOrder: integer("sort_order").notNull().default(0),
+  layout: text("layout"),
 }, (table) => [index("idx_areas_branch_id").on(table.branchId)]);
+
+export const tableHolds = sqliteTable("table_holds", {
+  id: text("id").primaryKey(),
+  branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  tableId: text("table_id").notNull().references(() => cafeTables.id, { onDelete: "cascade" }),
+  startsAt: text("starts_at").notNull(),
+  endsAt: text("ends_at").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  clientKey: text("client_key").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [uniqueIndex("idx_table_holds_token_hash").on(table.tokenHash), index("idx_table_holds_table_expires").on(table.tableId, table.expiresAt), index("idx_table_holds_client").on(table.clientKey, table.branchId, table.expiresAt)]);
 
 export const cafeTables = sqliteTable("cafe_tables", {
   id: text("id").primaryKey(),
@@ -270,3 +284,32 @@ export const rateLimits = sqliteTable("rate_limits", {
   windowStart: integer("window_start").notNull(),
   count: integer("count").notNull().default(0),
 }, (table) => [primaryKey({ columns: [table.key, table.windowStart] }), index("idx_rate_limits_window_start").on(table.windowStart)]);
+
+export const paymentAttempts = sqliteTable("payment_attempts", {
+  id: text("id").primaryKey(),
+  reservationId: text("reservation_id").notNull().references(() => reservations.id, { onDelete: "cascade" }),
+  branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  authority: text("authority").notNull(),
+  amountRials: integer("amount_rials").notNull(),
+  status: text("status").notNull().default("pending"),
+  reference: text("reference"),
+  cardPan: text("card_pan"),
+  error: text("error").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [uniqueIndex("idx_payment_attempts_provider_authority").on(table.provider, table.authority), index("idx_payment_attempts_reservation").on(table.reservationId)]);
+
+export const subscriptionPayments = sqliteTable("subscription_payments", {
+  id: text("id").primaryKey(),
+  cafeId: text("cafe_id").notNull().references(() => cafes.id, { onDelete: "cascade" }),
+  amountRials: integer("amount_rials").notNull(),
+  months: integer("months").notNull().default(1),
+  method: text("method").notNull().default("card"),
+  reference: text("reference").notNull(),
+  cardLast4: text("card_last4"),
+  status: text("status").notNull().default("submitted"),
+  createdAt: text("created_at").notNull(),
+  reviewedAt: text("reviewed_at"),
+  reviewedBy: text("reviewed_by"),
+}, (table) => [index("idx_subscription_payments_status").on(table.status, table.createdAt), index("idx_subscription_payments_cafe").on(table.cafeId, table.createdAt)]);

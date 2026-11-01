@@ -1,0 +1,45 @@
+/* Role-based access states */
+.permission-preview {
+  background: #fff;
+  border: 1px solid #ded6cd;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.permission-preview b {
+  font-size: 0.73rem;
+}
+.permission-preview ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.permission-preview li {
+  background: #eef3ef;
+  color: #45604d;
+  border-radius: 99px;
+  padding: 5px 8px;
+  font-size: 0.64rem;
+}
+.ops-reservation-row.readonly {
+  cursor: default;
+}
+.table-popover p {
+  font-size: 0.66rem;
+  line-height: 1.7;
+  color: #c8beb7;
+  margin: 8px 0 0;
+}
+.ops-dialog.table-only .ops-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ops-dialog.table-only .ops-map-card {
+  min-height: calc(100vh - 205px);
+}
+.ops-dialog [hidden],
+.admin-dialog [hidden],
+.sms-dialog [hidden] {
+  display: none;
+}

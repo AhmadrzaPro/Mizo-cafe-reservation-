@@ -2,7 +2,9 @@ import { mapViewportPointers } from "../state.js";
 
 export function setupFloorGestures(wrap, canvas, getZoom, setZoom, editorMode = false) {
   const pointers = editorMode ? mapViewportPointers : new Map();
+  /** @type {{ id: number, x: number, y: number, left: number, top: number } | null} */
   let pan = null,
+    /** @type {{ distance: number, x: number, y: number, zoom: number } | null} */
     pinch = null,
     ignoreClickUntil = 0,
     suspended = false;

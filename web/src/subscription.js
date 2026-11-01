@@ -1,48 +1,169 @@
 import { adminDialog, subscriptionDialog } from "./dialogs.js";
-import { faDigits, formatPersianDate } from "./format.js";
+import { byId, html, setHtml, required } from "./dom.js";
+import { faDigits, formatPersianDate, formatToman, latinDigits } from "./format.js";
 import { store } from "./state.js";
 
-export const formatToman = (rials) =>
-  `${new Intl.NumberFormat("fa-IR").format(Math.round(Number(rials || 0) / 10))} تومان`;
+export { formatToman };
 export const subscriptionStatusLabel = (status) =>
   ({ inactive: "غیرفعال", trial: "دوره آزمایشی", active: "فعال", past_due: "نیازمند پرداخت" })[
     status
   ] || status;
 export function renderSubscription() {
   if (!store.subscriptionData) return;
-  document.querySelector("#subscriptionDisabled").hidden = store.subscriptionData.enabled;
-  document.querySelector("#subscriptionEnabled").hidden = !store.subscriptionData.enabled;
-  if (!store.subscriptionData.enabled) return;
-  document.querySelector("#subscriptionStatus").textContent = subscriptionStatusLabel(
-    store.subscriptionData.status,
-  );
+  byId("subscriptionDisabled").hidden = store.subscriptionData.enabled;
+  byId("subscriptionEnabled").hidden = !store.subscriptionData.enabled;
+  if (!store.subscriptionData.enabled) return renderSubscriptionNotice();
+  byId("subscriptionStatus").textContent = subscriptionStatusLabel(store.subscriptionData.status);
   const period =
-    store.subscriptionData.status === "trial"
+    store.subscriptionData.endsAt ||
+    (store.subscriptionData.status === "trial"
       ? store.subscriptionData.trialEndsAt
-      : store.subscriptionData.currentPeriodEndsAt;
-  document.querySelector("#subscriptionPeriod").textContent = period
-    ? formatPersianDate(period)
-    : "تعیین نشده";
-  document.querySelector("#subscriptionBranchCount").textContent = faDigits(
-    store.subscriptionData.activeBranchCount,
-  );
-  document.querySelector("#subscriptionUnitPrice").textContent = formatToman(
-    store.subscriptionData.unitPriceRials,
-  );
-  document.querySelector("#subscriptionMonthlyTotal").textContent =
+      : store.subscriptionData.currentPeriodEndsAt);
+  byId("subscriptionPeriod").textContent = period ? formatPersianDate(period) : "تعیین نشده";
+  byId("subscriptionBranchCount").textContent = faDigits(store.subscriptionData.activeBranchCount);
+  byId("subscriptionUnitPrice").textContent = formatToman(store.subscriptionData.unitPriceRials);
+  byId("subscriptionMonthlyTotal").textContent =
     `${formatToman(store.subscriptionData.monthlyPriceRials)} / ماه`;
-  const events = document.querySelector("#subscriptionEvents");
-  events.innerHTML = store.subscriptionData.events.length
-    ? store.subscriptionData.events
-        .map(
+  const events = byId("subscriptionEvents");
+  setHtml(
+    events,
+    store.subscriptionData.events.length
+      ? html`${store.subscriptionData.events.map(
           (event) =>
-            `<article><b>${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b><span>${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span></article>`,
-        )
-        .join("")
-    : '<div class="subscription-empty">هنوز رویدادی ثبت نشده است.</div>';
+            html`<article>
+              <b
+                >${{ activated: "شروع دوره آزمایشی", plan_changed: "به‌روزرسانی اشتراک", disabled: "غیرفعال‌سازی", payment_demo: "پرداخت آزمایشی", payment_submitted: "ثبت کارت به کارت", payment_card: "تأیید پرداخت کارت به کارت", payment_rejected: "رد پرداخت کارت به کارت", expired: "پایان دوره؛ نیازمند پرداخت", updated: "به‌روزرسانی", saas_admin_update: "ویرایش مدیر SaaS" }[event.type] || event.type}</b
+              ><span
+                >${formatPersianDate(event.createdAt)}${event.amountRials ? ` · ${formatToman(event.amountRials)}` : ""}</span
+              >
+            </article>`,
+        )}`
+      : html`<div class="subscription-empty">هنوز رویدادی ثبت نشده است.</div>`,
+  );
+  renderSubscriptionPayment();
+  renderSubscriptionNotice();
+}
+/** "6219861930664833" → "6219 8619 3066 4833" */
+const groupCard = (number) => String(number).replace(/(\d{4})(?=\d)/g, "$1 ");
+// Paying the platform: the Mizo card for card-to-card transfers, or the pending transfer's status.
+function renderSubscriptionPayment() {
+  const data = store.subscriptionData,
+    section = byId("subscriptionCardPayment");
+  if (!data) return;
+  const payment = data.payment;
+  byId("renewSubscription").hidden = !payment.demo;
+  section.hidden = !payment.card && !payment.pending;
+  if (payment.pending) {
+    setHtml(
+      section,
+      html`<b class="payment-review"
+        >پرداخت ${formatToman(payment.pending.amountRials)} با شماره پیگیری
+        <span dir="ltr">${payment.pending.reference}</span> ثبت شد و پس از تأیید میزو، اشتراک تمدید
+        می‌شود.</b
+      >`,
+    );
+    return;
+  }
+  const card = payment.card;
+  if (!card) return;
+  setHtml(
+    section,
+    html`<h3>پرداخت اشتراک با کارت به کارت</h3>
+      <p>
+        مبلغ یک ماه، <b>${formatToman(data.monthlyPriceRials)}</b>، را به این کارت واریز کنید و
+        شماره پیگیری را ثبت کنید. پس از تأیید واریز، اشتراک ۳۰ روز تمدید می‌شود.
+      </p>
+      <div class="card-number">
+        <strong dir="ltr">${groupCard(card.cardNumber)}</strong
+        ><button type="button" data-copy-card>کپی</button>
+      </div>
+      ${card.cardHolder && html`<small>به نام ${card.cardHolder}</small>`}
+      <form class="card-transfer-form">
+        <label
+          >شماره پیگیری انتقال<input
+            name="reference"
+            inputmode="numeric"
+            maxlength="40"
+            required
+            dir="ltr" /></label
+        ><label
+          >۴ رقم آخر کارت شما<input
+            name="cardLast4"
+            inputmode="numeric"
+            maxlength="4"
+            dir="ltr" /></label
+        ><button class="publish-btn" type="submit">ثبت پرداخت</button>
+      </form>`,
+  );
+  const copy = /** @type {HTMLButtonElement} */ (section.querySelector("[data-copy-card]"));
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(card.cardNumber);
+      copy.textContent = "کپی شد ✓";
+    } catch {
+      copy.textContent = "کپی نشد";
+    }
+  };
+  const form = /** @type {HTMLFormElement} */ (section.querySelector("form"));
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const error = byId("subscriptionError"),
+      button = /** @type {HTMLButtonElement} */ (required("button", form)),
+      fields = new FormData(form);
+    error.textContent = "";
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/subscription/card-transfer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            reference: latinDigits(String(fields.get("reference") || "")),
+            cardLast4: latinDigits(String(fields.get("cardLast4") || "")),
+          }),
+        }),
+        result = await response.json();
+      if (!response.ok) throw new Error(result.message || "ثبت پرداخت انجام نشد.");
+      store.subscriptionData = result;
+      renderSubscription();
+    } catch (err) {
+      error.textContent = err.message;
+      button.disabled = false;
+    }
+  };
+}
+const persianDate = (iso) =>
+  new Date(iso).toLocaleDateString("fa-IR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "Asia/Tehran",
+  });
+// The owner's warning once a trial or paid period has ended without payment.
+export function renderSubscriptionNotice() {
+  const data = store.subscriptionData,
+    notice = byId("subscriptionNotice"),
+    show = store.managerSession?.role === "owner" && data?.enabled && data.status === "past_due";
+  notice.hidden = !show;
+  if (!show) return;
+  notice.dataset.paused = String(Boolean(data.bookingPaused));
+  required("p", notice).textContent = data.payment?.pending
+    ? "دوره اشتراک تمام شده و پرداخت شما در انتظار تأیید میزو است."
+    : data.bookingPaused
+      ? "دوره اشتراک تمام شده و رزرو آنلاین مشتریان بسته شده است. پس از پرداخت و تأیید، دوباره باز می‌شود. پنل و رزرو تلفنی کار می‌کنند."
+      : `دوره اشتراک تمام شده است. اگر تا ${data.graceEndsAt ? persianDate(data.graceEndsAt) : "چند روز آینده"} پرداخت نشود، رزرو آنلاین مشتریان بسته می‌شود.`;
+}
+/** Loads the subscription for the owner's warning when the panel opens. */
+export async function refreshSubscriptionNotice() {
+  if (store.managerSession?.role !== "owner") return renderSubscriptionNotice();
+  try {
+    const response = await fetch("/api/subscription");
+    if (response.ok) store.subscriptionData = await response.json();
+  } catch {
+    // The warning is optional; the panel works without it.
+  }
+  renderSubscriptionNotice();
 }
 export async function fetchSubscription() {
-  const error = document.querySelector("#subscriptionError");
+  const error = byId("subscriptionError");
   error.textContent = "";
   try {
     const response = await fetch("/api/subscription"),
@@ -54,38 +175,17 @@ export async function fetchSubscription() {
     error.textContent = err.message;
   }
 }
-export async function changeSubscription(payload) {
-  const error = document.querySelector("#subscriptionError");
-  error.textContent = "";
-  try {
-    const response = await fetch("/api/subscription", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      }),
-      data = await response.json();
-    if (!response.ok) throw new Error(data.message || "تغییر اشتراک انجام نشد.");
-    store.subscriptionData = data;
-    renderSubscription();
-  } catch (err) {
-    error.textContent = err.message;
-  }
-}
-
 export function wireSubscription() {
-  document.querySelector("#openSubscription").onclick = async () => {
+  const openSubscription = async () => {
     adminDialog.close();
-    subscriptionDialog.showModal();
     await fetchSubscription();
+    subscriptionDialog.showModal();
   };
-  document.querySelector("#enableSubscription").onclick = () =>
-    changeSubscription({ enabled: true });
-  document.querySelector("#disableSubscription").onclick = () => {
-    if (confirm("اشتراک برای این کافه غیرفعال شود؟")) changeSubscription({ enabled: false });
-  };
-  document.querySelector("#renewSubscription").onclick = async () => {
-    const button = document.querySelector("#renewSubscription"),
-      error = document.querySelector("#subscriptionError");
+  byId("openSubscription").onclick = openSubscription;
+  byId("subscriptionNoticePay").onclick = openSubscription;
+  byId("renewSubscription").onclick = async () => {
+    const button = byId("renewSubscription"),
+      error = byId("subscriptionError");
     button.disabled = true;
     error.textContent = "";
     try {

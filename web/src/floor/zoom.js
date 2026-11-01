@@ -1,3 +1,4 @@
+import { byId, required } from "../dom.js";
 import { renderEditor, tableSize } from "../editor.js";
 import { fitMap } from "./editor-tools.js";
 import { fitFloorZoom } from "./geometry.js";
@@ -6,6 +7,7 @@ import { faDigits, latinDigits } from "../format.js";
 import { activeTables } from "../map-import.js";
 import { markDirty } from "../profile.js";
 import { store } from "../state.js";
+import { normalizeLayout } from "../venue-layout.js";
 
 // Geometry uses 40 coordinate units per metre. Existing maps retain 820 × 520.
 export function areaBounds(area = store.cafeMap.areas.find((a) => a.id === store.activeArea)) {
@@ -22,11 +24,15 @@ export function applyFloorViewport(canvas, stage, bounds, scale) {
   canvas.classList.toggle("floor-overview", scale < 0.45);
 }
 export function syncAreaDimensions() {
-  const bounds = areaBounds();
-  document.querySelector("#areaWidth").value = bounds.width / 40;
-  document.querySelector("#areaHeight").value = bounds.height / 40;
-  document.querySelector("#studioCounts").dataset.dimensions =
-    `${bounds.width / 40} × ${bounds.height / 40} متر`;
+  const bounds = areaBounds(),
+    area = store.cafeMap.areas.find((a) => a.id === store.activeArea),
+    layout = normalizeLayout(area?.layout, area?.kind);
+  byId("areaDoor").value = layout.door;
+  byId("areaWindow").value = layout.window;
+  byId("areaCounter").value = layout.counter;
+  byId("areaWidth").value = String(bounds.width / 40);
+  byId("areaHeight").value = String(bounds.height / 40);
+  byId("studioCounts").dataset.dimensions = `${bounds.width / 40} × ${bounds.height / 40} متر`;
 }
 export function resizeArea(width, height) {
   const area = store.cafeMap.areas.find((a) => a.id === store.activeArea);
@@ -55,8 +61,8 @@ export function resizeArea(width, height) {
   return "";
 }
 export function tableInsertPosition(shape) {
-  const wrap = document.querySelector(".canvas-wrap"),
-    canvas = document.querySelector("#mapCanvas"),
+  const wrap = required(".canvas-wrap"),
+    canvas = byId("mapCanvas"),
     rect = canvas.getBoundingClientRect(),
     view = wrap.getBoundingClientRect(),
     bounds = areaBounds(),
@@ -92,8 +98,8 @@ export function zoomFloorAt(wrap, canvas, scale, previous, apply, point) {
   wrap.scrollTop += next.top + worldY * actual - clientY;
 }
 export function zoomEditor(value, point) {
-  const wrap = document.querySelector(".canvas-wrap"),
-    canvas = document.querySelector("#mapCanvas");
+  const wrap = required(".canvas-wrap"),
+    canvas = byId("mapCanvas");
   zoomFloorAt(
     wrap,
     canvas,
@@ -102,8 +108,8 @@ export function zoomEditor(value, point) {
     (scale) => {
       store.zoom = scale;
       canvas.dataset.zoom = scale;
-      applyFloorViewport(canvas, document.querySelector("#mapStage"), areaBounds(), scale);
-      document.querySelector("#zoomValue").textContent = `${faDigits(Math.round(scale * 100))}٪`;
+      applyFloorViewport(canvas, byId("mapStage"), areaBounds(), scale);
+      byId("zoomValue").textContent = `${faDigits(Math.round(scale * 100))}٪`;
     },
     point,
   );
@@ -111,16 +117,16 @@ export function zoomEditor(value, point) {
 export function navigationFloor(kind) {
   return kind === "customer"
     ? {
-        wrap: document.querySelector("#customerMapViewport"),
-        canvas: document.querySelector("#customerFloorPlan"),
-        stage: document.querySelector("#customerMapStage"),
+        wrap: byId("customerMapViewport"),
+        canvas: byId("customerFloorPlan"),
+        stage: byId("customerMapStage"),
         bounds: areaBounds(store.cafeMap.areas.find((a) => a.id === store.customerArea)),
         zoom: store.customerMapZoom,
       }
     : {
-        wrap: document.querySelector("#opsMapViewport"),
-        canvas: document.querySelector("#opsFloor"),
-        stage: document.querySelector("#opsMapStage"),
+        wrap: byId("opsMapViewport"),
+        canvas: byId("opsFloor"),
+        stage: byId("opsMapStage"),
         bounds: areaBounds({
           width: store.opsData?.tables.find((t) => t.areaId === store.opsAreaId)?.areaWidth,
           height: store.opsData?.tables.find((t) => t.areaId === store.opsAreaId)?.areaHeight,
@@ -146,21 +152,37 @@ export function zoomNavigationFloor(kind, value, point) {
 }
 
 export function wireFloorZoom() {
-  document.querySelector("#areaSizeToggle").onclick = (event) => {
-    const panel = document.querySelector("#areaSizePanel");
+  byId("areaSizeToggle").onclick = (event) => {
+    const panel = byId("areaSizePanel");
     panel.hidden = !panel.hidden;
-    event.currentTarget.setAttribute("aria-expanded", String(!panel.hidden));
+    /** @type {HTMLElement} */ (event.currentTarget).setAttribute(
+      "aria-expanded",
+      String(!panel.hidden),
+    );
     syncAreaDimensions();
-    document.querySelector("#areaSizeError").textContent = "";
+    byId("areaSizeError").textContent = "";
   };
-  document.querySelector("#applyAreaSize").onclick = () => {
-    const width = Math.round(Number(latinDigits(document.querySelector("#areaWidth").value)) * 40),
-      height = Math.round(Number(latinDigits(document.querySelector("#areaHeight").value)) * 40);
-    document.querySelector("#areaSizeError").textContent = resizeArea(width, height);
+  // Door, window and counter: applied as soon as they are chosen, like dragging a table.
+  for (const [id, key] of /** @type {const} */ ([
+    ["areaDoor", "door"],
+    ["areaWindow", "window"],
+    ["areaCounter", "counter"],
+  ]))
+    byId(id).addEventListener("change", () => {
+      const area = store.cafeMap.areas.find((a) => a.id === store.activeArea);
+      if (!area) return;
+      area.layout = { ...normalizeLayout(area.layout, area.kind), [key]: byId(id).value };
+      markDirty();
+      renderEditor();
+    });
+  byId("applyAreaSize").onclick = () => {
+    const width = Math.round(Number(latinDigits(byId("areaWidth").value)) * 40),
+      height = Math.round(Number(latinDigits(byId("areaHeight").value)) * 40);
+    byId("areaSizeError").textContent = resizeArea(width, height);
   };
   setupFloorGestures(
     document.querySelector(".canvas-wrap"),
-    document.querySelector("#mapCanvas"),
+    byId("mapCanvas"),
     () => store.zoom,
     zoomEditor,
     true,
@@ -173,20 +195,23 @@ export function wireFloorZoom() {
       () => (kind === "customer" ? store.customerMapZoom : store.opsMapZoom),
       (value, point) => zoomNavigationFloor(kind, value, point),
     );
-    document.querySelector(`[data-floor-controls="${kind}"]`).onclick = (event) => {
-      const action = event.target.closest("[data-zoom]")?.dataset.zoom;
-      if (!action) return;
-      const view = navigationFloor(kind);
-      zoomNavigationFloor(
-        kind,
-        action === "fit"
-          ? fitFloorZoom(view.bounds, view.wrap.clientWidth, view.wrap.clientHeight)
-          : view.zoom * (action === "in" ? 1.25 : 0.8),
-      );
-      if (action === "fit") {
-        view.wrap.scrollLeft = 0;
-        view.wrap.scrollTop = 0;
-      }
-    };
+    /** @type {HTMLElement} */ (document.querySelector(`[data-floor-controls="${kind}"]`)).onclick =
+      (event) => {
+        const action = /** @type {HTMLElement | null} */ (
+          /** @type {HTMLElement} */ (event.target).closest("[data-zoom]")
+        )?.dataset.zoom;
+        if (!action) return;
+        const view = navigationFloor(kind);
+        zoomNavigationFloor(
+          kind,
+          action === "fit"
+            ? fitFloorZoom(view.bounds, view.wrap.clientWidth, view.wrap.clientHeight)
+            : view.zoom * (action === "in" ? 1.25 : 0.8),
+        );
+        if (action === "fit") {
+          view.wrap.scrollLeft = 0;
+          view.wrap.scrollTop = 0;
+        }
+      };
   }
 }

@@ -1,8 +1,32 @@
 import { branchRow } from "./branches.js";
-import { reply } from "./http.js";
+import { readJson, reply } from "./http.js";
 import { idPart } from "./util/ids.js";
 export const outdoorAreaName = (name) =>
   /(تراس|حیاط|روف|باغ|بالکن|فضای باز)/.test(String(name || ""));
+const SIDES = ["top", "right", "bottom", "left"];
+/**
+ * Which wall holds a room's door, window and counter (the same rules as web/src/venue-layout.js).
+ * Unknown values keep the classic layout: door at the bottom, and indoors the window on the right
+ * and the counter on the left.
+ * @param {any} layout @param {string} kind
+ */
+export function normalizeLayout(layout, kind) {
+  const outdoor = kind === "outdoor",
+    pick = (value, allowed, fallback) => (allowed.includes(value) ? value : fallback);
+  return {
+    door: pick(layout?.door, SIDES, "bottom"),
+    window: pick(layout?.window, [...SIDES, "none"], outdoor ? "none" : "right"),
+    counter: pick(layout?.counter, [...SIDES, "none"], outdoor ? "none" : "left"),
+  };
+}
+/** The stored layout column, which may be NULL or malformed. */
+function storedLayout(text) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
 export function normalizeMap(input) {
   const areas = Array.isArray(input?.areas) ? input.areas.slice(0, 20) : [],
     tables = Array.isArray(input?.tables) ? input.tables.slice(0, 200) : [];
@@ -12,6 +36,7 @@ export function normalizeMap(input) {
       kind: area.kind === "outdoor" ? "outdoor" : "indoor",
       width: Number(area.width ?? 820),
       height: Number(area.height ?? 520),
+      layout: normalizeLayout(area.layout, area.kind === "outdoor" ? "outdoor" : "indoor"),
       sortOrder: index,
     })),
     areaIds = new Set(normalizedAreas.map((area) => area.id));
@@ -50,7 +75,7 @@ export async function analyzeMapImage(request, env) {
       { error: "image_too_large", message: "تصویر را کوچک‌تر کنید و دوباره تلاش کنید." },
       413,
     );
-  const body = await request.json(),
+  const body = await readJson(request),
     image = body?.image;
   if (
     typeof image !== "string" ||
@@ -157,7 +182,7 @@ export async function readMap(db, cafeSlug, branchSlug) {
   const [areasResult, tablesResult] = await db.batch([
       db
         .prepare(
-          "SELECT id,name,kind,width,height,sort_order FROM areas WHERE branch_id=? ORDER BY sort_order,id",
+          "SELECT id,name,kind,width,height,sort_order,layout FROM areas WHERE branch_id=? ORDER BY sort_order,id",
         )
         .bind(branch.id),
       db
@@ -167,13 +192,17 @@ export async function readMap(db, cafeSlug, branchSlug) {
         .bind(branch.id),
     ]),
     prefix = `${branch.id}:`,
-    areas = (areasResult.results || []).map((row) => ({
-      id: String(row.id).replace(prefix, ""),
-      name: row.name,
-      width: row.width,
-      height: row.height,
-      kind: row.kind === "outdoor" || outdoorAreaName(row.name) ? "outdoor" : "indoor",
-    })),
+    areas = (areasResult.results || []).map((row) => {
+      const kind = row.kind === "outdoor" || outdoorAreaName(row.name) ? "outdoor" : "indoor";
+      return {
+        id: String(row.id).replace(prefix, ""),
+        name: row.name,
+        width: row.width,
+        height: row.height,
+        kind,
+        layout: normalizeLayout(storedLayout(row.layout), kind),
+      };
+    }),
     kinds = new Set(areas.map((area) => area.kind)),
     derived = kinds.size > 1 ? "both" : kinds.has("outdoor") ? "outdoor" : "indoor",
     spaceMode = ["indoor", "outdoor", "both"].includes(branch.space_mode)
@@ -291,7 +320,7 @@ export async function writeMap(db, cafeSlug, branchSlug, body) {
     statements.push(
       db
         .prepare(
-          "INSERT INTO areas (id,branch_id,name,kind,sort_order,width,height) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,sort_order=excluded.sort_order,width=excluded.width,height=excluded.height",
+          "INSERT INTO areas (id,branch_id,name,kind,sort_order,width,height,layout) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,sort_order=excluded.sort_order,width=excluded.width,height=excluded.height,layout=excluded.layout",
         )
         .bind(
           `${branchId}:${area.id}`,
@@ -301,6 +330,7 @@ export async function writeMap(db, cafeSlug, branchSlug, body) {
           area.sortOrder,
           area.width,
           area.height,
+          JSON.stringify(area.layout),
         ),
     );
   for (const table of map.tables)
