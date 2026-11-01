@@ -44,9 +44,11 @@ const FAILURE_TEXT = {
   runtime: "نمایش سه‌بعدی متوقف شد.",
 };
 
-/** Shows the entry button when the café offers the Virtual Cafe. */
+/** Shows the entry button when the platform offers the Virtual Cafe and the branch has it on. */
 export function applyVirtualCafeSetting() {
-  byId("openVirtualCafe").hidden = !store.cafeSettings.virtualCafeEnabled;
+  byId("openVirtualCafe").hidden = !(
+    store.cafeSettings.virtualCafeOffered && store.cafeSettings.virtualCafeEnabled
+  );
 }
 
 export function wireVirtualCafe() {

@@ -49,7 +49,7 @@ All small, and made so that the 2D map and the Virtual Cafe share one path:
 - `web/src/booking.js`: choosing a table and going on to the details form are now the functions `chooseTable()` and `continueWithTable()`. The 2D map uses them exactly as before; the adapter calls the same ones.
 - `web/src/reservation-form.js`: when the backend refuses a booking with `409` (the table or slot was taken first), availability and the map are refreshed and the stale choice is cleared, so going back shows the truth. This also improves the 2D flow, which used to keep the taken table selected.
 - `web/src/profile.js`: shows the entry button when the settings allow it.
-- `worker/src/api.js`: the settings answer gains `virtualCafeEnabled`.
+- `worker/src/api.js`: the settings answer gains `virtualCafeEnabled`. (Phase 2 renamed it `virtualCafeOffered` and made `virtualCafeEnabled` the branch owner's own switch.)
 - `scripts/embed-assets.mjs`: builds the engine bundle (minified) and versions its URL.
 
 No database change; no change to how reservations are validated or stored.

@@ -1,4 +1,5 @@
 import { cleanupAuth } from "./auth/session.js";
+import { cleanupHolds } from "./holds.js";
 import { processDueReminders } from "./notifications.js";
 import { cleanupRateLimits } from "./rate-limit.js";
 import { expireSubscriptions } from "./subscription.js";
@@ -23,6 +24,7 @@ export function maintenanceOnRequest(env, now = Date.now()) {
     work.push(
       cleanupRateLimits(env.DB, now),
       cleanupAuth(env.DB, now),
+      cleanupHolds(env.DB, now),
       expireSubscriptions(env.DB),
     );
   }

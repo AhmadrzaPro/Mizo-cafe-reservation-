@@ -26,6 +26,7 @@ New API tests should use the shared fixture in `tests/helpers/worker.mjs`: `setu
 | `time-formats.test.mjs` | Every stored instant is ISO UTC, reminder times, migration `0018`, and Tehran-clock display |
 | `openapi.test.mjs` | `docs/openapi.yaml` documents exactly the routes the API serves, and its references resolve |
 | `configuration-docs.test.mjs` | Every environment variable the Worker reads is in `docs/configuration.md` and `.env.example` |
+| `table-holds.test.mjs` | Table holds: hidden from availability, single under concurrent requests, used by the holder's booking and refused to others by the trigger, release, expiry and cleanup, per-client cap and rate limit, and the owner's Virtual Cafe switch |
 | `virtual-cafe.test.mjs` | The Virtual Cafe scene built from the real map and its branch isolation, collision, the `VIRTUAL_CAFE` flag, and three.js staying out of `/app.js` |
 | `html.test.mjs` | Escaping in the `html` tag, and `required()` |
 | `floor-studio.test.mjs` | Floor-studio furniture, undo and redo, zoom and gestures, without a browser |
@@ -48,7 +49,8 @@ npm run test:e2e
 - **Staff:** signing in with a code through the dialog, every admin panel and its controls, slow loads that must not overwrite edits, and signing out everywhere.
 - **Payments:** a ZarinPal deposit through to the return page.
 - **Subscriptions:** a card-to-card payment approved in the SaaS console, booking paused after the grace period, and the console showing café names as text and saving a café's subscription.
-- **Virtual Cafe:** off by default with nothing 3D loaded; a table chosen in 3D booked through the standard form; a table taken before or after the hand-off; a broken engine, no WebGL, and a slow download each falling back to the 2D map.
+- **Virtual Cafe:** off by default with nothing 3D loaded; a table chosen in 3D booked through the standard form; a table taken before the hand-off; a held table refused to others until the hold expires; the owner's switch; a broken engine, no WebGL, and a slow download each falling back to the 2D map.
+- **Holds and layout:** the 2D form holding the table and releasing it on going back; the door, window and counter chosen in the editor reaching the customer's map.
 
 Any script error, console error or CSP violation fails a test.
 

@@ -1,5 +1,7 @@
 # Virtual Cafe: performance baseline
 
+> **Phase 2:** `app.js` is now minified: 141,018 bytes (gzip 35,657), smaller than before the Virtual Cafe (gzip 38,203). The figures below are the Phase 1 measurements.
+
 Measured on 1 November 2026 from `npm run build`, and in the Chromium that ships with Playwright 1.63, against the e2e server (`e2e/server.mjs`). The browser has no GPU here: WebGL runs on SwiftShader, a CPU renderer, so frame rates below are a worst case, not a phone's real figure (see "Frame rate").
 
 ## Bundle sizes

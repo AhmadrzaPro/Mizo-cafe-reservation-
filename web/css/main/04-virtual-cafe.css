@@ -346,3 +346,26 @@
 .virtual-cafe-debug[hidden] {
   display: none;
 }
+
+/* The owner's switch in the control centre, shown only where the platform offers the feature. */
+.control-item[hidden] {
+  display: none;
+}
+
+/* The booking form's note on how long the chosen table stays held. */
+/* More specific than `.form-dialog > p:not(.form-error)`, which sets dialog paragraphs grey. */
+.form-dialog > p.hold-countdown {
+  margin: -4px 0 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #eef6f0;
+  color: #2d7652;
+  font-size: 0.78rem;
+}
+.form-dialog > p.hold-countdown[data-expired="true"] {
+  background: #fbefe9;
+  color: #a84638;
+}
+.hold-countdown[hidden] {
+  display: none;
+}

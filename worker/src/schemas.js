@@ -37,7 +37,15 @@ export const schemas = {
       z.array(z.union([z.string().check(z.maxLength(120)), z.number()])).check(z.maxLength(10)),
     ),
     source: text(20),
+    holdToken: text(80),
   }),
+  hold: z.looseObject({
+    date: text(10),
+    time: text(5),
+    partySize: z.optional(z.union([z.number(), z.string().check(z.maxLength(3))])),
+    tableId: text(160),
+  }),
+  holdRelease: z.looseObject({ token: text(80) }),
   trackingAction: z.looseObject({ mobile }),
   cardTransfer: z.looseObject({
     reference: z.optional(z.union([z.string().check(z.maxLength(60)), z.number()])),

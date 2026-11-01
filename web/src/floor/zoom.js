@@ -7,6 +7,7 @@ import { faDigits, latinDigits } from "../format.js";
 import { activeTables } from "../map-import.js";
 import { markDirty } from "../profile.js";
 import { store } from "../state.js";
+import { normalizeLayout } from "../venue-layout.js";
 
 // Geometry uses 40 coordinate units per metre. Existing maps retain 820 × 520.
 export function areaBounds(area = store.cafeMap.areas.find((a) => a.id === store.activeArea)) {
@@ -23,7 +24,12 @@ export function applyFloorViewport(canvas, stage, bounds, scale) {
   canvas.classList.toggle("floor-overview", scale < 0.45);
 }
 export function syncAreaDimensions() {
-  const bounds = areaBounds();
+  const bounds = areaBounds(),
+    area = store.cafeMap.areas.find((a) => a.id === store.activeArea),
+    layout = normalizeLayout(area?.layout, area?.kind);
+  byId("areaDoor").value = layout.door;
+  byId("areaWindow").value = layout.window;
+  byId("areaCounter").value = layout.counter;
   byId("areaWidth").value = String(bounds.width / 40);
   byId("areaHeight").value = String(bounds.height / 40);
   byId("studioCounts").dataset.dimensions = `${bounds.width / 40} × ${bounds.height / 40} متر`;
@@ -156,6 +162,19 @@ export function wireFloorZoom() {
     syncAreaDimensions();
     byId("areaSizeError").textContent = "";
   };
+  // Door, window and counter: applied as soon as they are chosen, like dragging a table.
+  for (const [id, key] of /** @type {const} */ ([
+    ["areaDoor", "door"],
+    ["areaWindow", "window"],
+    ["areaCounter", "counter"],
+  ]))
+    byId(id).addEventListener("change", () => {
+      const area = store.cafeMap.areas.find((a) => a.id === store.activeArea);
+      if (!area) return;
+      area.layout = { ...normalizeLayout(area.layout, area.kind), [key]: byId(id).value };
+      markDirty();
+      renderEditor();
+    });
   byId("applyAreaSize").onclick = () => {
     const width = Math.round(Number(latinDigits(byId("areaWidth").value)) * 40),
       height = Math.round(Number(latinDigits(byId("areaHeight").value)) * 40);

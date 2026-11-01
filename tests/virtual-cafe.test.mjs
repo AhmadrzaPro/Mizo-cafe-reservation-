@@ -14,6 +14,7 @@ import {
   tableInFront,
 } from "../web/src/virtual-cafe/engine/collision.js";
 import { assets, page } from "../dist/server/site-content.js";
+import { normalizeLayout, venueGeometry } from "../web/src/venue-layout.js";
 import { fixture } from "./helpers/worker.mjs";
 
 const map = {
@@ -122,13 +123,13 @@ test("the Virtual Cafe is off unless VIRTUAL_CAFE names the café or says all", 
       cafe = await f.setupCafe();
     return { slug: cafe.slug, data: (await f.call(`${cafe.base}/settings`)).data };
   };
-  assert.equal((await settings({})).data.virtualCafeEnabled, false);
-  assert.equal((await settings({ VIRTUAL_CAFE: "all" })).data.virtualCafeEnabled, true);
-  assert.equal((await settings({ VIRTUAL_CAFE: "cafe-other" })).data.virtualCafeEnabled, false);
+  assert.equal((await settings({})).data.virtualCafeOffered, false);
+  assert.equal((await settings({ VIRTUAL_CAFE: "all" })).data.virtualCafeOffered, true);
+  assert.equal((await settings({ VIRTUAL_CAFE: "cafe-other" })).data.virtualCafeOffered, false);
   const f = await fixture(),
     cafe = await f.setupCafe();
   f.env.VIRTUAL_CAFE = `cafe-other, ${cafe.slug}`;
-  assert.equal((await f.call(`${cafe.base}/settings`)).data.virtualCafeEnabled, true);
+  assert.equal((await f.call(`${cafe.base}/settings`)).data.virtualCafeOffered, true);
 });
 
 test("three.js is only in the Virtual Cafe bundle, which the page does not load by itself", () => {
@@ -139,4 +140,56 @@ test("three.js is only in the Virtual Cafe bundle, which the page does not load 
   assert.match(page, /<meta name="virtual-cafe-src" content="\/virtual-cafe\.js\?v=[0-9a-f]{12}">/);
   assert.doesNotMatch(page, /<script[^>]+virtual-cafe/);
   assert.doesNotMatch(page, /rel="(?:preload|modulepreload|prefetch)"[^>]+virtual-cafe/);
+});
+
+test("door, window and counter follow the owner's layout, in 2D geometry and in the 3D scene", () => {
+  const room = { id: "main", name: "سالن", kind: "indoor", width: 820, height: 520 };
+  // The classic layout, unchanged for maps saved before layouts existed.
+  const classic = venueGeometry(room);
+  assert.deepEqual(classic.layout, { door: "bottom", window: "right", counter: "left" });
+  assert.deepEqual(classic.counter, { x: 24, y: 135, width: 88, height: 245, side: "left" });
+  assert.deepEqual(classic.door, { x: 160, y: 492, width: 92, height: 28, side: "bottom" });
+  assert.equal(classic.window?.side, "right");
+  // Outdoors there is no window or counter unless the owner adds one.
+  assert.deepEqual(normalizeLayout(null, "outdoor"), {
+    door: "bottom",
+    window: "none",
+    counter: "none",
+  });
+  // Unknown values fall back; a window on the door's wall gives way to the door.
+  assert.deepEqual(normalizeLayout({ door: "up", window: "x", counter: 7 }), classic.layout);
+  const shared = venueGeometry({
+    ...room,
+    layout: { door: "left", window: "left", counter: "left" },
+  });
+  assert.equal(shared.window, null);
+  // The counter on the door's wall starts past the door, keeping the entrance clear.
+  assert.ok(shared.counter && shared.counter.y >= shared.door.y + shared.door.height);
+
+  const scene = buildVirtualScene(
+    {
+      spaceMode: "indoor",
+      areas: [{ ...room, layout: { door: "top", window: "left", counter: "none" } }],
+      tables: [{ id: "t1", area: "main", name: "میز", shape: "round", capacity: 2, x: 0, y: 200 }],
+    },
+    { cafeSlug: "c", branchSlug: "b" },
+  ).areas[0];
+  assert.equal(scene.entrance.side, "top");
+  assert.equal(scene.entrance.z, -6.5);
+  assert.equal(scene.windowSide, "left");
+  assert.equal(scene.counter, null);
+  assert.equal(scene.tables[0].nearWindow, true, "a table against the left wall is by the window");
+});
+
+test("the map saves each room's layout and reads back a clean one", async () => {
+  const f = await fixture(),
+    cafe = await f.setupCafe(),
+    owner = await f.login(cafe),
+    map = (await f.call(`${cafe.base}/map`)).data;
+  assert.deepEqual(map.areas[0].layout, { door: "bottom", window: "right", counter: "left" });
+  map.areas[0].layout = { door: "right", window: "top", counter: "nonsense" };
+  const saved = await f.call(`${cafe.base}/map`, { method: "PUT", cookie: owner, body: { map } });
+  assert.equal(saved.status, 200);
+  const again = (await f.call(`${cafe.base}/map`)).data;
+  assert.deepEqual(again.areas[0].layout, { door: "right", window: "top", counter: "left" });
 });

@@ -1,5 +1,6 @@
 import { app } from "./api.js";
 import { cleanupAuth } from "./auth/session.js";
+import { cleanupHolds } from "./holds.js";
 import { maintenanceOnRequest } from "./maintenance.js";
 import { processDueReminders } from "./notifications.js";
 import { cleanupRateLimits } from "./rate-limit.js";
@@ -30,6 +31,7 @@ export default {
         expireSubscriptions(env.DB),
         cleanupRateLimits(env.DB),
         cleanupAuth(env.DB),
+        cleanupHolds(env.DB),
       ]),
     );
   },

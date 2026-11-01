@@ -429,10 +429,6 @@
     linear-gradient(#dce3d4 1px, transparent 1px),
     linear-gradient(90deg, #dce3d4 1px, transparent 1px);
 }
-.map-canvas.outdoor .canvas-window,
-.map-canvas.outdoor .canvas-bar {
-  display: none;
-}
 .map-canvas.outdoor .canvas-door {
   background: #b7c6a5;
   color: #4d6247;
@@ -521,10 +517,6 @@
     radial-gradient(circle at 15% 20%, #d3e1c4 0 3px, transparent 4px),
     linear-gradient(#dce4d5 1px, transparent 1px),
     linear-gradient(90deg, #dce4d5 1px, transparent 1px);
-}
-.floor-plan.outdoor .window-label,
-.floor-plan.outdoor .bar {
-  display: none;
 }
 .outdoor-label {
   position: absolute;

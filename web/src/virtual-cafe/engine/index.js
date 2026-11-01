@@ -12,7 +12,7 @@ import {
   Vector2,
   WebGLRenderer,
 } from "three";
-import { buildArea, createKit } from "./build-scene.js";
+import { buildArea, createKit, inwardOf } from "./build-scene.js";
 import { moveWithCollisions, tableInFront } from "./collision.js";
 import { createControls } from "./controls.js";
 
@@ -76,9 +76,13 @@ function mount(container, options) {
     scene.background = new Color(outdoor ? "#cfe3ec" : "#efe6da");
     scene.fog = new Fog(scene.background, 12, Math.max(area.width, area.depth) * 1.6);
     // Start just inside the door, looking into the room.
-    position = { x: area.entrance.x, z: area.depth / 2 - 0.9 };
+    const inward = inwardOf(area.entrance.side);
+    position = {
+      x: area.entrance.x + inward.x * 0.9,
+      z: area.entrance.z + inward.z * 0.9,
+    };
     for (let step = 0; step < 20 && current.obstacles.some((o) => near(position, o)); step++)
-      position.z -= 0.3;
+      position = { x: position.x + inward.x * 0.3, z: position.z + inward.z * 0.3 };
     // Face the middle of the tables, so the first view shows them rather than a wall.
     let centreX = 0,
       centreZ = 0;

@@ -44,6 +44,13 @@ const hooks = {
         new Date(Date.now() - Number(params.get("days")) * 86400000).toISOString(),
         params.get("cafe"),
       ),
+  // Lets every table hold of a café run out, as five minutes would.
+  "/__e2e/expire-holds": (params) =>
+    DB.raw
+      .prepare(
+        "UPDATE table_holds SET expires_at='2000-01-01T00:00:00.000Z' WHERE branch_id IN (SELECT b.id FROM branches b JOIN cafes c ON c.id=b.cafe_id WHERE c.slug=?)",
+      )
+      .run(params.get("cafe")),
   // Offers the Virtual Cafe to one café, the way VIRTUAL_CAFE lists café slugs in production.
   "/__e2e/virtual-cafe": (params) => {
     env.VIRTUAL_CAFE = [env.VIRTUAL_CAFE, params.get("cafe")].filter(Boolean).join(",");

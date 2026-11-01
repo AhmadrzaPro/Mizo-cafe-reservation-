@@ -2,6 +2,7 @@ import { renderCustomerMap, tableDialog } from "./booking.js";
 import { editor } from "./dialogs.js";
 import { byId, html, setHtml, required } from "./dom.js";
 import { fitMap, openTableInspector } from "./floor/editor-tools.js";
+import { placeVenueFeatures } from "./floor/venue-features.js";
 import { tableFurniture } from "./floor/furniture.js";
 import {
   applyFloorViewport,
@@ -83,6 +84,7 @@ export function renderMapCanvas() {
     fragment = document.createDocumentFragment();
   canvas.querySelectorAll(".editor-table").forEach((x) => x.remove());
   canvas.classList.toggle("outdoor", area?.kind === "outdoor");
+  if (area) placeVenueFeatures(canvas, area);
   canvas.dataset.areaName = area?.name || "";
   canvas.style.transform = `scale(${store.zoom})`;
   canvas.classList.toggle("material-view", store.mapMaterial);

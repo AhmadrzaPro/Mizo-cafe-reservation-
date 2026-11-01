@@ -53,6 +53,7 @@ Migrations with effects beyond adding tables:
 | `0012_tenant_booking_integrity.sql` | Adds triggers that reject overlapping reservations. Review overlapping active reservations first; they are not cancelled or rewritten. Invalidates pending sign-in codes. |
 | `0017_required_subscription.sql` | Cafés without a subscription, or with it off, get a 14-day trial from that moment. Running trials and paid periods are unchanged. |
 | `0018_iso_instants.sql` | Rebuilds `otp_challenges` and `staff_sessions` with ISO-8601 text times and converts SMS reminder times to UTC. Staff stay signed in. |
+| `0019_virtual_cafe_phase_2.sql` | Adds `table_holds` and the `reservation_table_held` trigger, which refuses a booking on a table someone else holds. Adds the owner's Virtual Cafe switch (on) and each room's layout (NULL keeps the classic one). |
 
 A café created before owners were recorded (before `0012`) has no staff. Provision its verified owner's mobile in `staff_members` through a trusted administrative migration; public sign-in deliberately cannot claim it.
 

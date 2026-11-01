@@ -35,8 +35,10 @@ export interface VirtualArea {
   tables: VirtualTable[];
   /** Counter footprint (indoor only), metres from the area centre. */
   counter: { x: number; z: number; width: number; depth: number } | null;
-  /** Where the door is on the near wall, and where a visitor starts. */
-  entrance: { x: number; z: number; width: number };
+  /** The door's centre on its wall; visitors start just inside it. */
+  entrance: { x: number; z: number; width: number; side: "top" | "right" | "bottom" | "left" };
+  /** The wall with the full-height window, if any. */
+  windowSide: "top" | "right" | "bottom" | "left" | null;
 }
 
 export interface VirtualScene {

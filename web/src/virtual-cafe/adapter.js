@@ -64,15 +64,14 @@ export async function getTableAvailability(tableId) {
 
 /**
  * Hands the table to the existing booking flow: the same step as choosing it on the 2D map and
- * confirming. Returns false, changing nothing, when the table is not free right now. The backend
- * checks again when the customer submits, and refuses a table someone else took meanwhile.
+ * confirming, which first asks the server to hold the table. Returns false when the table is not
+ * free any more or cannot be held; the booking form does not open then.
  * @param {import("./types").VirtualTable} table
- * @param {() => void} [beforeHandoff] Runs just before the booking dialog opens.
+ * @param {() => void} [beforeHandoff] Runs once the table is held, just before the form opens.
  */
 export async function startBooking(table, beforeHandoff) {
+  // Read availability first: a table taken meanwhile is reported without asking for a hold.
   if ((await getTableAvailability(table.tableId)) !== "AVAILABLE") return false;
-  beforeHandoff?.();
   chooseTable(table.tableId, table.label);
-  continueWithTable();
-  return true;
+  return continueWithTable(beforeHandoff);
 }

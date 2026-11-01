@@ -15,6 +15,8 @@ export interface ElementIds {
   "applyMapImage": HTMLButtonElement;
   "areaAddPanel": HTMLElement;
   "areaAddToggle": HTMLButtonElement;
+  "areaCounter": HTMLSelectElement;
+  "areaDoor": HTMLSelectElement;
   "areaHeight": HTMLInputElement;
   "areaList": HTMLElement;
   "areaPreset": HTMLSelectElement;
@@ -22,6 +24,7 @@ export interface ElementIds {
   "areaSizePanel": HTMLElement;
   "areaSizeToggle": HTMLButtonElement;
   "areaWidth": HTMLInputElement;
+  "areaWindow": HTMLSelectElement;
   "authCode": HTMLInputElement;
   "authDialog": HTMLDialogElement;
   "authError": HTMLElement;
@@ -101,6 +104,7 @@ export interface ElementIds {
   "features": HTMLElement;
   "fitMap": HTMLButtonElement;
   "guestCount": HTMLElement;
+  "holdCountdown": HTMLElement;
   "imageImportPanel": HTMLElement;
   "imageImportPreview": HTMLElement;
   "imageImportStatus": HTMLElement;
@@ -315,6 +319,7 @@ export interface ElementIds {
   "successDialog": HTMLDialogElement;
   "successText": HTMLElement;
   "tableDialog": HTMLDialogElement;
+  "tableHoldError": HTMLElement;
   "tableName": HTMLInputElement;
   "tableReservable": HTMLInputElement;
   "tableShape": HTMLSelectElement;
@@ -328,10 +333,12 @@ export interface ElementIds {
   "verifyOtp": HTMLButtonElement;
   "virtualAreaTabs": HTMLElement;
   "virtualCafeBack": HTMLButtonElement;
+  "virtualCafeControl": HTMLLabelElement;
   "virtualCafeDebug": HTMLElement;
   "virtualCafeDialog": HTMLDialogElement;
   "virtualCafeHint": HTMLElement;
   "virtualCafeRetry": HTMLButtonElement;
+  "virtualCafeSetting": HTMLInputElement;
   "virtualCafeStage": HTMLElement;
   "virtualCafeStandard": HTMLButtonElement;
   "virtualCafeStatus": HTMLElement;

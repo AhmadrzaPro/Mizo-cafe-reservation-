@@ -84,6 +84,7 @@ export const branchSettings = sqliteTable("branch_settings", {
   depositPeakEnd: text("deposit_peak_end").notNull().default("22:00"),
   paymentDeadlineMinutes: integer("payment_deadline_minutes").notNull().default(15),
   refundPolicy: text("refund_policy").notNull().default("تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود."),
+  virtualCafeEnabled: integer("virtual_cafe_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: text("updated_at").notNull(),
 });
 
@@ -237,7 +238,20 @@ export const areas = sqliteTable("areas", {
   width: integer("width").notNull().default(820),
   height: integer("height").notNull().default(520),
   sortOrder: integer("sort_order").notNull().default(0),
+  layout: text("layout"),
 }, (table) => [index("idx_areas_branch_id").on(table.branchId)]);
+
+export const tableHolds = sqliteTable("table_holds", {
+  id: text("id").primaryKey(),
+  branchId: text("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  tableId: text("table_id").notNull().references(() => cafeTables.id, { onDelete: "cascade" }),
+  startsAt: text("starts_at").notNull(),
+  endsAt: text("ends_at").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  clientKey: text("client_key").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [uniqueIndex("idx_table_holds_token_hash").on(table.tokenHash), index("idx_table_holds_table_expires").on(table.tableId, table.expiresAt), index("idx_table_holds_client").on(table.clientKey, table.branchId, table.expiresAt)]);
 
 export const cafeTables = sqliteTable("cafe_tables", {
   id: text("id").primaryKey(),

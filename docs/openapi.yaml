@@ -267,6 +267,71 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
         "400": { $ref: "#/components/responses/Error", description: "`invalid_date`" }
         "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+  /api/cafes/{cafe}/branches/{branch}/holds:
+    post:
+      operationId: holdTable
+      tags: [Booking]
+      summary: Hold a table while the customer fills in the form
+      description: |
+        Keeps the table for this date, time and party size for 5 minutes. Nobody else can hold or
+        book it meanwhile (a database trigger refuses their booking); the customer's own booking,
+        sent with `holdToken`, uses the hold up. One conditional insert checks overlapping holds
+        and reservations, so two customers can never hold the same table. A client holds at most
+        two tables of a branch at once.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, time, partySize, tableId]
+              properties:
+                date: { $ref: "#/components/schemas/LocalDate" }
+                time: { $ref: "#/components/schemas/LocalTime" }
+                partySize: { oneOf: [{ type: integer }, { type: string, maxLength: 3 }] }
+                tableId: { type: string, maxLength: 160, description: "The table's full id." }
+      responses:
+        "201":
+          description: Held.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  holdId: { type: string }
+                  token: { type: string, description: "Secret; send it as `holdToken` when booking, or to release the hold." }
+                  tableId: { type: string }
+                  expiresAt: { $ref: "#/components/schemas/Instant" }
+                  holdMinutes: { type: integer }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_request`, `invalid_datetime`, `invalid_party_size`, `invalid_table`, `insufficient_capacity`" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`table_unavailable` (booked or held), `outside_hours`, `reservations_disabled`, `online_booking_paused`" }
+        "429": { $ref: "#/components/responses/Error", description: "`too_many_holds`, `rate_limited`" }
+  /api/cafes/{cafe}/branches/{branch}/holds/{id}:
+    delete:
+      operationId: releaseHold
+      tags: [Booking]
+      summary: Release a hold
+      description: When the customer goes back without booking. Only the holder, with the token, can release it.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, maxLength: 80 }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "404": { $ref: "#/components/responses/Error", description: "`hold_not_found`" }
   /api/cafes/{cafe}/branches/{branch}/reservations:
     post:
       operationId: bookTable
@@ -296,7 +361,7 @@ paths:
         "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
         "409":
           $ref: "#/components/responses/Error"
-          description: "`slot_taken`, `outside_hours`, `reservations_disabled`, `online_booking_paused` (subscription past its grace period)"
+          description: "`slot_taken` (booked, or held by someone else), `outside_hours`, `reservations_disabled`, `online_booking_paused` (subscription past its grace period)"
         "429": { $ref: "#/components/responses/Error", description: "`rate_limited`, `active_reservation_limit`" }
         "503": { $ref: "#/components/responses/Error", description: "`payment_not_configured`" }
     get:
@@ -649,7 +714,7 @@ paths:
                     properties:
                       paymentMode: { type: string, enum: [zarinpal, demo, none], description: "The configured gateway, `demo` (simulated) or `none`." }
                       onlineBookingPaused: { type: boolean }
-                      virtualCafeEnabled: { type: boolean, description: "Whether the booking page offers the Virtual Cafe (`VIRTUAL_CAFE`)." }
+                      virtualCafeOffered: { type: boolean, description: "Whether the platform offers the Virtual Cafe to this café (`VIRTUAL_CAFE`)." }
     put:
       operationId: updateSettings
       tags: [Branch settings]
@@ -1143,6 +1208,7 @@ components:
         notes: { type: string, maxLength: 1000 }
         internalNotes: { type: string, description: "Staff only." }
         source: { type: string, enum: [web, phone, walk_in], default: web }
+        holdToken: { type: string, maxLength: 80, description: "The token of the customer's hold on this table (`POST …/holds`)." }
     Payment:
       type: object
       properties:
@@ -1209,6 +1275,13 @@ components:
               kind: { type: string, enum: [indoor, outdoor] }
               width: { type: number }
               height: { type: number }
+              layout:
+                type: object
+                description: Which wall holds the door, the full-height window and the counter.
+                properties:
+                  door: { type: string, enum: [top, right, bottom, left], default: bottom }
+                  window: { type: string, enum: [top, right, bottom, left, none], description: "Default right indoors, none outdoors." }
+                  counter: { type: string, enum: [top, right, bottom, left, none], description: "Default left indoors, none outdoors." }
         tables:
           type: array
           items:
@@ -1243,6 +1316,7 @@ components:
         depositPeakEnd: { $ref: "#/components/schemas/LocalTime" }
         paymentDeadlineMinutes: { type: integer, enum: [10, 15, 30], default: 15 }
         refundPolicy: { type: string, maxLength: 240 }
+        virtualCafeEnabled: { type: boolean, default: true, description: "The owner's switch; the booking page shows the Virtual Cafe when this and `virtualCafeOffered` are both true." }
     Schedule:
       type: object
       properties:

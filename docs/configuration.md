@@ -21,7 +21,7 @@ Every setting is an environment variable. `.env.example` lists them all; copy it
 | `SAAS_ADMIN_AUTH` | — | `oai-header` opens the SaaS console. See [SaaS console](#saas-console). |
 | `OPENAI_API_KEY` | — | Enables floor-plan photo analysis in the map editor (secret). Manual tracing works without it. |
 | `MAP_VISION_MODEL` | `gpt-4.1-mini` | The model used for that analysis. |
-| `VIRTUAL_CAFE` | off | `all`, or café slugs separated by commas, to offer the Virtual Cafe (3D table selection) on those cafés' booking pages. See [virtual-cafe/phase-1-report.md](virtual-cafe/phase-1-report.md). |
+| `VIRTUAL_CAFE` | off | `all`, or café slugs separated by commas, to offer the Virtual Cafe (3D table selection) to those cafés. Each branch's owner can still switch it off in the control centre. See [virtual-cafe/phase-2-report.md](virtual-cafe/phase-2-report.md). |
 | `CLIENT_IP_HEADER` | `CF-Connecting-IP` | The request header holding the client IP. See [Client IP](#client-ip). |
 | `RATE_LIMIT_…`, `MAX_…`, `SMS_DAILY_CAP_PER_CAFE` | see below | [Abuse protection](#abuse-protection) limits. |
 
@@ -54,6 +54,7 @@ Each limit is counted in the `rate_limits` table with one atomic upsert per chec
 | `RATE_LIMIT_TRACKING_PER_IP_HOUR` | `30` | Tracking lookups, cancellations and payments per client IP per hour, counting misses |
 | `RATE_LIMIT_SETUP_PER_IP_DAY` | `5` | New cafés per client IP per day (and three an hour per owner mobile) |
 | `RATE_LIMIT_RESERVATIONS_PER_IP_HOUR` | `10` | Public bookings per client IP per café per hour |
+| `RATE_LIMIT_HOLDS_PER_IP_HOUR` | `30` | Table holds per client IP per hour; a client also holds at most two tables of a branch at once (`429 too_many_holds`) |
 | `MAX_ACTIVE_RESERVATIONS_PER_MOBILE` | `3` | Active future public bookings per mobile per branch (`429 active_reservation_limit`). Staff bookings are not capped |
 | `SMS_DAILY_CAP_PER_CAFE` | `300` | Booking SMS per café per day. Past it the booking still succeeds and the message is logged as `skipped` with error `daily_cap` |
 

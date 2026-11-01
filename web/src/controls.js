@@ -8,6 +8,8 @@ import { store } from "./state.js";
 export function renderControls() {
   byId("reservationsEnabled").checked = store.cafeSettings.reservationsEnabled;
   byId("autoConfirm").checked = store.cafeSettings.autoConfirm;
+  byId("virtualCafeControl").hidden = !store.cafeSettings.virtualCafeOffered;
+  byId("virtualCafeSetting").checked = store.cafeSettings.virtualCafeEnabled;
   byId("reservationDuration").value = String(store.cafeSettings.reservationDuration);
   byId("bufferMinutes").value = String(store.cafeSettings.bufferMinutes);
   byId("maxPartyValue").textContent = faDigits(store.cafeSettings.maxPartySize);
@@ -27,6 +29,7 @@ export function readControls() {
     ...store.cafeSettings,
     reservationsEnabled: byId("reservationsEnabled").checked,
     autoConfirm: byId("autoConfirm").checked,
+    virtualCafeEnabled: byId("virtualCafeSetting").checked,
     reservationDuration: Number(byId("reservationDuration").value),
     bufferMinutes: Number(byId("bufferMinutes").value),
     maxPartySize: store.cafeSettings.maxPartySize,
@@ -38,6 +41,7 @@ export function readControls() {
 export function wireControls() {
   byId("reservationsEnabled").onchange = readControls;
   byId("autoConfirm").onchange = readControls;
+  byId("virtualCafeSetting").onchange = readControls;
   byId("reservationDuration").onchange = readControls;
   byId("bufferMinutes").onchange = readControls;
   byId("customerNotice").oninput = () => {

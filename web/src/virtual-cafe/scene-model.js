@@ -1,6 +1,7 @@
 // Builds the Virtual Cafe scene from the branch's published floor map, the same map the 2D page
 // draws. Pure: no DOM, no three.js, so it runs in unit tests. Every virtual table is a real table,
 // identified by its full id; nothing here decides availability.
+import { venueGeometry } from "../venue-layout.js";
 import { VIRTUAL_CAFE } from "./config.js";
 
 /** @typedef {import("./types").VirtualTable} VirtualTable */
@@ -47,19 +48,42 @@ function buildArea(area, tables, branchId) {
     depth = Math.max(5, px(area.height || 520)),
     // Map pixels are measured from the top-left corner; the scene is centred on the area.
     toX = (value) => px(value) - width / 2,
-    toZ = (value) => px(value) - depth / 2;
+    toZ = (value) => px(value) - depth / 2,
+    // Door, window and counter where the owner put them (the same geometry as the 2D maps).
+    venue = venueGeometry(area),
+    door = venue.door,
+    along = door.side === "top" || door.side === "bottom" ? door.width : door.height,
+    /** @param {{ x: number, y: number, width: number, height: number }} rect */
+    box = (rect) => ({
+      x: toX(rect.x + rect.width / 2),
+      z: toZ(rect.y + rect.height / 2),
+      width: px(rect.width),
+      depth: px(rect.height),
+    }),
+    // Distance from a table's edge to the window wall, in metres.
+    toWindow = (centreX, centreZ, half) => {
+      const side = venue.window?.side;
+      if (!side) return Infinity;
+      if (side === "right") return width / 2 - (centreX + half.x);
+      if (side === "left") return centreX - half.x + width / 2;
+      if (side === "bottom") return depth / 2 - (centreZ + half.z);
+      return centreZ - half.z + depth / 2;
+    };
   return {
     id: String(area.id),
     name: String(area.name || ""),
     kind,
     width,
     depth,
-    // The 2D map draws the counter along the left wall and the door at the bottom.
-    counter:
-      kind === "indoor"
-        ? { x: toX(24 + 44), z: toZ(135 + 122), width: px(88), depth: px(245) }
-        : null,
-    entrance: { x: Math.min(toX(160 + 46), width / 2 - 1), z: depth / 2, width: px(92) },
+    counter: venue.counter ? box(venue.counter) : null,
+    // The door's centre on its wall.
+    entrance: {
+      side: door.side,
+      width: px(along),
+      x: door.side === "left" ? -width / 2 : door.side === "right" ? width / 2 : box(door).x,
+      z: door.side === "top" ? -depth / 2 : door.side === "bottom" ? depth / 2 : box(door).z,
+    },
+    windowSide: venue.window?.side || null,
     tables: tables
       .filter((table) => table.area === area.id)
       .map((table) => {
@@ -79,10 +103,9 @@ function buildArea(area, tables, branchId) {
           rotation: 0,
           size: { width: px(size.w), depth: px(size.h) },
           reservable: table.reservable !== false,
-          // The 2D map puts the full-height window along the right wall of indoor areas.
           nearWindow:
-            kind === "indoor" &&
-            width / 2 - (centreX + px(size.w) / 2) <= VIRTUAL_CAFE.windowReachMeters,
+            toWindow(centreX, centreZ, { x: px(size.w) / 2, z: px(size.h) / 2 }) <=
+            VIRTUAL_CAFE.windowReachMeters,
         });
       }),
   };

@@ -35,6 +35,8 @@ The build (`scripts/build.sh`):
 - Dates, opening hours, closures, table status and indoor/outdoor visibility are checked on the server. Moving a reservation onto a taken interval keeps it where it was.
 - Payment, cancellation and refund are conditional writes: a cancelled reservation cannot be paid, and a repeated payment or refund request records nothing twice.
 - The owner reviews a floor map before it is published. A table with reservations cannot be deleted.
+- While a customer fills in the booking form, their table is **held** for 5 minutes (`worker/src/holds.js`). A hold is created by one conditional insert that checks overlapping holds and reservations, the trigger `reservation_table_held` refuses anyone else's booking on it, and availability leaves it out. The holder's booking, sent with `holdToken`, deletes the hold in the same transaction; going back releases it; expiry needs nothing.
+- Each room's door, full-height window and counter are on the walls the owner chose (`areas.layout`). `web/src/venue-layout.js` turns that into one geometry for the editor, the customer's map and the Virtual Cafe.
 
 ## Times
 

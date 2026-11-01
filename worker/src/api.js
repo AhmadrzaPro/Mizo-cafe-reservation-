@@ -31,6 +31,7 @@ import {
 import { paymentMode } from "./gateway.js";
 import { completeGatewayPayment, payReservation, readPayments, refundPayment } from "./payments.js";
 import { consumeLimit, limits, rateLimitedReply } from "./rate-limit.js";
+import { createHold, releaseHold } from "./holds.js";
 import { readReports } from "./reports.js";
 import {
   cancelReservation,
@@ -58,7 +59,7 @@ import {
   updateSubscription,
 } from "./subscription.js";
 import { tehranNow, validDate, validTime } from "./util/dates.js";
-import { isDemo, virtualCafeEnabled } from "./util/env.js";
+import { isDemo, virtualCafeOffered } from "./util/env.js";
 import { safeSlug } from "./util/ids.js";
 
 /** @typedef {import("./types").Env} Env */
@@ -420,21 +421,29 @@ app.put(`${BRANCH}/map`, branchWrite("map"), async (c) => {
   );
   return result instanceof Response ? result : reply(result);
 });
+/**
+ * Settings as the page needs them: the stored ones plus what the environment decides.
+ * @param {Ctx} c @param {Record<string, unknown>} settings
+ */
+const settingsForPage = async (c, settings) => ({
+  ...settings,
+  paymentMode: paymentMode(c.env),
+  onlineBookingPaused: await cafeBookingPaused(c),
+  virtualCafeOffered: virtualCafeOffered(c.env, c.req.param("cafe") || ""),
+});
 app.get(`${BRANCH}/settings`, async (c) =>
-  reply({
-    ...(await branchSettings(c)),
-    paymentMode: paymentMode(c.env),
-    onlineBookingPaused: await cafeBookingPaused(c),
-    virtualCafeEnabled: virtualCafeEnabled(c.env, c.req.param("cafe") || ""),
-  }),
+  reply(await settingsForPage(c, await branchSettings(c))),
 );
 app.put(`${BRANCH}/settings`, branchWrite("settings"), async (c) =>
   reply(
-    await writeSettings(
-      c.env.DB,
-      c.req.param("cafe"),
-      c.req.param("branch"),
-      await readJson(c.req.raw),
+    await settingsForPage(
+      c,
+      await writeSettings(
+        c.env.DB,
+        c.req.param("cafe"),
+        c.req.param("branch"),
+        await readJson(c.req.raw),
+      ),
     ),
   ),
 );
@@ -468,6 +477,27 @@ app.post(`${BRANCH}/reservations`, loadBranch, async (c) => {
     await branchSettings(c),
   );
 });
+// Holding a table while the customer fills in the booking form (holds.js).
+app.post(`${BRANCH}/holds`, loadBranch, async (c) => {
+  if (!(await withinLimit(c, "holdsPerIp", "hold"))) return rateLimitedReply();
+  return createHold(
+    c.env,
+    c.get("branch"),
+    await readBody(c.req.raw, schemas.hold),
+    await branchSettings(c),
+    clientIp(c.req.raw, c.env),
+  );
+});
+app.delete(`${BRANCH}/holds/:id`, loadBranch, async (c) =>
+  releaseHold(
+    c.env.DB,
+    c.get("branch"),
+    c.req.param("id"),
+    (await readBody(c.req.raw, schemas.holdRelease)).token,
+  ),
+);
+app.all(`${BRANCH}/holds`, methodNotAllowed);
+app.all(`${BRANCH}/holds/:id`, methodNotAllowed);
 app.get(`${BRANCH}/reservations`, branchWrite("reservations"), async (c) => {
   const branch = c.get("branch"),
     date = c.req.query("date");

@@ -156,3 +156,34 @@
     max-height: 45dvh;
   }
 }
+
+/* Door, window and counter choosers in the room panel. */
+.venue-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-basis: 100%;
+}
+.venue-layout select {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  margin-top: 5px;
+  border: 1px solid #bdcfc1;
+  border-radius: 8px;
+  padding: 9px;
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  background: #fff;
+}
+.venue-layout small {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #5d7266;
+}
+.canvas-window[hidden],
+.canvas-bar[hidden],
+.canvas-door[hidden] {
+  display: none;
+}

@@ -9,6 +9,7 @@ import {
 import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import { followGatewayRedirect, payingLabel } from "./payment-flow.js";
+import { forgetHold } from "./table-hold.js";
 import { state, store } from "./state.js";
 
 /** After a refused booking: fresh availability, and no stale table choice. */
@@ -44,6 +45,7 @@ export function wireReservationForm() {
             time: state.time,
             partySize: state.guests,
             tableIds: [state.tableId],
+            holdToken: state.hold?.tableId === state.tableId ? state.hold.token : undefined,
           }),
         }),
         data = await response.json();
@@ -56,6 +58,8 @@ export function wireReservationForm() {
         );
       }
       if (!response.ok) throw new Error(data.message || "ثبت رزرو انجام نشد.");
+      // The booking used the hold up; closing the form must not release anything.
+      forgetHold();
       customerDialog.close();
       required(".success-dialog h2").textContent = data.payment?.required
         ? "رزرو در انتظار پرداخت است"

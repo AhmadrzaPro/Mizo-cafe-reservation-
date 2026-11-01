@@ -1,6 +1,6 @@
 // The Virtual Cafe in a real browser: off by default, loaded only on request, booking through the
 // standard flow, conflicts refused by the backend, and every failure falling back to the 2D map.
-import { api, createCafe, expect, GUEST, test } from "./fixtures.mjs";
+import { api, createCafe, expect, GUEST, signInOwner, test } from "./fixtures.mjs";
 
 /** A café that offers the Virtual Cafe. */
 async function virtualCafe(request) {
@@ -82,14 +82,18 @@ test("a table chosen in the Virtual Cafe is booked through the standard form", a
   expect(booked.tables).toEqual([name]);
 });
 
-/** Books a table for tomorrow's latest free time as another customer would, through the API. */
-async function bookAsSomeoneElse(page, cafe, tableId) {
+/** Tomorrow's date and the time the table step chose (the latest free one), before any hold. */
+async function chosenSlot(page, cafe) {
   const date = await page.evaluate(() =>
       new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(Date.now() + 86400000),
     ),
-    day = await api(page, "GET", `${cafe.api}/availability?date=${date}&party_size=2`),
-    time = day.slots.filter((slot) => slot.available).at(-1).time;
-  const booked = await page.evaluate(
+    day = await api(page, "GET", `${cafe.api}/availability?date=${date}&party_size=2`);
+  return { date, time: day.slots.filter((slot) => slot.available).at(-1).time };
+}
+
+/** Another customer books the table through the API; returns the HTTP status. */
+async function bookAsSomeoneElse(page, cafe, tableId, { date, time }) {
+  return page.evaluate(
     async ([url, body]) =>
       (
         await fetch(url, {
@@ -110,7 +114,6 @@ async function bookAsSomeoneElse(page, cafe, tableId) {
       },
     ],
   );
-  expect(booked).toBe(201);
 }
 
 test("a table taken while the customer looks is not handed to booking, and shows as taken", async ({
@@ -119,8 +122,9 @@ test("a table taken while the customer looks is not handed to booking, and shows
 }) => {
   const cafe = await virtualCafe(request);
   await openTableStep(page, cafe);
+  const slot = await chosenSlot(page, cafe);
   const { tableId } = await pickFreeTable(page);
-  await bookAsSomeoneElse(page, cafe, tableId);
+  expect(await bookAsSomeoneElse(page, cafe, tableId, slot)).toBe(201);
   await page.locator("#virtualTableReserve").click();
   // The adapter re-read availability from the backend before handing over.
   await expect(page.locator("#virtualTableCard")).toHaveAttribute("data-state", "UNAVAILABLE");
@@ -133,12 +137,12 @@ test("a table taken while the customer looks is not handed to booking, and shows
   );
 });
 
-test("a table taken after the hand-off is refused by the backend, and the maps refresh", async ({
+test("after the hand-off the table is held: others are refused until the hold runs out", async ({
   browser,
   baseURL,
   request,
 }) => {
-  // Chrome logs the refused request (409) as a console error; only that one is expected here.
+  // Chrome logs refused requests (409) as console errors; only those are expected here.
   const context = await browser.newContext({ baseURL }),
     page = await context.newPage(),
     problems = [];
@@ -149,11 +153,17 @@ test("a table taken after the hand-off is refused by the backend, and the maps r
   });
   const cafe = await virtualCafe(request);
   await openTableStep(page, cafe);
+  const slot = await chosenSlot(page, cafe);
   const { tableId } = await pickFreeTable(page);
   await page.locator("#virtualTableReserve").click();
   await expect(page.locator("#customerDialog")).toBeVisible();
-  await bookAsSomeoneElse(page, cafe, tableId);
+  await expect(page.locator("#holdCountdown")).toContainText("نگه داشته شده");
+  // While the customer fills in the form, nobody else can take the table.
+  expect(await bookAsSomeoneElse(page, cafe, tableId, slot)).toBe(409);
 
+  // Once the hold has run out, someone else books it, and the backend refuses ours.
+  await request.get(`/__e2e/expire-holds?cafe=${cafe.slug}`);
+  expect(await bookAsSomeoneElse(page, cafe, tableId, slot)).toBe(201);
   await page.locator("#customerName").fill("مهمان");
   await page.locator("#customerMobile").fill(GUEST);
   await page.locator("#customerDialog button[type=submit]").click();
@@ -171,6 +181,25 @@ test("a table taken after the hand-off is refused by the backend, and the maps r
   );
   expect(problems).toEqual([]);
   await context.close();
+});
+
+test("the owner's switch in the control centre hides the Virtual Cafe", async ({
+  page,
+  request,
+}) => {
+  const cafe = await virtualCafe(request);
+  await signInOwner(page, cafe);
+  await page.goto(cafe.url);
+  await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
+  await page.locator("#openControlCenter").click();
+  await expect(page.locator("#virtualCafeControl")).toBeVisible();
+  // The checkbox itself is hidden behind the styled toggle.
+  await page.locator("#virtualCafeControl .toggle").click();
+  await expect(page.locator("#virtualCafeSetting")).not.toBeChecked();
+  await page.locator("#saveControls").click();
+  await expect(page.locator("#controlSaveStatus")).toHaveText("تغییرات با موفقیت اعمال شد");
+  await openTableStep(page, cafe);
+  await expect(page.locator("#openVirtualCafe")).toBeHidden();
 });
 
 test("when the 3D engine fails to load, the customer goes on with the 2D map", async ({

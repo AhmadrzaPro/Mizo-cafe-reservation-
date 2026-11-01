@@ -2,12 +2,15 @@ import { availabilityUrl, readableError } from "./api.js";
 import { byId, fragment, html, setHtml } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
+import { featureStyle } from "./floor/venue-features.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
 import { faDigits, formatTehranTime } from "./format.js";
 import { visibleAreas } from "./map-model.js";
 import { tehranClientNow } from "./operations.js";
 import { payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
+import { holdTable, releaseHold, startCountdown } from "./table-hold.js";
+import { venueGeometry } from "./venue-layout.js";
 
 export const dates = byId("dates"),
   times = byId("times");
@@ -137,12 +140,17 @@ export function renderCustomerMap() {
     tabs.appendChild(button);
   });
   floor.classList.toggle("outdoor", current?.kind === "outdoor");
+  // The room's window and counter, where the owner put them in the map editor.
+  const venue = current ? venueGeometry(current) : null;
   setHtml(
     floor,
-    current?.kind === "outdoor"
-      ? html`<span class="outdoor-label">فضای باز</span>`
-      : html`<span class="window-label">پنجره سرتاسری</span>
-          <div class="bar">بار و صندوق</div>`,
+    html`${current?.kind === "outdoor" && html`<span class="outdoor-label">فضای باز</span>`}${
+      venue?.window &&
+      html`<span class="window-label" style="${featureStyle(venue.window)}">پنجره سرتاسری</span>`
+    }${
+      venue?.counter &&
+      html`<div class="bar" style="${featureStyle(venue.counter)}">بار و صندوق</div>`
+    }`,
   );
   applyFloorViewport(floor, byId("customerMapStage"), areaBounds(current), store.customerMapZoom);
   const areaTables = store.cafeMap.tables.filter((t) => t.area === store.customerArea);
@@ -197,13 +205,44 @@ export function chooseTable(fullId, label) {
   confirm.disabled = false;
   confirm.textContent = `تأیید ${label}`;
 }
-/** Goes on from the chosen table to the customer's details. */
-export function continueWithTable() {
+/**
+ * Goes on from the chosen table to the customer's details, after the server holds the table for
+ * them. Returns false, staying on the table step with the reason shown, when it cannot be held.
+ * @param {() => void} [beforeOpen] Runs once the table is held, just before the form opens.
+ */
+export async function continueWithTable(beforeOpen) {
+  const confirm = byId("confirmBtn"),
+    error = byId("tableHoldError");
+  confirm.disabled = true;
+  confirm.textContent = "در حال نگه‌داشتن میز…";
+  error.hidden = true;
+  const held = await holdTable(state.tableId);
+  if (!held.ok) {
+    error.textContent = held.message;
+    error.hidden = false;
+    // Taken meanwhile: show the fresh state of every table.
+    if (held.status === 409) {
+      await fetchAvailability();
+      state.table = "";
+      state.tableId = "";
+      renderCustomerMap();
+      confirm.textContent = "یک میز را انتخاب کنید";
+    } else {
+      confirm.disabled = false;
+      confirm.textContent = `تأیید ${state.table}`;
+    }
+    return false;
+  }
+  beforeOpen?.();
   tableDialog.close();
   byId("customerSummary").textContent =
     `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
   byId("reservationError").hidden = true;
   customerDialog.showModal();
+  startCountdown();
+  confirm.disabled = false;
+  confirm.textContent = `تأیید ${state.table}`;
+  return true;
 }
 // The deposit box as the page ships it, restored before each booking.
 export const depositTemplate = byId("depositPayment").cloneNode(true);
@@ -271,5 +310,9 @@ export function wireBooking() {
         if (target && !target.open) target.showModal();
       }),
   );
-  byId("confirmBtn").onclick = continueWithTable;
+  byId("confirmBtn").onclick = () => continueWithTable();
+  // Leaving the form without booking gives the held table back.
+  customerDialog.addEventListener("close", () => {
+    if (state.hold) releaseHold();
+  });
 }

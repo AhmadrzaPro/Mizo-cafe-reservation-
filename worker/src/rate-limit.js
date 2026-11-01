@@ -32,6 +32,12 @@ export const limits = {
     windowMs: HOUR,
     offsetMs: 0,
   },
+  holdsPerIp: {
+    env: "RATE_LIMIT_HOLDS_PER_IP_HOUR",
+    fallback: 30,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
   smsPerCafe: {
     env: "SMS_DAILY_CAP_PER_CAFE",
     fallback: 300,

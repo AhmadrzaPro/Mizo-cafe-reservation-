@@ -42,7 +42,7 @@ The backend was already authoritative and atomic, so nothing was added on the cl
 2. **On submit**, `createReservation` checks the interval again, and the triggers of `0012_tenant_booking_integrity.sql` reject an overlapping row even if two requests pass that check at once. The server log of the browser test shows the trigger firing (`reservation_overlap`).
 3. **When the backend refuses** (`409`), the page refreshes availability and redraws the 2D map; reopening the Virtual Cafe shows the table taken. Browser test: "a table taken after the hand-off…".
 
-**Gap, documented for the concurrency phase:** a table is not *held* while the customer fills in the form. Two customers can both reach the form for the same table; the second is refused at submit, as tested. A server-side `AVAILABLE → HELD → BOOKED` hold with expiry would need a new table or column, an expiry job and changes to availability, which is beyond this phase.
+**Gap, closed in Phase 2** ([phase-2-report.md](phase-2-report.md)): a table was not *held* while the customer filled in the form. Two customers can both reach the form for the same table; the second is refused at submit, as tested. A server-side `AVAILABLE → HELD → BOOKED` hold with expiry would need a new table or column, an expiry job and changes to availability, which is beyond this phase.
 
 ## Failure and fallback
 

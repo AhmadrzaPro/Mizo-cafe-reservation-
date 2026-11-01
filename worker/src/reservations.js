@@ -2,6 +2,7 @@ import { bookingTimeError, lockTimes } from "./availability.js";
 import { paymentMode } from "./gateway.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
+import { consumeHoldStatement } from "./holds.js";
 import { limitValue } from "./rate-limit.js";
 import { onlineBookingPaused } from "./subscription.js";
 import { dayRules, defaultSettings } from "./settings.js";
@@ -154,6 +155,9 @@ export async function createReservation(env, branch, body, settings, operational
             .prepare(sql.replace(/ VALUES \(([?,]+)\)/, ` SELECT $1 WHERE ${condition}`))
             .bind(...args, ...conditionArgs)
         : db.prepare(sql).bind(...args);
+  // The customer's own hold on the table is removed first, in this same transaction, so the
+  // reservation_table_held trigger lets their booking through while still refusing everyone else.
+  if (body.holdToken) statements.push(await consumeHoldStatement(db, branch, body.holdToken));
   if (customerId)
     statements.push(
       insert(
@@ -224,7 +228,7 @@ export async function createReservation(env, branch, body, settings, operational
       409,
     );
   }
-  if (activeCap && !results[customerId ? 1 : 0].meta?.changes)
+  if (activeCap && !results[(body.holdToken ? 1 : 0) + (customerId ? 1 : 0)].meta?.changes)
     return reply(
       {
         error: "active_reservation_limit",

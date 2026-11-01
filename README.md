@@ -4,7 +4,7 @@ A Persian, right-to-left table reservation platform for cafés, built as a Cloud
 
 ## Highlights
 
-- **Customers:** Jalali dates, free time slots, table choice on the floor map, tracking and cancellation, and deposits through ZarinPal.
+- **Customers:** Jalali dates, free time slots, table choice on the floor map (held for them while they fill in the form), tracking and cancellation, and deposits through ZarinPal.
 - **Operations:** reservations, walk-ins, waitlist, table status, opening hours and closures.
 - **Floor editor:** indoor and outdoor areas, draggable tables, tracing from a photo, and a draft reviewed before publication.
 - **Team:** owner, branch manager, reception and barista, each limited to their branch and permissions.
@@ -46,7 +46,7 @@ Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
 | [docs/deployment.md](docs/deployment.md) | Deploying to Cloudflare Workers or Sites, migrations, upgrading an existing database, caching and CSP |
 | [docs/payments.md](docs/payments.md) | Customer deposits through ZarinPal, and café subscriptions paid card to card |
 | [docs/architecture.md](docs/architecture.md) | How the code is organised, tenancy and booking rules, sessions, times, background work |
-| [docs/virtual-cafe/](docs/virtual-cafe/phase-1-report.md) | The optional 3D Virtual Cafe: architecture audit, Phase 0 and Phase 1 reports, performance baseline |
+| [docs/virtual-cafe/](docs/virtual-cafe/phase-2-report.md) | The optional 3D Virtual Cafe: architecture audit, Phase 0, 1 and 2 reports, performance baseline |
 | [docs/testing.md](docs/testing.md) | Unit, API and browser tests, and the checks CI runs |
 | [docs/openapi.yaml](docs/openapi.yaml) | The HTTP API (OpenAPI 3.1): every route, its access, body and error codes |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and what each release needs on deploy |

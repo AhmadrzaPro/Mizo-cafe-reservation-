@@ -100,29 +100,40 @@ export function buildArea(area, kit) {
     };
   const halfW = area.width / 2,
     halfD = area.depth / 2,
-    door = area.entrance,
-    doorLeft = door.x - door.width / 2,
-    doorRight = door.x + door.width / 2;
-  wall(0, -halfD, area.width, thickness); // far
-  wall(-halfW, 0, thickness, area.depth); // left
-  // Near wall in two pieces around the door.
-  wall((-halfW + doorLeft) / 2, halfD, doorLeft + halfW, thickness);
-  wall((doorRight + halfW) / 2, halfD, halfW - doorRight, thickness);
-  if (outdoor) wall(halfW, 0, thickness, area.depth);
-  else {
-    // The right wall is the full-height window of the 2D map: a low sill and glass above it.
-    wall(halfW, 0, thickness, area.depth, m.wall, 0.6);
-    wall(halfW, 0, 0.04, area.depth, m.window, WALL_HEIGHT - 0.6, 0.6 + (WALL_HEIGHT - 0.6) / 2);
+    door = area.entrance;
+  // Each wall runs along x (top, bottom) or z (left, right). The door's wall has a gap; the
+  // window's wall is a low sill with glass above; the rest are solid.
+  for (const side of /** @type {const} */ (["top", "right", "bottom", "left"])) {
+    const alongX = side === "top" || side === "bottom",
+      length = alongX ? area.width : area.depth,
+      at = side === "top" ? -halfD : side === "bottom" ? halfD : side === "left" ? -halfW : halfW,
+      // A stretch of this wall from `from` to `to` (metres along it, centred on the room).
+      piece = (from, to, mat = material, h = height, y = h / 2) =>
+        to - from > 0.01 &&
+        (alongX
+          ? wall((from + to) / 2, at, to - from, thickness, mat, h, y)
+          : wall(at, (from + to) / 2, thickness, to - from, mat, h, y));
+    if (side === door.side) {
+      const centre = alongX ? door.x : door.z;
+      piece(-length / 2, centre - door.width / 2);
+      piece(centre + door.width / 2, length / 2);
+    } else if (side === area.windowSide && !outdoor) {
+      piece(-length / 2, length / 2, m.wall, 0.6);
+      piece(-length / 2, length / 2, m.window, WALL_HEIGHT - 0.6, 0.6 + (WALL_HEIGHT - 0.6) / 2);
+    } else piece(-length / 2, length / 2);
+  }
+  if (!outdoor) {
     const ceiling = new Mesh(g.plane, m.ceiling);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = WALL_HEIGHT;
     ceiling.scale.set(area.width, area.depth, 1);
     group.add(ceiling);
-    // Door frame marker on the floor.
-    const mat = new Mesh(g.plane, m.door);
+    // A mat just inside the door.
+    const inward = inwardOf(door.side),
+      mat = new Mesh(g.plane, m.door);
     mat.rotation.x = -Math.PI / 2;
-    mat.position.set(door.x, 0.005, halfD - 0.6);
-    mat.scale.set(door.width, 1.1, 1);
+    mat.position.set(door.x + inward.x * 0.6, 0.005, door.z + inward.z * 0.6);
+    mat.scale.set(inward.x ? 1.1 : door.width, inward.x ? door.width : 1.1, 1);
     group.add(mat);
   }
 
@@ -266,6 +277,17 @@ function buildTables(tables, kit) {
       for (const mesh of [roundTops, boxTops, legs, seats, backs, rings]) mesh.dispose();
     },
   };
+}
+
+/** The unit step from a wall into the room. @param {"top" | "right" | "bottom" | "left"} side */
+export function inwardOf(side) {
+  return side === "top"
+    ? { x: 0, z: 1 }
+    : side === "bottom"
+      ? { x: 0, z: -1 }
+      : side === "left"
+        ? { x: 1, z: 0 }
+        : { x: -1, z: 0 };
 }
 
 /** Chair positions around a table, each facing the table. @param {VirtualTable} t */

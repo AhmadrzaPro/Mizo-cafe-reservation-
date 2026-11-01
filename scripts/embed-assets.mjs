@@ -31,10 +31,10 @@ const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, virtualCafe
     read("web/index.html"),
     stylesheet("main"),
     stylesheet("editor"),
-    bundle("web/src/main.js"),
+    bundle("web/src/main.js", { minify: true }),
     read("web/saas-admin.html"),
     stylesheet("saas"),
-    bundle("web/src/saas-console.js"),
+    bundle("web/src/saas-console.js", { minify: true }),
     // The Virtual Cafe engine (three.js): its own bundle, requested only when a customer opens it.
     bundle("web/src/virtual-cafe/engine/index.js", { minify: true }),
     read("web/assets/cafe-hero.webp", null),

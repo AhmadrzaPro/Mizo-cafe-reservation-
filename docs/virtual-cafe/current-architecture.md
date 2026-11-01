@@ -79,7 +79,7 @@ A table is free at a time when it is reservable, operationally available, large 
 - Database triggers from `0012_tenant_booking_integrity.sql` reject an overlapping reservation for the same table even if two requests pass the check at once, and reject a table from another branch (`reservation_table_scope`).
 - Deposit bookings hold the table from booking until `payment.dueAt`.
 
-So the backend is already authoritative and atomic for confirmation. **There is no "held while choosing" state:** a table is only held once the booking is submitted. That gap is documented for the concurrency phase rather than imitated on the client.
+So the backend is already authoritative and atomic for confirmation. **At the time of this audit there was no "held while choosing" state:** a table was only held once the booking was submitted. Phase 2 added server-side holds; see [phase-2-report.md](phase-2-report.md).
 
 ## Authentication and sessions
 

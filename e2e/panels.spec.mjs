@@ -63,6 +63,8 @@ test("the map editor's back button returns to the panel, and asks first about un
 
   // With unpublished changes, declining the question keeps the editor open.
   await page.locator("#openMapEditor").click();
+  // Wait for the map to load: loading resets the "unpublished changes" state.
+  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
   await page
     .locator("[data-add-shape=round]")
     .first()
@@ -73,4 +75,43 @@ test("the map editor's back button returns to the panel, and asks first about un
   page.once("dialog", (dialog) => dialog.accept());
   await back.click();
   await expect(page.locator("#adminDialog")).toBeVisible();
+});
+
+test("the door, window and counter chosen in the editor appear on the customer's map", async ({
+  page,
+  request,
+}) => {
+  const cafe = await createCafe(request);
+  await signInOwner(page, cafe);
+  await page.goto(cafe.url);
+  await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
+  await page.locator("#openMapEditor").click();
+  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
+  await page.locator("#areaSizeToggle").click();
+  await page.locator("#areaWindow").selectOption("none");
+  await page.locator("#areaCounter").selectOption("right");
+  await page.locator("#areaDoor").selectOption("top");
+  // The editor redraws at once.
+  await expect(page.locator(".canvas-window")).toBeHidden();
+  await expect(page.locator(".canvas-bar")).toHaveAttribute("data-side", "right");
+  await expect(page.locator(".canvas-door")).toHaveAttribute("data-side", "top");
+  await page.locator("#publishMap").click();
+  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
+
+  const map = await api(page, "GET", `${cafe.api}/map`);
+  expect(map.areas[0].layout).toEqual({ door: "top", window: "none", counter: "right" });
+  // The customer's map draws the counter on the right wall and no window.
+  await page.goto(cafe.url);
+  await page.locator("#dates button").nth(1).click();
+  await page.locator("#times button:not([disabled])").last().click();
+  await page.locator("#continueBtn").click();
+  await expect(page.locator("#customerFloorPlan .window-label")).toHaveCount(0);
+  const counter = page.locator("#customerFloorPlan .bar");
+  if (await counter.isVisible()) {
+    const box = await counter.evaluate((element) => ({
+      left: parseFloat(element.style.left),
+      width: parseFloat(element.style.width),
+    }));
+    expect(box.left + box.width).toBe(820 - 24);
+  } else await expect(counter).toHaveCount(1); // phones hide the counter label, as before
 });
