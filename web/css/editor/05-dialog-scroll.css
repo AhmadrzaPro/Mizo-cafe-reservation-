@@ -41,8 +41,7 @@ dialog.map-editor-dialog[open] {
 .editor-shell {
   overflow: hidden;
 }
-.ops-mobile-back,
-.editor-mobile-exit {
+.ops-mobile-back {
   display: none;
 }
 

@@ -43,6 +43,7 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Handler failures that escaped error handling.
 - The SMS panel showed send times in UTC, and instants were dated by the UTC day.
 - Dialogs whose late-loading data overwrote edits.
+- The map editor had a second, always-hidden "back" button for phones; it is removed, and a browser test checks the visible one at every size, including the question about unpublished changes.
 
 ### Security
 

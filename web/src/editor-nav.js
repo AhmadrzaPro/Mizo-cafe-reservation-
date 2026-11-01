@@ -43,7 +43,6 @@ export async function switchBranch(slug, includeOperations = false) {
 
 export function wireEditorNav() {
   byId("editorExit").onclick = exitMapEditor;
-  byId("editorMobileExit").onclick = exitMapEditor;
   byId("branchSelect").onchange = () => switchBranch(byId("branchSelect").value);
   byId("controlBranch").onchange = () => switchBranch(byId("controlBranch").value);
 }

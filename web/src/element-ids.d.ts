@@ -95,7 +95,6 @@ export interface ElementIds {
   "durationLabel": HTMLElement;
   "editCafeProfile": HTMLButtonElement;
   "editorExit": HTMLButtonElement;
-  "editorMobileExit": HTMLButtonElement;
   "editorToast": HTMLElement;
   "editSelectedTable": HTMLButtonElement;
   "experience": HTMLElement;

@@ -45,3 +45,32 @@ test("panel controls respond: notice, schedule, table editing and branch switche
   await open("#openOperations");
   await page.locator("#opsBranch").selectOption({ index: 1 });
 });
+
+test("the map editor's back button returns to the panel, and asks first about unpublished changes", async ({
+  page,
+  request,
+}) => {
+  const cafe = await createCafe(request);
+  await signInOwner(page, cafe);
+  await page.goto(cafe.url);
+  await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
+  await page.locator("#openMapEditor").click();
+  const back = page.locator("#editorExit");
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect(page.locator("#mapEditorDialog")).not.toBeVisible();
+  await expect(page.locator("#adminDialog")).toBeVisible();
+
+  // With unpublished changes, declining the question keeps the editor open.
+  await page.locator("#openMapEditor").click();
+  await page
+    .locator("[data-add-shape=round]")
+    .first()
+    .evaluate((button) => button.click());
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await back.click();
+  await expect(page.locator("#mapEditorDialog")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await back.click();
+  await expect(page.locator("#adminDialog")).toBeVisible();
+});
