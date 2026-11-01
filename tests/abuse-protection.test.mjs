@@ -304,9 +304,7 @@ test("the daily SMS cap skips messages without failing bookings, per café", asy
   );
   // Reminders count against the same cap.
   DB.raw
-    .prepare(
-      "UPDATE sms_messages SET scheduled_at='2000-01-01T00:00:00.000Z' WHERE kind='reminder'",
-    )
+    .prepare("UPDATE sms_messages SET scheduled_at='2000-01-01T00:00:00.000Z' WHERE kind='reminder'")
     .run();
   await call(a.base + "/availability?date=2090-01-20&party_size=2");
   const reminders = DB.raw
