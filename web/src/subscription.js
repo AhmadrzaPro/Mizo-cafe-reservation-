@@ -1,10 +1,9 @@
 import { adminDialog, subscriptionDialog } from "./dialogs.js";
 import { byId, html, setHtml, required } from "./dom.js";
-import { faDigits, formatPersianDate, latinDigits } from "./format.js";
+import { faDigits, formatPersianDate, formatToman, latinDigits } from "./format.js";
 import { store } from "./state.js";
 
-export const formatToman = (rials) =>
-  `${new Intl.NumberFormat("fa-IR").format(Math.round(Number(rials || 0) / 10))} تومان`;
+export { formatToman };
 export const subscriptionStatusLabel = (status) =>
   ({ inactive: "غیرفعال", trial: "دوره آزمایشی", active: "فعال", past_due: "نیازمند پرداخت" })[
     status

@@ -52,3 +52,33 @@ test("after the grace period the café's online booking pauses and the owner is 
   await expect(customer.locator("#continueBtn")).toHaveText("رزرو موقتاً متوقف است");
   await customer.close();
 });
+
+test("the platform console lists cafés as text, shows the price and saves a café's subscription", async ({
+  browser,
+  request,
+}) => {
+  const name = `<img src=x onerror=alert(1)> کافه ${Date.now()}`,
+    cafe = await createCafe(request, name);
+  const console = await browser.newContext({
+    extraHTTPHeaders: { "oai-authenticated-user-id": "platform-owner" },
+  });
+  const saas = await console.newPage();
+  await saas.goto("/saas-admin");
+  await expect(saas.locator("#saasUnitPrice")).toHaveText("۴۹۰٬۰۰۰ تومان برای هر شعبه فعال");
+  const row = saas.locator(".saas-cafe-row", { hasText: cafe.name });
+  await expect(row.locator("h3")).toHaveText(name);
+  await expect(row.locator("img")).toHaveCount(0);
+  await expect(row.locator(".saas-status")).toHaveValue("trial");
+
+  await row.locator(".saas-status").selectOption("active");
+  await row.locator(".saas-save").click();
+  await expect(saas.locator("#saasError")).toHaveText("");
+  await expect(
+    saas.locator(".saas-cafe-row", { hasText: cafe.name }).locator(".saas-status"),
+  ).toHaveValue("active");
+  await saas.reload();
+  await expect(
+    saas.locator(".saas-cafe-row", { hasText: cafe.name }).locator(".saas-status"),
+  ).toHaveValue("active");
+  await console.close();
+});

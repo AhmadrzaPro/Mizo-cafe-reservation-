@@ -1,4 +1,7 @@
 export const faDigits = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+/** Rials as Persian toman, e.g. 4900000 → "۴۹۰٬۰۰۰ تومان". */
+export const formatToman = (rials) =>
+  `${new Intl.NumberFormat("fa-IR").format(Math.round(Number(rials || 0) / 10))} تومان`;
 export const latinDigits = (n) =>
   String(n)
     .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))

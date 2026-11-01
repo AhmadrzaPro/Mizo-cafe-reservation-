@@ -35,7 +35,7 @@ export async function requireSaasAdmin(env, request) {
 export async function readSaasOverview(db) {
   const result = await db
       .prepare(
-        "SELECT c.id,c.name,c.slug,COUNT(DISTINCT CASE WHEN b.active=1 THEN b.id END) AS branch_count,COALESCE(s.enabled,0) AS enabled,COALESCE(s.status,'inactive') AS status,s.trial_ends_at,s.current_period_ends_at,s.updated_at,c.created_at FROM cafes c LEFT JOIN branches b ON b.cafe_id=c.id LEFT JOIN saas_subscriptions s ON s.cafe_id=c.id WHERE c.slug!='roma' GROUP BY c.id ORDER BY c.created_at DESC",
+        "SELECT c.id,c.name,c.slug,COUNT(DISTINCT CASE WHEN b.active=1 THEN b.id END) AS branch_count,COALESCE(s.enabled,0) AS enabled,COALESCE(s.status,'inactive') AS status,s.trial_ends_at,s.current_period_ends_at,s.updated_at,c.created_at FROM cafes c LEFT JOIN branches b ON b.cafe_id=c.id LEFT JOIN saas_subscriptions s ON s.cafe_id=c.id GROUP BY c.id ORDER BY c.created_at DESC",
       )
       .all(),
     cafes = (result.results || []).map((row) => {

@@ -5,10 +5,10 @@ import { dirname, resolve } from "node:path";
 import { build } from "esbuild";
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(import.meta.url);
-// The page loads exactly one classic script: web/src/main.js bundled as an IIFE.
-async function bundleApp() {
+// Each page loads exactly one classic script: its entry module bundled as an IIFE.
+async function bundle(entry) {
   const result = await build({
-    entryPoints: [resolve(root, "web/src/main.js")],
+    entryPoints: [resolve(root, entry)],
     bundle: true,
     format: "iife",
     write: false,
@@ -30,10 +30,10 @@ const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, hero, font]
     read("web/index.html"),
     stylesheet("main"),
     stylesheet("editor"),
-    bundleApp(),
+    bundle("web/src/main.js"),
     read("web/saas-admin.html"),
     stylesheet("saas"),
-    read("web/saas-admin.js"),
+    bundle("web/src/saas-console.js"),
     read("web/assets/cafe-hero.webp", null),
     readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
   ]);

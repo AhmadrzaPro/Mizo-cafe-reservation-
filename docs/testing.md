@@ -46,7 +46,7 @@ npm run test:e2e
 - **Page modes:** a café's booking page and the Mizo introduction.
 - **Staff:** signing in with a code through the dialog, every admin panel and its controls, slow loads that must not overwrite edits, and signing out everywhere.
 - **Payments:** a ZarinPal deposit through to the return page.
-- **Subscriptions:** a card-to-card payment approved in the SaaS console, and booking paused after the grace period.
+- **Subscriptions:** a card-to-card payment approved in the SaaS console, booking paused after the grace period, and the console showing café names as text and saving a café's subscription.
 
 Any script error, console error or CSP violation fails a test.
 

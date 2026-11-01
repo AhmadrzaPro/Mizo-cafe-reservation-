@@ -243,3 +243,43 @@ export interface CafeProfile {
   cafe: { id?: string; slug: string; name: string; structure: "single" | "multi" };
   branches: CafeBranch[];
 }
+
+/** GET /api/saas/overview: every café, the platform's figures and transfers awaiting review. */
+export interface SaasOverview {
+  unitPriceRials: number;
+  stats: {
+    cafes: number;
+    enabled: number;
+    trials: number;
+    active: number;
+    pastDue: number;
+    paused: number;
+    mrrRials: number;
+  };
+  pendingPayments: {
+    id: string;
+    cafeId: string;
+    cafeName: string;
+    amountRials: number;
+    months: number;
+    reference: string;
+    cardLast4: string;
+    createdAt: string;
+    duplicateReference: boolean;
+  }[];
+  cafes: {
+    id: string;
+    name: string;
+    slug: string;
+    branchCount: number;
+    enabled: boolean;
+    status: SubscriptionData["status"];
+    bookingPaused: boolean;
+    graceEndsAt: string | null;
+    unitPriceRials: number;
+    monthlyPriceRials: number;
+    trialEndsAt: string | null;
+    currentPeriodEndsAt: string | null;
+    createdAt: string;
+  }[];
+}

@@ -70,7 +70,7 @@ To browse the API reference, run `npx @redocly/cli preview-docs docs/openapi.yam
 | `web/index.html`, `web/assets/` | Page markup and images |
 | `web/src/` | Frontend ES modules, bundled into one script |
 | `web/css/main/`, `web/css/editor/`, `web/css/saas/` | Stylesheets by feature; each folder is served as one file |
-| `web/saas-admin.*` | The SaaS console page |
+| `web/saas-admin.html` | The SaaS console page; its script is `web/src/saas-console.js` |
 | `worker/src/` | The Worker: `index.js` (entry), `api.js` (routes), and one module per domain |
 | `db/schema.ts`, `drizzle/` | Database schema and D1 migrations |
 | `scripts/` | Build, bundling and checks |

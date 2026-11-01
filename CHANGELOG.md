@@ -30,6 +30,7 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - The API runs on Hono with auth middleware; public endpoints validate their body with `zod/mini`. Unsupported methods answer `405`, a malformed body `400 invalid_json`, and unexpected failures `500 internal_error`.
 - Every stored instant is ISO-8601 UTC text, and the panel shows times on Tehran's clock.
 - Frontend markup is built only with the escaping `html` tag; ESLint forbids `innerHTML` and its relatives.
+- The SaaS console is an ES module (`web/src/saas-console.js`) bundled like the main page, with the same escaping, linting and type checks. Its per-branch price comes from the server instead of being written into the page, and transfer times are shown in the Persian calendar on Tehran's clock.
 - Stylesheets are split by feature; `!important` is gone outside `prefers-reduced-motion`, and lint rejects it.
 - Assets carry content hashes and are cached as immutable; the Vazirmatn font is self-hosted; pages send a CSP, `Permissions-Policy` and HSTS.
 - The whole Worker and frontend are type-checked with `strictNullChecks`; API answers kept by the page are typed in `web/src/types.d.ts`, and element lookups are typed from `web/index.html`.
