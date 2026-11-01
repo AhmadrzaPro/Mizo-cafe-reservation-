@@ -13,6 +13,7 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Sites deployments must set `SAAS_ADMIN_AUTH=oai-header` to keep the SaaS console.
 - Set `SUBSCRIPTION_CARD_NUMBER` for subscription payments, and `PAYMENT_GATEWAY` and `ZARINPAL_MERCHANT_ID` for online deposits. Make one ZarinPal sandbox payment first.
 - Cafés whose trial or paid period has already ended become past due on deploy, and their online booking pauses three days after the end date. Check the SaaS console first.
+- Optional: `VIRTUAL_CAFE` (`all` or café slugs) turns on the Virtual Cafe; nothing else is needed for it.
 - API clients: tracking lookup moved from `GET /api/reservations/<code>?mobile=…` to `POST /api/reservations/<code>` with `{mobile}`, and SMS `scheduledAt` is now a UTC instant.
 
 ### Added
@@ -24,6 +25,14 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Browser tests with Playwright at desktop and phone size, run in CI.
 - `docs/` with configuration, deployment, payments, architecture and testing guides, and `docs/openapi.yaml`, an OpenAPI 3.1 reference of every API route. A test fails when the routes and the reference disagree.
 - `wrangler.toml` and `.env.example`.
+
+### Added: Virtual Cafe (Phases 0 and 1)
+
+- An optional 3D view of the café, generated from the branch's published floor map, where customers walk around and pick a real table. "Reserve this table" reads availability again and continues in the standard booking form; the backend stays the only judge of availability. Off unless `VIRTUAL_CAFE` lists the café or is `all`.
+- three.js lives in its own bundle, `/virtual-cafe.js` (≈142 KB gzipped), loaded only when a customer opens the Virtual Cafe. The booking page's first load grows by about 6.9 KB gzipped.
+- Any failure (no WebGL, download error or timeout, crash) falls back to the 2D map.
+- A booking refused with `409` now refreshes availability and the map, and clears the taken table.
+- Reports in `docs/virtual-cafe/`.
 
 ### Changed
 

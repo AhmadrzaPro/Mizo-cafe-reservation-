@@ -8,6 +8,7 @@ import { faDigits } from "./format.js";
 import { cloneDefault } from "./map-defaults.js";
 import { visibleAreas } from "./map-model.js";
 import { pageParams, state, store, studioDemo } from "./state.js";
+import { applyVirtualCafeSetting } from "./virtual-cafe/index.js";
 
 export function markDirty() {
   recordMapHistory();
@@ -103,6 +104,7 @@ export function applySettingsToCustomer() {
     open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
   );
   required(".booking-card").classList.toggle("booking-paused", !open);
+  applyVirtualCafeSetting();
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;
     byId("guestCount").textContent = faDigits(state.guests);

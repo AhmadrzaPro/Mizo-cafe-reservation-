@@ -56,7 +56,7 @@
   }
 }
 @media (max-width: 600px) {
-  dialog:not(.ops-dialog):not(.map-editor-dialog):not(.jalali-picker) {
+  dialog:not(.ops-dialog):not(.map-editor-dialog):not(.jalali-picker):not(.virtual-cafe-dialog) {
     width: 100vw;
     max-width: none;
     max-height: calc(100dvh - 10px);

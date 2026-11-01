@@ -10,6 +10,8 @@
   <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="editor.css">
+  <!-- The Virtual Cafe engine: loaded only when a customer opens it (web/src/virtual-cafe/loader.js). -->
+  <meta name="virtual-cafe-src" content="virtual-cafe.js">
 </head>
 <body>
   <header class="topbar">
@@ -80,7 +82,19 @@
     <p class="floor-swipe-hint">برای دیدن تمام میزها، نقشه را به چپ و راست بکشید.</p>
     <div class="floor-navigation" data-floor-controls="customer"><button type="button" data-zoom="out" aria-label="کوچک‌نمایی نقشه">−</button><button type="button" data-zoom="fit">نمایش کامل</button><button type="button" data-zoom="in" aria-label="بزرگ‌نمایی نقشه">+</button><small>برای دیدن بخش‌های دیگر نقشه را بکشید</small></div><div class="floor-viewport" id="customerMapViewport"><div id="customerMapStage"><div class="floor-plan" id="customerFloorPlan" aria-label="نقشه میزها"></div></div></div>
     <div class="legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-selected"></i>انتخاب شما</span><span><i class="lg-busy"></i>رزرو شده</span></div>
+    <button class="virtual-cafe-entry" id="openVirtualCafe" type="button" hidden><span aria-hidden="true">⌂</span><b>ورود به کافه مجازی</b><small>در کافه قدم بزنید و میز را سه‌بعدی انتخاب کنید</small></button>
     <button class="primary-btn" id="confirmBtn" disabled>یک میز را انتخاب کنید</button>
+  </dialog>
+
+  <dialog id="virtualCafeDialog" class="virtual-cafe-dialog" aria-label="کافه مجازی">
+    <header class="virtual-cafe-bar"><button class="virtual-cafe-back" id="virtualCafeBack" type="button">→ نقشه معمولی</button><div class="virtual-cafe-title"><b>کافه مجازی</b><small id="virtualCafeSummary"></small></div><button class="virtual-list-toggle" id="virtualTableListToggle" type="button" aria-expanded="false" aria-controls="virtualTableList">فهرست میزها</button></header>
+    <nav class="virtual-area-tabs" id="virtualAreaTabs" aria-label="فضاهای کافه" hidden></nav>
+    <div class="virtual-cafe-stage" id="virtualCafeStage"></div>
+    <p class="virtual-cafe-hint" id="virtualCafeHint" aria-live="polite">با حرکت در کافه به میزی نزدیک شوید یا روی آن بزنید.</p>
+    <div class="virtual-table-list" id="virtualTableList" hidden></div>
+    <section class="virtual-table-card" id="virtualTableCard" aria-live="polite" hidden><button class="virtual-card-close" id="virtualTableClose" type="button" aria-label="بستن">×</button><h3 id="virtualTableName"></h3><p id="virtualTableMeta"></p><b class="virtual-table-state" id="virtualTableState"></b><button class="primary-btn" id="virtualTableReserve" type="button">رزرو این میز</button></section>
+    <div class="virtual-cafe-status" id="virtualCafeStatus" role="status"><i class="virtual-spinner" aria-hidden="true"></i><b id="virtualCafeStatusTitle"></b><p id="virtualCafeStatusText"></p><div class="virtual-cafe-status-actions"><button class="virtual-retry" id="virtualCafeRetry" type="button" hidden>تلاش دوباره</button><button class="primary-btn" id="virtualCafeStandard" type="button">ادامه با نقشه معمولی</button></div></div>
+    <pre class="virtual-cafe-debug" id="virtualCafeDebug" hidden></pre>
   </dialog>
 
   <dialog id="customerDialog" class="form-dialog"><button class="dialog-close back-btn" data-back-to="tableDialog" aria-label="بازگشت به انتخاب میز">→ بازگشت</button><span class="step-label">مرحله سوم</span><h2>اطلاعات رزرو</h2><p id="customerSummary"></p><form id="reservationForm"><label>نام و نام خانوادگی<input id="customerName" autocomplete="name" maxlength="70" required placeholder="مثلاً نیلوفر رضایی"></label><label>شماره موبایل<input id="customerMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><label>یادداشت برای کافه <small>اختیاری</small><textarea id="customerNotes" maxlength="240" placeholder="مثلاً میز نزدیک پنجره باشد"></textarea></label><p class="form-error" id="reservationError" hidden></p><button class="primary-btn" id="submitReservation" type="submit">ثبت نهایی رزرو</button></form></dialog>

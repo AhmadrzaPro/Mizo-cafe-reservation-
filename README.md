@@ -10,6 +10,7 @@ A Persian, right-to-left table reservation platform for cafés, built as a Cloud
 - **Team:** owner, branch manager, reception and barista, each limited to their branch and permissions.
 - **Integrations:** Kavenegar SMS for sign-in codes, confirmations and reminders; optional OpenAI floor-plan analysis.
 - **Platform:** a required monthly subscription per café, paid card to card and approved in the SaaS console.
+- **Virtual Cafe (optional):** customers can walk through a 3D version of the café and pick a real table, then book it through the normal form. Off unless `VIRTUAL_CAFE` enables it.
 
 ## Quick start
 
@@ -45,6 +46,7 @@ Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
 | [docs/deployment.md](docs/deployment.md) | Deploying to Cloudflare Workers or Sites, migrations, upgrading an existing database, caching and CSP |
 | [docs/payments.md](docs/payments.md) | Customer deposits through ZarinPal, and café subscriptions paid card to card |
 | [docs/architecture.md](docs/architecture.md) | How the code is organised, tenancy and booking rules, sessions, times, background work |
+| [docs/virtual-cafe/](docs/virtual-cafe/phase-1-report.md) | The optional 3D Virtual Cafe: architecture audit, Phase 0 and Phase 1 reports, performance baseline |
 | [docs/testing.md](docs/testing.md) | Unit, API and browser tests, and the checks CI runs |
 | [docs/openapi.yaml](docs/openapi.yaml) | The HTTP API (OpenAPI 3.1): every route, its access, body and error codes |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and what each release needs on deploy |

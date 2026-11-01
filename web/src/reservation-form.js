@@ -1,10 +1,28 @@
 import { reservationsUrl } from "./api.js";
-import { customerDialog, fetchAvailability, showDepositPayment, successDialog } from "./booking.js";
+import {
+  customerDialog,
+  fetchAvailability,
+  renderCustomerMap,
+  showDepositPayment,
+  successDialog,
+} from "./booking.js";
 import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import { followGatewayRedirect, payingLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
 
+/** After a refused booking: fresh availability, and no stale table choice. */
+async function refreshAfterConflict() {
+  await fetchAvailability();
+  if (!state.availableTableIds.has(state.tableId)) {
+    state.table = "";
+    state.tableId = "";
+    const confirm = byId("confirmBtn");
+    confirm.disabled = true;
+    confirm.textContent = "یک میز را انتخاب کنید";
+  }
+  renderCustomerMap();
+}
 export function wireReservationForm() {
   byId("reservationForm").onsubmit = async (e) => {
     e.preventDefault();
@@ -29,6 +47,14 @@ export function wireReservationForm() {
           }),
         }),
         data = await response.json();
+      if (response.status === 409) {
+        // Someone took the table, or the slot, first. The backend refused the booking; refresh
+        // availability so the map, 2D or 3D, shows the table as taken.
+        await refreshAfterConflict();
+        throw new Error(
+          `${data.message || "این میز همین الان رزرو شد."} با «بازگشت» میز دیگری انتخاب کنید.`,
+        );
+      }
       if (!response.ok) throw new Error(data.message || "ثبت رزرو انجام نشد.");
       customerDialog.close();
       required(".success-dialog h2").textContent = data.payment?.required

@@ -649,6 +649,7 @@ paths:
                     properties:
                       paymentMode: { type: string, enum: [zarinpal, demo, none], description: "The configured gateway, `demo` (simulated) or `none`." }
                       onlineBookingPaused: { type: boolean }
+                      virtualCafeEnabled: { type: boolean, description: "Whether the booking page offers the Virtual Cafe (`VIRTUAL_CAFE`)." }
     put:
       operationId: updateSettings
       tags: [Branch settings]

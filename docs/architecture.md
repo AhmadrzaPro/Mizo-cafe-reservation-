@@ -12,6 +12,7 @@
 | `worker/src/util/` | Dates and times, mobile numbers, ids and hashing, runtime mode |
 | `worker/src/types.d.ts` | `Env`, `Staff` and `Branch` types for the JSDoc annotations |
 | `web/src/main.js` | Wires the page; `initializeApp()` starts it |
+| `web/src/virtual-cafe/` | The optional 3D Virtual Cafe: UI, booking adapter, loader and scene model; `engine/` (three.js) is bundled on its own as `/virtual-cafe.js` and loaded only when opened. See [virtual-cafe/phase-0-report.md](virtual-cafe/phase-0-report.md) |
 | `web/src/saas-console.js` | The SaaS console (`/saas-admin`), bundled on its own as `/saas-admin.js` |
 | `web/src/state.js` | Shared frontend state: the booking `state` and the mutable `store` |
 | `web/src/dom.js` | `byId()`, typed from `web/index.html`; and the `html` tag and `setHtml()`, the only way markup reaches the page |
@@ -21,7 +22,7 @@
 
 The build (`scripts/build.sh`):
 
-1. `scripts/embed-assets.mjs` bundles `web/src/main.js` (`/app.js`) and `web/src/saas-console.js` (`/saas-admin.js`) with esbuild, each into one IIFE script, then writes them, the HTML, CSS, images and font into `dist/server/site-content.js` with a content hash per asset.
+1. `scripts/embed-assets.mjs` bundles `web/src/main.js` (`/app.js`), `web/src/saas-console.js` (`/saas-admin.js`) and `web/src/virtual-cafe/engine/index.js` (`/virtual-cafe.js`, minified) with esbuild, each into one IIFE script, then writes them, the HTML, CSS, images and font into `dist/server/site-content.js` with a content hash per asset.
 2. `scripts/bundle.mjs` bundles `worker/src/index.js` into one ESM file, `dist/server/index.js`.
 3. The hosting manifest and migrations are copied into `dist/.openai/`.
 

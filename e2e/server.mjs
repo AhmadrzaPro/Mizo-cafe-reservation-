@@ -44,6 +44,10 @@ const hooks = {
         new Date(Date.now() - Number(params.get("days")) * 86400000).toISOString(),
         params.get("cafe"),
       ),
+  // Offers the Virtual Cafe to one café, the way VIRTUAL_CAFE lists café slugs in production.
+  "/__e2e/virtual-cafe": (params) => {
+    env.VIRTUAL_CAFE = [env.VIRTUAL_CAFE, params.get("cafe")].filter(Boolean).join(",");
+  },
 };
 
 createServer(async (req, res) => {

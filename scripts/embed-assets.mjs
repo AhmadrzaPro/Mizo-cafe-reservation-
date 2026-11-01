@@ -6,10 +6,11 @@ import { build } from "esbuild";
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(import.meta.url);
 // Each page loads exactly one classic script: its entry module bundled as an IIFE.
-async function bundle(entry) {
+async function bundle(entry, { minify = false } = {}) {
   const result = await build({
     entryPoints: [resolve(root, entry)],
     bundle: true,
+    minify,
     format: "iife",
     write: false,
     logLevel: "warning",
@@ -25,7 +26,7 @@ async function stylesheet(folder) {
 }
 // Vazirmatn variable font (OFL) from the pinned npm package, served from our own origin.
 const fontDir = resolve(dirname(require.resolve("vazirmatn/package.json")), "fonts/webfonts");
-const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, hero, font] =
+const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, virtualCafeJs, hero, font] =
   await Promise.all([
     read("web/index.html"),
     stylesheet("main"),
@@ -34,6 +35,8 @@ const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, hero, font]
     read("web/saas-admin.html"),
     stylesheet("saas"),
     bundle("web/src/saas-console.js"),
+    // The Virtual Cafe engine (three.js): its own bundle, requested only when a customer opens it.
+    bundle("web/src/virtual-cafe/engine/index.js", { minify: true }),
     read("web/assets/cafe-hero.webp", null),
     readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
   ]);
@@ -60,6 +63,7 @@ const urls = {
   hero: addAsset("/assets/cafe-hero.webp", "image/webp", hero),
   saasCss: addAsset("/saas-admin.css", "text/css; charset=utf-8", withFont(saasCss)),
   saasJs: addAsset("/saas-admin.js", "text/javascript; charset=utf-8", saasJs),
+  virtualCafe: addAsset("/virtual-cafe.js", "text/javascript; charset=utf-8", virtualCafeJs),
 };
 function versioned(html, replacements) {
   for (const [from, to] of replacements) {
@@ -74,6 +78,7 @@ const mainPage = versioned(page, [
   ['href="editor.css"', `href="${urls.editor}"`],
   ['src="assets/cafe-hero.webp"', `src="${urls.hero}"`],
   ['src="app.js"', `src="${urls.app}"`],
+  ['content="virtual-cafe.js"', `content="${urls.virtualCafe}"`],
 ]);
 const adminPage = versioned(saasPage, [
   ['href="/fonts/vazirmatn.woff2"', `href="${urls.font}"`],

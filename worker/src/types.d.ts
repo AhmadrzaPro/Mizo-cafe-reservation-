@@ -21,6 +21,8 @@ export interface Env {
   ZARINPAL_MERCHANT_ID?: string;
   /** "true" to use sandbox.zarinpal.com. */
   ZARINPAL_SANDBOX?: string;
+  /** "all", or café slugs separated by commas, to offer the Virtual Cafe. */
+  VIRTUAL_CAFE?: string;
   [limit: `RATE_LIMIT_${string}` | `${string}_PER_${string}`]: string | undefined;
 }
 

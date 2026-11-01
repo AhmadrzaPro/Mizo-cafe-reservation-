@@ -180,14 +180,30 @@ export function renderCustomerMap() {
     b.onclick = () => {
       floor.querySelectorAll(".table").forEach((x) => x.classList.remove("selected"));
       b.classList.add("selected");
-      state.table = b.dataset.table || "";
-      state.tableId = fullId;
-      const c = byId("confirmBtn");
-      c.disabled = false;
-      c.textContent = `تأیید ${state.table}`;
+      chooseTable(fullId, b.dataset.table || "");
     };
     floor.appendChild(b);
   });
+}
+/**
+ * Chooses a table for the booking in progress. The 2D map and the Virtual Cafe both use it.
+ * @param {string} fullId The table's full id, as availability lists it.
+ * @param {string} label What the customer sees, e.g. "میز ۳، سالن اصلی".
+ */
+export function chooseTable(fullId, label) {
+  state.table = label;
+  state.tableId = fullId;
+  const confirm = byId("confirmBtn");
+  confirm.disabled = false;
+  confirm.textContent = `تأیید ${label}`;
+}
+/** Goes on from the chosen table to the customer's details. */
+export function continueWithTable() {
+  tableDialog.close();
+  byId("customerSummary").textContent =
+    `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
+  byId("reservationError").hidden = true;
+  customerDialog.showModal();
 }
 // The deposit box as the page ships it, restored before each booking.
 export const depositTemplate = byId("depositPayment").cloneNode(true);
@@ -255,11 +271,5 @@ export function wireBooking() {
         if (target && !target.open) target.showModal();
       }),
   );
-  byId("confirmBtn").onclick = () => {
-    tableDialog.close();
-    byId("customerSummary").textContent =
-      `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
-    byId("reservationError").hidden = true;
-    customerDialog.showModal();
-  };
+  byId("confirmBtn").onclick = continueWithTable;
 }
