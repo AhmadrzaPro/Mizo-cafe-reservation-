@@ -1,43 +1,92 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 import { build } from "esbuild";
 const root = resolve(import.meta.dirname, "..");
-// The page loads exactly one classic script: web/src/main.js bundled as an IIFE.
-async function bundleApp() {
+const require = createRequire(import.meta.url);
+// Each page loads exactly one classic script: its entry module bundled as an IIFE.
+async function bundle(entry, { minify = false } = {}) {
   const result = await build({
-    entryPoints: [resolve(root, "web/src/main.js")],
+    entryPoints: [resolve(root, entry)],
     bundle: true,
+    minify,
     format: "iife",
     write: false,
     logLevel: "warning",
   });
   return result.outputFiles[0].text;
 }
-const [
-  page,
-  stylesCss,
-  editorCss,
-  paymentsCss,
-  mapSpacesCss,
-  appJs,
-  saasPage,
-  saasCss,
-  saasJs,
-  hero,
-] = await Promise.all([
-  readFile(resolve(root, "web/index.html"), "utf8"),
-  readFile(resolve(root, "web/styles.css"), "utf8"),
-  readFile(resolve(root, "web/editor.css"), "utf8"),
-  readFile(resolve(root, "web/payments.css"), "utf8"),
-  readFile(resolve(root, "web/map-spaces.css"), "utf8"),
-  bundleApp(),
-  readFile(resolve(root, "web/saas-admin.html"), "utf8"),
-  readFile(resolve(root, "web/saas-admin.css"), "utf8"),
-  readFile(resolve(root, "web/saas-admin.js"), "utf8"),
-  readFile(resolve(root, "web/assets/cafe-hero.webp")),
+const read = (path, encoding = "utf8") => readFile(resolve(root, path), encoding);
+// Each folder under web/css is one served stylesheet: its files joined in name order.
+async function stylesheet(folder) {
+  const dir = resolve(root, "web/css", folder),
+    names = (await readdir(dir)).filter((name) => name.endsWith(".css")).sort();
+  return (await Promise.all(names.map((name) => readFile(resolve(dir, name), "utf8")))).join("\n");
+}
+// Vazirmatn variable font (OFL) from the pinned npm package, served from our own origin.
+const fontDir = resolve(dirname(require.resolve("vazirmatn/package.json")), "fonts/webfonts");
+const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, virtualCafeJs, hero, font] =
+  await Promise.all([
+    read("web/index.html"),
+    stylesheet("main"),
+    stylesheet("editor"),
+    bundle("web/src/main.js", { minify: true }),
+    read("web/saas-admin.html"),
+    stylesheet("saas"),
+    bundle("web/src/saas-console.js", { minify: true }),
+    // The Virtual Cafe engine (three.js): its own bundle, requested only when a customer opens it.
+    bundle("web/src/virtual-cafe/engine/index.js", { minify: true }),
+    read("web/assets/cafe-hero.webp", null),
+    readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
+  ]);
+const hash = (body) => createHash("sha256").update(body).digest("hex").slice(0, 12);
+// Each asset is served at its path; pages and stylesheets reference it as `path?v=<hash>`,
+// so a changed file gets a new URL and an unchanged one can be cached as immutable.
+const assets = {};
+function addAsset(path, type, body) {
+  const binary = Buffer.isBuffer(body);
+  assets[path] = {
+    type,
+    hash: hash(body),
+    ...(binary ? { base64: body.toString("base64") } : { body }),
+  };
+  return `${path}?v=${assets[path].hash}`;
+}
+const fontUrl = addAsset("/fonts/vazirmatn.woff2", "font/woff2", font);
+const withFont = (css) => css.replaceAll("/fonts/vazirmatn.woff2", fontUrl);
+const urls = {
+  font: fontUrl,
+  styles: addAsset("/styles.css", "text/css; charset=utf-8", withFont(stylesCss)),
+  editor: addAsset("/editor.css", "text/css; charset=utf-8", editorCss),
+  app: addAsset("/app.js", "text/javascript; charset=utf-8", appJs),
+  hero: addAsset("/assets/cafe-hero.webp", "image/webp", hero),
+  saasCss: addAsset("/saas-admin.css", "text/css; charset=utf-8", withFont(saasCss)),
+  saasJs: addAsset("/saas-admin.js", "text/javascript; charset=utf-8", saasJs),
+  virtualCafe: addAsset("/virtual-cafe.js", "text/javascript; charset=utf-8", virtualCafeJs),
+};
+function versioned(html, replacements) {
+  for (const [from, to] of replacements) {
+    if (!html.includes(from)) throw new Error(`asset reference not found: ${from}`);
+    html = html.replaceAll(from, to);
+  }
+  return html;
+}
+const mainPage = versioned(page, [
+  ['href="/fonts/vazirmatn.woff2"', `href="${urls.font}"`],
+  ['href="styles.css"', `href="${urls.styles}"`],
+  ['href="editor.css"', `href="${urls.editor}"`],
+  ['src="assets/cafe-hero.webp"', `src="${urls.hero}"`],
+  ['src="app.js"', `src="${urls.app}"`],
+  ['content="virtual-cafe.js"', `content="${urls.virtualCafe}"`],
+]);
+const adminPage = versioned(saasPage, [
+  ['href="/fonts/vazirmatn.woff2"', `href="${urls.font}"`],
+  ['href="/saas-admin.css"', `href="${urls.saasCss}"`],
+  ['src="/saas-admin.js"', `src="${urls.saasJs}"`],
 ]);
 await mkdir(resolve(root, "dist/server"), { recursive: true });
 await writeFile(
   resolve(root, "dist/server/site-content.js"),
-  `export const page=${JSON.stringify(page)};\nexport const stylesCss=${JSON.stringify(`${stylesCss}\n${paymentsCss}\n${mapSpacesCss}`)};\nexport const editorCss=${JSON.stringify(editorCss)};\nexport const paymentsCss=${JSON.stringify(paymentsCss)};\nexport const appJs=${JSON.stringify(appJs)};\nexport const saasPage=${JSON.stringify(saasPage)};\nexport const saasCss=${JSON.stringify(saasCss)};\nexport const saasJs=${JSON.stringify(saasJs)};\nexport const heroBase64=${JSON.stringify(hero.toString("base64"))};\n`,
+  `export const page=${JSON.stringify(mainPage)};\nexport const pageHash=${JSON.stringify(hash(mainPage))};\nexport const saasPage=${JSON.stringify(adminPage)};\nexport const assets=${JSON.stringify(assets)};\n`,
 );

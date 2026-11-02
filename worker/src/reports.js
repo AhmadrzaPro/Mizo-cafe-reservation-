@@ -1,12 +1,13 @@
 import { hasPermission } from "./auth/session.js";
 import { reply } from "./http.js";
+import { tehranNow, timeAt } from "./util/dates.js";
 export async function readReports(db, session, url) {
   if (!hasPermission(session, "reports.read"))
     return reply({ error: "forbidden", message: "به گزارش‌ها دسترسی ندارید." }, 403);
   const days = [7, 30, 90].includes(Number(url.searchParams.get("days")))
       ? Number(url.searchParams.get("days"))
       : 30,
-    start = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10),
+    start = timeAt(tehranNow().date, -(days - 1) * 1440).slice(0, 10),
     requestedBranch = String(url.searchParams.get("branch") || ""),
     branchId = session.role === "owner" ? requestedBranch : session.branch_id || "";
   if (branchId) {

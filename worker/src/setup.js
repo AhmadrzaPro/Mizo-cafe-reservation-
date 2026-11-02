@@ -64,6 +64,11 @@ export const starterMap = {
     },
   ],
 };
+/**
+ * @param {D1Database} db
+ * @param {string | null} [cafeSlug]
+ * @param {import("./types").Staff | null} [session]
+ */
 export async function readSetup(db, cafeSlug = null, session = null) {
   let cafe;
   if (cafeSlug && safeSlug(cafeSlug))
@@ -78,6 +83,7 @@ export async function readSetup(db, cafeSlug = null, session = null) {
       .first();
   if (!cafe) return { configured: false };
   const own = session?.cafe_id === cafe.id;
+  /** @type {D1Result<{ id: string, slug: string, name: string, city: string, address: string, active: number }>} */
   const result = await db
     .prepare(
       "SELECT id,slug,name,city,address,active FROM branches WHERE cafe_id=? ORDER BY updated_at,id",
@@ -96,6 +102,11 @@ export async function readSetup(db, cafeSlug = null, session = null) {
     branches: branches.map((b) => ({ ...b, active: Boolean(b.active) })),
   };
 }
+/**
+ * @param {D1Database} db
+ * @param {Record<string, any>} body
+ * @param {import("./types").Staff | null} [session]
+ */
 export async function writeSetup(db, body, session = null) {
   const name = String(body.cafeName || "")
       .trim()
@@ -166,6 +177,17 @@ export async function writeSetup(db, body, session = null) {
         "INSERT INTO staff_members (id,cafe_id,mobile,name,role,active,created_at,updated_at) VALUES (?,?,?,?,'owner',1,?,?)",
       )
       .bind(randomId("staff"), cafeId, mobile, ownerName, now, now),
+    // Every café is on the subscription, starting with a 14-day trial.
+    db
+      .prepare(
+        "INSERT INTO saas_subscriptions (cafe_id,enabled,plan,status,monthly_price_rials,trial_ends_at,current_period_ends_at,created_at,updated_at) VALUES (?,1,'standard','trial',0,?,NULL,?,?)",
+      )
+      .bind(cafeId, new Date(Date.now() + 14 * 86400000).toISOString(), now, now),
+    db
+      .prepare(
+        "INSERT INTO subscription_events (id,cafe_id,type,from_plan,to_plan,amount_rials,note,created_at) VALUES (?,?,'activated',NULL,'standard',0,'شروع دوره آزمایشی ۱۴ روزه',?)",
+      )
+      .bind(randomId("subevent"), cafeId, now),
   ];
   for (const area of starterMap.areas)
     statements.push(

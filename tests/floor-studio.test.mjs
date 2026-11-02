@@ -14,7 +14,7 @@ import { store } from "../web/src/state.js";
 test("furniture has exactly one visual seat per capacity for every supported shape", () => {
   for (const shape of ["round", "square", "rect"])
     for (const capacity of [1, 2, 4, 6, 8, 20]) {
-      const markup = tableFurniture({ shape, capacity });
+      const markup = tableFurniture({ shape, capacity }).value;
       assert.equal((markup.match(/class="furniture-chair"/g) || []).length, capacity);
       assert.ok(!markup.includes("NaN"));
     }

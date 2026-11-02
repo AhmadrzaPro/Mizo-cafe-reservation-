@@ -1,6 +1,7 @@
 import { cafeBaseUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
 import { adminDialog } from "./dialogs.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { switchBranch } from "./editor-nav.js";
 import { tableFurniture } from "./floor/furniture.js";
@@ -10,14 +11,9 @@ import { applyManagerAccess, hasManagerPermission } from "./manager.js";
 import { store } from "./state.js";
 
 // Phase 2: live operations dashboard
-export const opsDialog = document.querySelector("#opsDialog"),
-  opsReservationDialog = document.querySelector("#opsReservationDialog"),
-  waitlistDialog = document.querySelector("#waitlistDialog");
-export const escapeHtml = (value) =>
-  String(value ?? "").replace(
-    /[&<>'"]/g,
-    (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-  );
+export const opsDialog = byId("opsDialog"),
+  opsReservationDialog = byId("opsReservationDialog"),
+  waitlistDialog = byId("waitlistDialog");
 export function operationsUrl(path = "") {
   return `${cafeBaseUrl()}/operations${path}`;
 }
@@ -37,11 +33,11 @@ export function sourceLabel(source) {
   return source === "phone" ? "تلفنی" : source === "walk_in" ? "حضوری" : "آنلاین";
 }
 export async function fetchOperations() {
-  const sync = document.querySelector("#opsSync");
+  const sync = byId("opsSync");
   sync.textContent = "در حال تازه‌سازی…";
   try {
-    const date = isoValue(document.querySelector("#opsDate")) || isoDate(new Date()),
-      time = document.querySelector("#opsFloorTime").value || roundedFloorTime(),
+    const date = isoValue(byId("opsDate")) || isoDate(new Date()),
+      time = byId("opsFloorTime").value || roundedFloorTime(),
       response = await fetch(`${operationsUrl()}?date=${date}&time=${encodeURIComponent(time)}`),
       data = await response.json();
     if (!response.ok) throw new Error(data.message || "دریافت عملیات ممکن نیست");
@@ -56,17 +52,17 @@ export function renderOperations() {
   if (!store.opsData) return;
   const s = store.opsData.stats,
     cards = document.querySelectorAll("#opsKpis article");
-  [
+  /** @type {[string | number, string][]} */ ([
     [s.reservations, "رزرو امروز"],
     [s.guests, "مهمان"],
     [`${s.occupiedTables}/${s.totalTables}`, "میز قفل‌شده"],
     [s.remainingCapacity, "صندلی آزاد"],
     [s.delayed + s.waiting, "نیازمند توجه"],
-  ].forEach(([value, label], i) => {
-    cards[i].querySelector("span").textContent = label;
-    cards[i].querySelector("strong").textContent = faDigits(value);
+  ]).forEach(([value, label], i) => {
+    required("span", cards[i]).textContent = label;
+    required("strong", cards[i]).textContent = faDigits(value);
   });
-  document.querySelector("#opsNextReservation").textContent = store.opsData.nextReservation
+  byId("opsNextReservation").textContent = store.opsData.nextReservation
     ? `رزرو بعدی: ${store.opsData.nextReservation.customerName}، ساعت ${faDigits(store.opsData.nextReservation.time)}`
     : "رزرو فعال دیگری باقی نمانده";
   renderOperationalReservations();
@@ -76,41 +72,57 @@ export function renderOperations() {
   fillOpsTables();
 }
 export function renderOperationalReservations() {
-  const list = document.querySelector("#opsReservationList"),
-    query = latinDigits(document.querySelector("#opsSearch").value).trim().toLowerCase(),
-    filter = document.querySelector("#opsStatusFilter").value,
-    rows = store.opsData.reservations.filter(
+  const data = store.opsData;
+  if (!data) return;
+  const list = byId("opsReservationList"),
+    query = latinDigits(byId("opsSearch").value).trim().toLowerCase(),
+    filter = byId("opsStatusFilter").value,
+    rows = data.reservations.filter(
       (r) =>
         (filter === "all" || r.status === filter) &&
         (!query || `${r.customerName} ${r.mobile} ${r.trackingCode}`.toLowerCase().includes(query)),
     );
-  list.innerHTML = "";
+  list.replaceChildren();
   if (!rows.length) {
-    list.innerHTML =
-      '<div class="ops-empty">رزروی با این فیلتر پیدا نشد.<br>رزرو تلفنی یا حضوری را از دکمه بالا ثبت کنید.</div>';
+    setHtml(
+      list,
+      html`<div class="ops-empty">
+        رزروی با این فیلتر پیدا نشد.<br />رزرو تلفنی یا حضوری را از دکمه بالا ثبت کنید.
+      </div>`,
+    );
     return;
   }
   rows.forEach((r) => {
     const row = document.createElement("div");
     row.className = "ops-reservation-row";
-    row.innerHTML = `<time>${faDigits(r.time)}</time><div><h4>${escapeHtml(r.customerName)}</h4><p>${faDigits(r.partySize)} نفر · ${escapeHtml(r.tables.join("، ") || "بدون میز")} <span class="source">${sourceLabel(r.source)}</span></p></div><em class="ops-status ${r.status}">${opsStatusLabel(r.status)}</em>`;
+    setHtml(
+      row,
+      html`<time>${faDigits(r.time)}</time>
+        <div>
+          <h4>${r.customerName}</h4>
+          <p>
+            ${faDigits(r.partySize)} نفر · ${r.tables.join("، ") || "بدون میز"}
+            <span class="source">${sourceLabel(r.source)}</span>
+          </p>
+        </div>
+        <em class="ops-status ${r.status}">${opsStatusLabel(r.status)}</em>`,
+    );
     if (hasManagerPermission("reservations.write")) row.onclick = () => openOpsReservation(r);
     else row.classList.add("readonly");
     list.appendChild(row);
   });
 }
 export function renderOpsAreas() {
-  const tabs = document.querySelector("#opsAreaTabs"),
+  const data = store.opsData;
+  if (!data) return;
+  const tabs = byId("opsAreaTabs"),
     areas = [
       ...new Map(
-        store.opsData.tables.map((table) => [
-          table.areaId,
-          { id: table.areaId, name: table.areaName },
-        ]),
+        data.tables.map((table) => [table.areaId, { id: table.areaId, name: table.areaName }]),
       ).values(),
     ];
   if (!areas.some((area) => area.id === store.opsAreaId)) store.opsAreaId = areas[0]?.id || "";
-  tabs.innerHTML = "";
+  tabs.replaceChildren();
   tabs.hidden = areas.length < 2;
   areas.forEach((area) => {
     const button = document.createElement("button");
@@ -120,7 +132,7 @@ export function renderOpsAreas() {
     button.onclick = () => {
       store.opsAreaId = area.id;
       store.opsMapZoom = 1;
-      document.querySelector("#opsMapViewport").scrollTo(0, 0);
+      byId("opsMapViewport").scrollTo(0, 0);
       renderOpsAreas();
       renderOpsMap();
     };
@@ -128,19 +140,16 @@ export function renderOpsAreas() {
   });
 }
 export function renderOpsMap() {
+  const data = store.opsData;
+  if (!data) return;
   document.querySelector("#opsMapViewport .table-popover")?.remove();
-  const floor = document.querySelector("#opsFloor");
-  floor.innerHTML = "";
-  const tables = store.opsData.tables.filter(
+  const floor = byId("opsFloor");
+  floor.replaceChildren();
+  const tables = data.tables.filter(
       (table) => !store.opsAreaId || table.areaId === store.opsAreaId,
     ),
     area = { width: tables[0]?.areaWidth, height: tables[0]?.areaHeight };
-  applyFloorViewport(
-    floor,
-    document.querySelector("#opsMapStage"),
-    areaBounds(area),
-    store.opsMapZoom,
-  );
+  applyFloorViewport(floor, byId("opsMapStage"), areaBounds(area), store.opsMapZoom);
   tables.forEach((t) => {
     const b = document.createElement("button"),
       size = tableSize(t);
@@ -150,11 +159,14 @@ export function renderOpsMap() {
     b.style.width = `${size.w}px`;
     b.style.height = `${size.h}px`;
     const reservationLabel = t.reservation
-      ? `${t.reservation.customerName ? escapeHtml(t.reservation.customerName) + " · " : ""}${faDigits(t.reservation.time)}`
+      ? `${t.reservation.customerName ? t.reservation.customerName + " · " : ""}${faDigits(t.reservation.time)}`
       : `${faDigits(t.capacity)} نفره`;
-    b.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name)}</b><small>${reservationLabel}</small></span>`;
+    setHtml(
+      b,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name}</b><small>${reservationLabel}</small></span
+        >`,
+    );
     b.onclick = (e) => {
       if (t.canQuickLock && hasManagerPermission("reservations.write")) quickLockTable(t, b);
       else openTablePopover(e, t);
@@ -165,14 +177,14 @@ export function renderOpsMap() {
 export async function quickLockTable(table, button) {
   button.disabled = true;
   button.classList.add("locking");
-  document.querySelector("#opsFloorHint").textContent = `در حال قفل‌کردن ${table.name}…`;
+  byId("opsFloorHint").textContent = `در حال قفل‌کردن ${table.name}…`;
   const payload = {
     customerName: "مهمان حضوری",
     mobile: "",
     source: "walk_in",
     status: "confirmed",
-    date: isoValue(document.querySelector("#opsDate")) || tehranClientNow().date,
-    time: document.querySelector("#opsFloorTime").value || roundedFloorTime(),
+    date: isoValue(byId("opsDate")) || tehranClientNow().date,
+    time: byId("opsFloorTime").value || roundedFloorTime(),
     partySize: Math.min(table.capacity, store.cafeSettings.maxPartySize || 20),
     tableIds: [table.id],
     notes: "ثبت سریع از نقشه سالن",
@@ -186,13 +198,12 @@ export async function quickLockTable(table, button) {
       }),
       data = await response.json();
     if (!response.ok) throw new Error(data.message || "قفل میز انجام نشد");
-    document.querySelector("#opsFloorHint").textContent =
-      `${table.name} برای ساعت ${faDigits(payload.time)} قفل شد`;
+    byId("opsFloorHint").textContent = `${table.name} برای ساعت ${faDigits(payload.time)} قفل شد`;
     await Promise.all([fetchOperations(), fetchAvailability()]);
   } catch (error) {
     button.disabled = false;
     button.classList.remove("locking");
-    document.querySelector("#opsFloorHint").textContent = error.message;
+    byId("opsFloorHint").textContent = error.message;
   }
 }
 export async function quickReleaseTable(table, button) {
@@ -208,10 +219,10 @@ export async function quickReleaseTable(table, button) {
     data = await response.json();
   if (!response.ok) {
     button.disabled = false;
-    document.querySelector("#opsFloorHint").textContent = data.message || "آزادکردن میز انجام نشد";
+    byId("opsFloorHint").textContent = data.message || "آزادکردن میز انجام نشد";
     return;
   }
-  document.querySelector("#opsFloorHint").textContent = `${table.name} آزاد شد`;
+  byId("opsFloorHint").textContent = `${table.name} آزاد شد`;
   document.querySelector(".table-popover")?.remove();
   await Promise.all([fetchOperations(), fetchAvailability()]);
 }
@@ -224,15 +235,21 @@ export function openTablePopover(event, table) {
       table.reservation?.source === "walk_in" &&
       table.reservation?.customerName === "مهمان حضوری";
   box.className = "table-popover";
-  box.innerHTML = `<b>${escapeHtml(table.name)}</b><small>${table.reservation ? `${table.reservation.customerName ? escapeHtml(table.reservation.customerName) + " · " : ""}ساعت ${faDigits(table.reservation.time)}` : "بدون رزرو فعال"}</small>${canRelease ? '<button class="quick-release">آزادکردن میز</button>' : ""}${canEdit ? `<div><button data-status="available" class="${table.manualStatus === "available" ? "active" : ""}">آماده</button><button data-status="dirty" class="${table.manualStatus === "dirty" ? "active" : ""}">نظافت</button><button data-status="inactive" class="${table.manualStatus === "inactive" ? "active" : ""}">غیرفعال</button></div>` : "<p>دسترسی شما فقط برای مشاهده است.</p>"}`;
-  const floor = document.querySelector("#opsMapViewport"),
+  setHtml(
+    box,
+    html`<b>${table.name}</b
+      ><small
+        >${table.reservation ? `${table.reservation.customerName ? table.reservation.customerName + " · " : ""}ساعت ${faDigits(table.reservation.time)}` : "بدون رزرو فعال"}</small
+      >${canRelease && html`<button class="quick-release">آزادکردن میز</button>`}${canEdit ? html`<div><button data-status="available" class="${table.manualStatus === "available" ? "active" : ""}">آماده</button><button data-status="dirty" class="${table.manualStatus === "dirty" ? "active" : ""}">نظافت</button><button data-status="inactive" class="${table.manualStatus === "inactive" ? "active" : ""}">غیرفعال</button></div>` : html`<p>دسترسی شما فقط برای مشاهده است.</p>`}`,
+  );
+  const floor = byId("opsMapViewport"),
     rect = floor.getBoundingClientRect();
   box.style.left = `${floor.scrollLeft + Math.max(8, Math.min(floor.clientWidth - 220, event.clientX - rect.left - 105))}px`;
   box.style.top = `${floor.scrollTop + Math.max(8, Math.min(floor.clientHeight - 170, event.clientY - rect.top + 20))}px`;
   box
     .querySelector(".quick-release")
     ?.addEventListener("click", (event) => quickReleaseTable(table, event.currentTarget));
-  box.querySelectorAll("[data-status]").forEach(
+  /** @type {NodeListOf<HTMLButtonElement>} */ (box.querySelectorAll("[data-status]")).forEach(
     (btn) =>
       (btn.onclick = async () => {
         await updateTableStatus(table.id, btn.dataset.status);
@@ -250,21 +267,33 @@ export async function updateTableStatus(id, status) {
   if (response.ok) await fetchOperations();
 }
 export function renderWaitlist() {
-  const list = document.querySelector("#opsWaitlist"),
-    waiting = store.opsData.waitlist.filter((w) => w.status === "waiting");
-  document.querySelector("#waitCount").textContent = waiting.length
+  const data = store.opsData;
+  if (!data) return;
+  const list = byId("opsWaitlist"),
+    waiting = data.waitlist.filter((w) => w.status === "waiting");
+  byId("waitCount").textContent = waiting.length
     ? `${faDigits(waiting.length)} گروه منتظر`
     : "بدون مشتری منتظر";
-  list.innerHTML = "";
-  if (!store.opsData.waitlist.length) {
-    list.innerHTML = '<div class="ops-empty">لیست انتظار خالی است</div>';
+  list.replaceChildren();
+  if (!data.waitlist.length) {
+    setHtml(list, html`<div class="ops-empty">لیست انتظار خالی است</div>`);
     return;
   }
-  store.opsData.waitlist.forEach((w) => {
+  data.waitlist.forEach((w) => {
     const item = document.createElement("div");
     item.className = "wait-row";
     const elapsed = Math.max(0, Math.floor((Date.now() - new Date(w.createdAt).getTime()) / 60000));
-    item.innerHTML = `<header><b>${escapeHtml(w.customerName)}</b><time>${faDigits(elapsed)} دقیقه</time></header><p>${faDigits(w.partySize)} نفر · انتظار اعلامی ${faDigits(w.quotedMinutes)} دقیقه</p><div class="wait-actions"><button data-status="seated">میز گرفت</button><button data-status="${w.status === "called" ? "waiting" : "called"}">${w.status === "called" ? "بازگشت به انتظار" : "اعلام به مشتری"}</button></div>`;
+    setHtml(
+      item,
+      html`<header><b>${w.customerName}</b><time>${faDigits(elapsed)} دقیقه</time></header>
+        <p>${faDigits(w.partySize)} نفر · انتظار اعلامی ${faDigits(w.quotedMinutes)} دقیقه</p>
+        <div class="wait-actions">
+          <button data-status="seated">میز گرفت</button
+          ><button data-status="${w.status === "called" ? "waiting" : "called"}">
+            ${w.status === "called" ? "بازگشت به انتظار" : "اعلام به مشتری"}
+          </button>
+        </div>`,
+    );
     item
       .querySelectorAll("button")
       .forEach((btn) => (btn.onclick = () => updateWaitlist(w.id, btn.dataset.status)));
@@ -280,8 +309,8 @@ export async function updateWaitlist(id, status) {
   if (response.ok) await fetchOperations();
 }
 export function fillOpsTables(selected = "") {
-  const select = document.querySelector("#opsTableSelect");
-  select.innerHTML = '<option value="">انتخاب میز</option>';
+  const select = byId("opsTableSelect");
+  setHtml(select, html`<option value="">انتخاب میز</option>`);
   (store.opsData?.tables || [])
     .filter((t) => t.reservable && t.manualStatus !== "inactive")
     .forEach((t) => {
@@ -292,33 +321,31 @@ export function fillOpsTables(selected = "") {
       select.appendChild(option);
     });
 }
+/** @param {import("./types").OpsReservation | null} [reservation] */
 export function openOpsReservation(reservation = null) {
-  document.querySelector("#opsReservationForm").reset();
-  document.querySelector("#opsTrackingCode").value = reservation?.trackingCode || "";
-  document.querySelector("#opsFormTitle").textContent = reservation
-    ? "ویرایش رزرو"
-    : "ثبت رزرو تلفنی یا حضوری";
-  document.querySelector("#opsCustomerName").value = reservation?.customerName || "";
-  document.querySelector("#opsCustomerMobile").value = reservation?.mobile || "";
-  document.querySelector("#opsSource").value =
-    reservation?.source === "walk_in" ? "walk_in" : "phone";
-  document.querySelector("#opsSource").disabled = !!reservation;
-  document.querySelector("#opsReservationStatus").value = reservation?.status || "confirmed";
+  byId("opsReservationForm").reset();
+  byId("opsTrackingCode").value = reservation?.trackingCode || "";
+  byId("opsFormTitle").textContent = reservation ? "ویرایش رزرو" : "ثبت رزرو تلفنی یا حضوری";
+  byId("opsCustomerName").value = reservation?.customerName || "";
+  byId("opsCustomerMobile").value = reservation?.mobile || "";
+  byId("opsSource").value = reservation?.source === "walk_in" ? "walk_in" : "phone";
+  byId("opsSource").disabled = !!reservation;
+  byId("opsReservationStatus").value = reservation?.status || "confirmed";
   setJalaliInput(
-    document.querySelector("#opsReservationDate"),
-    reservation?.date || isoValue(document.querySelector("#opsDate")) || isoDate(new Date()),
+    byId("opsReservationDate"),
+    reservation?.date || isoValue(byId("opsDate")) || isoDate(new Date()),
   );
-  document.querySelector("#opsReservationTime").value =
+  byId("opsReservationTime").value =
     reservation?.time ||
     new Intl.DateTimeFormat("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
       hourCycle: "h23",
     }).format(new Date());
-  document.querySelector("#opsPartySize").value = reservation?.partySize || 2;
-  document.querySelector("#opsCustomerNote").value = reservation?.notes || "";
-  document.querySelector("#opsInternalNote").value = reservation?.internalNotes || "";
-  document.querySelector("#opsFormError").textContent = "";
+  byId("opsPartySize").value = String(reservation?.partySize || 2);
+  byId("opsCustomerNote").value = reservation?.notes || "";
+  byId("opsInternalNote").value = reservation?.internalNotes || "";
+  byId("opsFormError").textContent = "";
   fillOpsTables(reservation?.tableIds?.[0] || "");
   opsReservationDialog.showModal();
 }
@@ -355,39 +382,39 @@ export async function openOperations() {
     "table-only",
     !hasManagerPermission("reservations.read") && !hasManagerPermission("waitlist.read"),
   );
-  setJalaliInput(document.querySelector("#opsDate"), tehranClientNow().date);
-  document.querySelector("#opsFloorTime").value = roundedFloorTime();
-  document.querySelector("#opsBranch").value = store.currentBranch;
+  setJalaliInput(byId("opsDate"), tehranClientNow().date);
+  byId("opsFloorTime").value = roundedFloorTime();
+  byId("opsBranch").value = store.currentBranch;
   opsDialog.showModal();
   await fetchOperations();
-  clearInterval(store.opsRefreshTimer);
+  clearInterval(store.opsRefreshTimer ?? undefined);
   store.opsRefreshTimer = setInterval(() => {
     if (opsDialog.open) fetchOperations();
   }, 45000);
 }
 export function exitOperations() {
-  clearInterval(store.opsRefreshTimer);
+  clearInterval(store.opsRefreshTimer ?? undefined);
   opsDialog.close();
   adminDialog.showModal();
 }
 
 export function wireOperations() {
-  document.querySelector("#opsReservationForm").onsubmit = async (e) => {
+  byId("opsReservationForm").onsubmit = async (e) => {
     e.preventDefault();
-    const code = document.querySelector("#opsTrackingCode").value,
-      button = document.querySelector("#saveOperationalReservation"),
-      error = document.querySelector("#opsFormError"),
+    const code = byId("opsTrackingCode").value,
+      button = byId("saveOperationalReservation"),
+      error = byId("opsFormError"),
       payload = {
-        customerName: document.querySelector("#opsCustomerName").value,
-        mobile: latinDigits(document.querySelector("#opsCustomerMobile").value),
-        source: document.querySelector("#opsSource").value,
-        status: document.querySelector("#opsReservationStatus").value,
-        date: isoValue(document.querySelector("#opsReservationDate")),
-        time: document.querySelector("#opsReservationTime").value,
-        partySize: Number(document.querySelector("#opsPartySize").value),
-        tableIds: [document.querySelector("#opsTableSelect").value],
-        notes: document.querySelector("#opsCustomerNote").value,
-        internalNotes: document.querySelector("#opsInternalNote").value,
+        customerName: byId("opsCustomerName").value,
+        mobile: latinDigits(byId("opsCustomerMobile").value),
+        source: byId("opsSource").value,
+        status: byId("opsReservationStatus").value,
+        date: isoValue(byId("opsReservationDate")),
+        time: byId("opsReservationTime").value,
+        partySize: Number(byId("opsPartySize").value),
+        tableIds: [byId("opsTableSelect").value],
+        notes: byId("opsCustomerNote").value,
+        internalNotes: byId("opsInternalNote").value,
       };
     button.disabled = true;
     error.textContent = "";
@@ -413,15 +440,15 @@ export function wireOperations() {
       button.disabled = false;
     }
   };
-  document.querySelector("#waitlistForm").onsubmit = async (e) => {
+  byId("waitlistForm").onsubmit = async (e) => {
     e.preventDefault();
-    const error = document.querySelector("#waitFormError"),
+    const error = byId("waitFormError"),
       payload = {
-        customerName: document.querySelector("#waitCustomerName").value,
-        mobile: latinDigits(document.querySelector("#waitCustomerMobile").value),
-        partySize: Number(document.querySelector("#waitPartySize").value),
-        quotedMinutes: Number(document.querySelector("#waitQuoted").value),
-        notes: document.querySelector("#waitNotes").value,
+        customerName: byId("waitCustomerName").value,
+        mobile: latinDigits(byId("waitCustomerMobile").value),
+        partySize: Number(byId("waitPartySize").value),
+        quotedMinutes: Number(byId("waitQuoted").value),
+        notes: byId("waitNotes").value,
       };
     error.textContent = "";
     try {
@@ -433,29 +460,29 @@ export function wireOperations() {
         data = await response.json();
       if (!response.ok) throw new Error(data.message || "ثبت لیست انتظار انجام نشد");
       waitlistDialog.close();
-      document.querySelector("#waitlistForm").reset();
+      byId("waitlistForm").reset();
       await fetchOperations();
     } catch (err) {
       error.textContent = err.message;
     }
   };
-  document.querySelector("#openOperations").onclick = openOperations;
-  document.querySelector("#opsExit").onclick = exitOperations;
-  document.querySelector("#opsMobileExit").onclick = exitOperations;
-  document.querySelector("#opsRefresh").onclick = fetchOperations;
-  document.querySelector("#opsDate").onchange = fetchOperations;
-  document.querySelector("#opsFloorTime").onchange = fetchOperations;
-  document.querySelector("#opsFloorNow").onclick = () => {
-    document.querySelector("#opsFloorTime").value = roundedFloorTime();
+  byId("openOperations").onclick = openOperations;
+  byId("opsExit").onclick = exitOperations;
+  byId("opsMobileExit").onclick = exitOperations;
+  byId("opsRefresh").onclick = fetchOperations;
+  byId("opsDate").onchange = fetchOperations;
+  byId("opsFloorTime").onchange = fetchOperations;
+  byId("opsFloorNow").onclick = () => {
+    byId("opsFloorTime").value = roundedFloorTime();
     fetchOperations();
   };
-  document.querySelector("#opsBranch").onchange = (e) => switchBranch(e.target.value, true);
-  document.querySelector("#opsSearch").oninput = renderOperationalReservations;
-  document.querySelector("#opsStatusFilter").onchange = renderOperationalReservations;
-  document.querySelector("#addOperationalReservation").onclick = () => openOpsReservation();
-  document.querySelector("#opsAddQuick").onclick = () => openOpsReservation();
-  document.querySelector("#addWaitlist").onclick = () => {
-    document.querySelector("#waitFormError").textContent = "";
+  byId("opsBranch").onchange = () => switchBranch(byId("opsBranch").value, true);
+  byId("opsSearch").oninput = renderOperationalReservations;
+  byId("opsStatusFilter").onchange = renderOperationalReservations;
+  byId("addOperationalReservation").onclick = () => openOpsReservation();
+  byId("opsAddQuick").onclick = () => openOpsReservation();
+  byId("addWaitlist").onclick = () => {
+    byId("waitFormError").textContent = "";
     waitlistDialog.showModal();
   };
 }

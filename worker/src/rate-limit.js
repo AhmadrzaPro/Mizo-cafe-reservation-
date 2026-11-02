@@ -8,6 +8,18 @@ const HOUR = 3600000,
 // Each limit is configurable through the named env variable; invalid or missing values use the default.
 export const limits = {
   otpPerIp: { env: "RATE_LIMIT_OTP_PER_IP_HOUR", fallback: 10, windowMs: HOUR, offsetMs: 0 },
+  otpVerifyPerIp: {
+    env: "RATE_LIMIT_OTP_VERIFY_PER_IP_HOUR",
+    fallback: 30,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
+  trackingPerIp: {
+    env: "RATE_LIMIT_TRACKING_PER_IP_HOUR",
+    fallback: 30,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
   setupPerIp: {
     env: "RATE_LIMIT_SETUP_PER_IP_DAY",
     fallback: 5,
@@ -17,6 +29,12 @@ export const limits = {
   reservationsPerIp: {
     env: "RATE_LIMIT_RESERVATIONS_PER_IP_HOUR",
     fallback: 10,
+    windowMs: HOUR,
+    offsetMs: 0,
+  },
+  holdsPerIp: {
+    env: "RATE_LIMIT_HOLDS_PER_IP_HOUR",
+    fallback: 30,
     windowMs: HOUR,
     offsetMs: 0,
   },
@@ -58,13 +76,4 @@ export async function cleanupRateLimits(db, now = Date.now()) {
     .prepare("DELETE FROM rate_limits WHERE window_start<?")
     .bind(now - 2 * DAY)
     .run();
-}
-
-// Hosts without a cron trigger never call `scheduled`, so requests also clean up, at most every
-// ten minutes per isolate.
-let lastCleanup = 0;
-export function cleanupRateLimitsOccasionally(db, now = Date.now()) {
-  if (now - lastCleanup < 600000) return Promise.resolve();
-  lastCleanup = now;
-  return cleanupRateLimits(db, now);
 }

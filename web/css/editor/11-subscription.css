@@ -1,0 +1,140 @@
+/* Optional SaaS subscription module */
+.admin-feature.subscription-feature {
+  background: #eef5ff;
+  border-color: #c9d9ee;
+}
+.admin-feature.subscription-feature b small {
+  display: inline-flex;
+  margin-right: 5px;
+  background: #dbe9fb;
+  color: #40658e;
+  border-radius: 99px;
+  padding: 2px 6px;
+  font-size: 0.58rem;
+}
+.subscription-dialog {
+  width: min(94vw, 860px);
+  padding: 30px;
+  background: #f6f3ef;
+}
+.subscription-dialog > h2 {
+  font-size: 1.7rem;
+  margin: 6px 0 20px;
+  padding-left: 90px;
+}
+.subscription-optin {
+  text-align: center;
+  background: #fff;
+  border: 1px solid #ddd5cd;
+  border-radius: 18px;
+  padding: 36px 24px;
+}
+.subscription-optin > span {
+  display: inline-flex;
+  background: #e8f1fb;
+  color: #426b95;
+  border-radius: 99px;
+  padding: 5px 10px;
+  font-size: 0.67rem;
+}
+.subscription-optin h3 {
+  font-size: 1.25rem;
+  margin: 13px 0 8px;
+}
+.subscription-optin p {
+  max-width: 590px;
+  margin: 0 auto 20px;
+  color: #756a62;
+  font-size: 0.76rem;
+  line-height: 1.9;
+}
+.subscription-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.subscription-status > div {
+  background: #fff;
+  border: 1px solid #ddd5cd;
+  border-radius: 13px;
+  padding: 14px;
+}
+.subscription-status span,
+.subscription-status b {
+  display: block;
+}
+.subscription-status span {
+  font-size: 0.68rem;
+  color: #81766e;
+}
+.subscription-status b {
+  font-size: 1rem;
+  margin-top: 5px;
+}
+.subscription-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 14px 0;
+}
+.subscription-actions button {
+  border: 1px solid #d7cec5;
+  background: #fff;
+  border-radius: 9px;
+  padding: 10px 13px;
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.subscription-actions .publish-btn {
+  background: #211b18;
+  color: #fff;
+}
+.subscription-history {
+  background: #fff;
+  border: 1px solid #dfd7cf;
+  border-radius: 14px;
+  padding: 14px;
+}
+.subscription-history h3 {
+  font-size: 0.82rem;
+  margin: 0 0 9px;
+}
+.subscription-history article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #eee9e4;
+  padding: 9px 0;
+}
+.subscription-history article b {
+  font-size: 0.7rem;
+}
+.subscription-history article span {
+  font-size: 0.65rem;
+  color: #887d75;
+}
+.subscription-empty {
+  font-size: 0.7rem;
+  color: #8a7f77;
+}
+.subscription-dialog [hidden] {
+  display: none;
+}
+@media (max-width: 750px) {
+  .subscription-dialog {
+    padding: 23px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+  .subscription-dialog > h2 {
+    padding-left: 82px;
+  }
+  .subscription-actions {
+    display: grid;
+  }
+  .subscription-actions button {
+    min-height: 42px;
+  }
+  .subscription-status {
+    grid-template-columns: 1fr;
+  }
+}

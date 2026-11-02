@@ -12,7 +12,7 @@ export async function branchRow(db, cafeSlug, branchSlug) {
 }
 export async function createBranch(db, body, session) {
   const current = await readSetup(db, null, session);
-  if (!current.configured) return reply({ error: "setup_required" }, 409);
+  if (!current.configured || !current.cafe) return reply({ error: "setup_required" }, 409);
   const name = String(body.name || "")
       .trim()
       .slice(0, 80),
@@ -59,7 +59,7 @@ export async function updateBranch(db, slug, body, session) {
       .slice(0, 180),
     active = body.active !== false;
   if (name.length < 2 || city.length < 2) return reply({ error: "invalid_branch" }, 400);
-  if (!active && branch.active && current.branches.filter((b) => b.active).length === 1)
+  if (!active && branch.active && current.branches?.filter((b) => b.active).length === 1)
     return reply({ error: "last_active_branch", message: "حداقل یک شعبه باید فعال بماند." }, 409);
   await db
     .prepare(

@@ -20,6 +20,7 @@ export const defaultSettings = {
   depositPeakEnd: "22:00",
   paymentDeadlineMinutes: 15,
   refundPolicy: "تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود.",
+  virtualCafeEnabled: true,
 };
 export function normalizeSettings(input) {
   return {
@@ -58,6 +59,8 @@ export function normalizeSettings(input) {
     refundPolicy: String(input?.refundPolicy || defaultSettings.refundPolicy)
       .trim()
       .slice(0, 240),
+    // The owner's switch; the platform must also offer the Virtual Cafe (VIRTUAL_CAFE).
+    virtualCafeEnabled: input?.virtualCafeEnabled !== false,
   };
 }
 export async function readSettings(db, cafeSlug, branchSlug) {
@@ -87,6 +90,8 @@ export async function readSettings(db, cafeSlug, branchSlug) {
         paymentDeadlineMinutes: Number(row.payment_deadline_minutes),
         depositPeakEnd: row.deposit_peak_end,
         refundPolicy: row.refund_policy,
+        virtualCafeEnabled:
+          row.virtual_cafe_enabled === undefined || Boolean(row.virtual_cafe_enabled),
       }
     : defaultSettings;
 }
@@ -116,7 +121,7 @@ export async function writeSettings(db, cafeSlug, branchSlug, body) {
       ),
     db
       .prepare(
-        "INSERT INTO branch_settings (branch_id,reservations_enabled,auto_confirm,reservation_duration,max_party_size,customer_notice,buffer_minutes,slot_interval,sms_confirmation_enabled,sms_reminder_enabled,sms_reminder_minutes,deposit_enabled,deposit_mode,deposit_amount_rials,deposit_peak_only,deposit_peak_start,deposit_peak_end,payment_deadline_minutes,refund_policy,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(branch_id) DO UPDATE SET reservations_enabled=excluded.reservations_enabled,auto_confirm=excluded.auto_confirm,reservation_duration=excluded.reservation_duration,max_party_size=excluded.max_party_size,customer_notice=excluded.customer_notice,buffer_minutes=excluded.buffer_minutes,slot_interval=excluded.slot_interval,sms_confirmation_enabled=excluded.sms_confirmation_enabled,sms_reminder_enabled=excluded.sms_reminder_enabled,sms_reminder_minutes=excluded.sms_reminder_minutes,deposit_enabled=excluded.deposit_enabled,deposit_mode=excluded.deposit_mode,deposit_amount_rials=excluded.deposit_amount_rials,deposit_peak_only=excluded.deposit_peak_only,deposit_peak_start=excluded.deposit_peak_start,deposit_peak_end=excluded.deposit_peak_end,payment_deadline_minutes=excluded.payment_deadline_minutes,refund_policy=excluded.refund_policy,updated_at=excluded.updated_at",
+        "INSERT INTO branch_settings (branch_id,reservations_enabled,auto_confirm,reservation_duration,max_party_size,customer_notice,buffer_minutes,slot_interval,sms_confirmation_enabled,sms_reminder_enabled,sms_reminder_minutes,deposit_enabled,deposit_mode,deposit_amount_rials,deposit_peak_only,deposit_peak_start,deposit_peak_end,payment_deadline_minutes,refund_policy,virtual_cafe_enabled,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(branch_id) DO UPDATE SET reservations_enabled=excluded.reservations_enabled,auto_confirm=excluded.auto_confirm,reservation_duration=excluded.reservation_duration,max_party_size=excluded.max_party_size,customer_notice=excluded.customer_notice,buffer_minutes=excluded.buffer_minutes,slot_interval=excluded.slot_interval,sms_confirmation_enabled=excluded.sms_confirmation_enabled,sms_reminder_enabled=excluded.sms_reminder_enabled,sms_reminder_minutes=excluded.sms_reminder_minutes,deposit_enabled=excluded.deposit_enabled,deposit_mode=excluded.deposit_mode,deposit_amount_rials=excluded.deposit_amount_rials,deposit_peak_only=excluded.deposit_peak_only,deposit_peak_start=excluded.deposit_peak_start,deposit_peak_end=excluded.deposit_peak_end,payment_deadline_minutes=excluded.payment_deadline_minutes,refund_policy=excluded.refund_policy,virtual_cafe_enabled=excluded.virtual_cafe_enabled,updated_at=excluded.updated_at",
       )
       .bind(
         branchId,
@@ -138,6 +143,7 @@ export async function writeSettings(db, cafeSlug, branchSlug, body) {
         s.depositPeakEnd,
         s.paymentDeadlineMinutes,
         s.refundPolicy,
+        s.virtualCafeEnabled ? 1 : 0,
         now,
       ),
   ]);

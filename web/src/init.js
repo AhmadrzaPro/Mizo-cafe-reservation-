@@ -1,5 +1,6 @@
 import { fetchAvailability, renderCustomerMap, times } from "./booking.js";
 import { editor } from "./dialogs.js";
+import { byId } from "./dom.js";
 import { renderEditor } from "./editor.js";
 import { fitMap } from "./floor/editor-tools.js";
 import { resetMapHistory } from "./floor/history.js";
@@ -39,16 +40,18 @@ export async function initializeApp() {
     ];
     resetMapHistory();
     renderEditor();
-    document.querySelector("#publishMap").disabled = true;
-    document.querySelector("#saveStatus").textContent = "دموی تعاملی · بدون تغییر اطلاعات کافه";
-    document.querySelector("#branchSelect").disabled = true;
+    /** @type {HTMLButtonElement} */ (byId("publishMap")).disabled = true;
+    byId("saveStatus").textContent = "دموی تعاملی · بدون تغییر اطلاعات کافه";
+    /** @type {HTMLSelectElement} */ (byId("branchSelect")).disabled = true;
     editor.showModal();
     requestAnimationFrame(fitMap);
     return;
   }
   const profile = await loadCafeProfile();
   if (!profile.configured || !profile.branches?.length) {
-    document.querySelector("#continueBtn").disabled = true;
+    // No café to book: the page introduces Mizo to cafés instead.
+    document.body.dataset.mode = "platform";
+    /** @type {HTMLButtonElement} */ (byId("continueBtn")).disabled = true;
     times.textContent =
       "برای رزرو، لینک اختصاصی کافه را باز کنید. برای راه‌اندازی، مدیریت کافه را انتخاب کنید.";
     return;

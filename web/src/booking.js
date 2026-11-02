@@ -1,16 +1,21 @@
 import { availabilityUrl, readableError } from "./api.js";
+import { byId, fragment, html, setHtml } from "./dom.js";
 import { tableSize } from "./editor.js";
 import { tableFurniture } from "./floor/furniture.js";
+import { featureStyle } from "./floor/venue-features.js";
 import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
-import { faDigits } from "./format.js";
+import { faDigits, formatTehranTime } from "./format.js";
 import { visibleAreas } from "./map-model.js";
-import { escapeHtml, tehranClientNow } from "./operations.js";
+import { tehranClientNow } from "./operations.js";
+import { payButtonLabel } from "./payment-flow.js";
 import { state, store } from "./state.js";
+import { holdTable, releaseHold, startCountdown } from "./table-hold.js";
+import { venueGeometry } from "./venue-layout.js";
 
-export const dates = document.querySelector("#dates"),
-  times = document.querySelector("#times");
+export const dates = byId("dates"),
+  times = byId("times");
 export function renderDates() {
-  dates.innerHTML = "";
+  dates.replaceChildren();
   for (let i = 0; i < 5; i++) {
     const d = new Date(tehranClientNow().date + "T12:00:00Z");
     d.setUTCDate(d.getUTCDate() + i);
@@ -32,7 +37,7 @@ export function renderDates() {
       state.dateLabel = parts;
     }
     b.className = "date" + (state.date === date ? " selected" : "");
-    b.innerHTML = `<small>${weekday}</small><b>${day}</b>`;
+    setHtml(b, html`<small>${weekday}</small><b>${day}</b>`);
     b.onclick = async () => {
       state.date = date;
       state.dateLabel = parts;
@@ -44,10 +49,10 @@ export function renderDates() {
   }
 }
 export function renderTimes() {
-  times.innerHTML = "";
+  times.replaceChildren();
   const data = state.availability;
   if (!data) {
-    times.innerHTML = '<span class="slot-message">در حال بررسی ظرفیت…</span>';
+    setHtml(times, html`<span class="slot-message">در حال بررسی ظرفیت…</span>`);
     return;
   }
   if (data.closed || !data.slots.length) {
@@ -88,20 +93,20 @@ export async function fetchAvailability() {
     times.textContent = readableError(error, "دریافت ظرفیت ممکن نیست.");
   }
 }
-export const count = document.querySelector("#guestCount");
+export const count = byId("guestCount");
 export async function changeGuests(delta) {
   state.guests = Math.max(1, Math.min(store.cafeSettings.maxPartySize, state.guests + delta));
   count.textContent = faDigits(state.guests);
   state.time = "";
   await fetchAvailability();
 }
-export const tableDialog = document.querySelector("#tableDialog"),
-  customerDialog = document.querySelector("#customerDialog"),
-  successDialog = document.querySelector("#successDialog"),
-  trackingDialog = document.querySelector("#trackingDialog");
+export const tableDialog = byId("tableDialog"),
+  customerDialog = byId("customerDialog"),
+  successDialog = byId("successDialog"),
+  trackingDialog = byId("trackingDialog");
 export function renderCustomerMap() {
-  const floor = document.querySelector("#customerFloorPlan"),
-    tabs = document.querySelector("#customerAreaTabs"),
+  const floor = byId("customerFloorPlan"),
+    tabs = byId("customerAreaTabs"),
     areas = visibleAreas();
   if (!areas.some((area) => area.id === store.customerArea))
     store.customerArea =
@@ -109,21 +114,25 @@ export function renderCustomerMap() {
       areas[0]?.id ||
       "";
   const current = areas.find((area) => area.id === store.customerArea);
-  tabs.innerHTML = "";
+  tabs.replaceChildren();
   tabs.hidden = areas.length < 2;
   areas.forEach((area) => {
     const button = document.createElement("button"),
       count = store.cafeMap.tables.filter((table) => table.area === area.id).length;
     button.type = "button";
     button.className = area.id === store.customerArea ? "active" : "";
-    button.innerHTML = `<span>${area.kind === "outdoor" ? "☀" : "⌂"}</span><b>${escapeHtml(area.name)}</b><small>${faDigits(count)} میز</small>`;
+    setHtml(
+      button,
+      html`<span>${area.kind === "outdoor" ? "☀" : "⌂"}</span><b>${area.name}</b
+        ><small>${faDigits(count)} میز</small>`,
+    );
     button.onclick = () => {
       store.customerArea = area.id;
       store.customerMapZoom = 1;
-      document.querySelector("#customerMapViewport").scrollTo(0, 0);
+      byId("customerMapViewport").scrollTo(0, 0);
       state.table = "";
       state.tableId = "";
-      const confirmButton = document.querySelector("#confirmBtn");
+      const confirmButton = byId("confirmBtn");
       confirmButton.disabled = true;
       confirmButton.textContent = "یک میز را انتخاب کنید";
       renderCustomerMap();
@@ -131,21 +140,27 @@ export function renderCustomerMap() {
     tabs.appendChild(button);
   });
   floor.classList.toggle("outdoor", current?.kind === "outdoor");
-  floor.innerHTML =
-    current?.kind === "outdoor"
-      ? '<span class="outdoor-label">فضای باز</span>'
-      : '<span class="window-label">پنجره سرتاسری</span><div class="bar">بار و صندوق</div>';
-  applyFloorViewport(
+  // The room's window and counter, where the owner put them in the map editor.
+  const venue = current ? venueGeometry(current) : null;
+  setHtml(
     floor,
-    document.querySelector("#customerMapStage"),
-    areaBounds(current),
-    store.customerMapZoom,
+    html`${current?.kind === "outdoor" && html`<span class="outdoor-label">فضای باز</span>`}${
+      venue?.window &&
+      html`<span class="window-label" style="${featureStyle(venue.window)}">پنجره سرتاسری</span>`
+    }${
+      venue?.counter &&
+      html`<div class="bar" style="${featureStyle(venue.counter)}">بار و صندوق</div>`
+    }`,
   );
+  applyFloorViewport(floor, byId("customerMapStage"), areaBounds(current), store.customerMapZoom);
   const areaTables = store.cafeMap.tables.filter((t) => t.area === store.customerArea);
   if (!areaTables.length) {
-    floor.insertAdjacentHTML(
-      "beforeend",
-      '<div class="map-empty"><b>هنوز میزی در این فضا ثبت نشده</b><span>فضای دیگری را انتخاب کنید.</span></div>',
+    floor.append(
+      fragment(
+        html`<div class="map-empty">
+          <b>هنوز میزی در این فضا ثبت نشده</b><span>فضای دیگری را انتخاب کنید.</span>
+        </div>`,
+      ),
     );
   }
   areaTables.forEach((t) => {
@@ -161,47 +176,102 @@ export function renderCustomerMap() {
     if (t.shape !== "round") b.style.borderRadius = "12px";
     b.disabled = store.mapPreviewMode || !free;
     b.dataset.table = `${t.name}، ${current?.name || "فضای کافه"}`;
-    b.innerHTML =
-      tableFurniture(t) +
-      `<span class="table-surface"><b>${escapeHtml(t.name.replace(/[^۰-۹0-9]/g, "") || "•")}</b><small>${store.mapPreviewMode || free ? `${faDigits(t.capacity)} نفره` : t.capacity < state.guests ? "ظرفیت کم" : "رزرو شده"}</small></span>`;
+    setHtml(
+      b,
+      html`${tableFurniture(t)}<span class="table-surface"
+          ><b>${t.name.replace(/[^۰-۹0-9]/g, "") || "•"}</b
+          ><small
+            >${store.mapPreviewMode || free ? `${faDigits(t.capacity)} نفره` : t.capacity < state.guests ? "ظرفیت کم" : "رزرو شده"}</small
+          ></span
+        >`,
+    );
     b.onclick = () => {
       floor.querySelectorAll(".table").forEach((x) => x.classList.remove("selected"));
       b.classList.add("selected");
-      state.table = b.dataset.table;
-      state.tableId = fullId;
-      const c = document.querySelector("#confirmBtn");
-      c.disabled = false;
-      c.textContent = `تأیید ${state.table}`;
+      chooseTable(fullId, b.dataset.table || "");
     };
     floor.appendChild(b);
   });
 }
-export const depositTemplate = document.querySelector("#depositPayment").innerHTML;
+/**
+ * Chooses a table for the booking in progress. The 2D map and the Virtual Cafe both use it.
+ * @param {string} fullId The table's full id, as availability lists it.
+ * @param {string} label What the customer sees, e.g. "میز ۳، سالن اصلی".
+ */
+export function chooseTable(fullId, label) {
+  state.table = label;
+  state.tableId = fullId;
+  const confirm = byId("confirmBtn");
+  confirm.disabled = false;
+  confirm.textContent = `تأیید ${label}`;
+}
+/**
+ * Goes on from the chosen table to the customer's details, after the server holds the table for
+ * them. Returns false, staying on the table step with the reason shown, when it cannot be held.
+ * @param {() => void} [beforeOpen] Runs once the table is held, just before the form opens.
+ */
+export async function continueWithTable(beforeOpen) {
+  const confirm = byId("confirmBtn"),
+    error = byId("tableHoldError");
+  confirm.disabled = true;
+  confirm.textContent = "در حال نگه‌داشتن میز…";
+  error.hidden = true;
+  const held = await holdTable(state.tableId);
+  if (!held.ok) {
+    error.textContent = held.message;
+    error.hidden = false;
+    // Taken meanwhile: show the fresh state of every table.
+    if (held.status === 409) {
+      await fetchAvailability();
+      state.table = "";
+      state.tableId = "";
+      renderCustomerMap();
+      confirm.textContent = "یک میز را انتخاب کنید";
+    } else {
+      confirm.disabled = false;
+      confirm.textContent = `تأیید ${state.table}`;
+    }
+    return false;
+  }
+  beforeOpen?.();
+  tableDialog.close();
+  byId("customerSummary").textContent =
+    `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
+  byId("reservationError").hidden = true;
+  customerDialog.showModal();
+  startCountdown();
+  confirm.disabled = false;
+  confirm.textContent = `تأیید ${state.table}`;
+  return true;
+}
+// The deposit box as the page ships it, restored before each booking.
+export const depositTemplate = byId("depositPayment").cloneNode(true);
 export const money = (value) =>
   `${faDigits(Math.round(Number(value || 0) / 10).toLocaleString("en-US"))} تومان`;
 export function showDepositPayment(payment, trackingCode, mobile) {
-  const box = document.querySelector("#depositPayment");
-  box.innerHTML = depositTemplate;
+  const box = byId("depositPayment");
+  box.replaceChildren(...depositTemplate.cloneNode(true).childNodes);
   store.pendingPayment = payment?.required ? { trackingCode, mobile } : null;
   box.hidden = !payment?.required;
   if (!payment?.required) return;
-  document.querySelector("#successDepositAmount").textContent = money(payment.amountRials);
-  document.querySelector("#depositDeadline").textContent =
-    `مهلت پرداخت: ${faDigits(payment.dueAt ? new Date(payment.dueAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }) : "—")}`;
-  document.querySelector("#depositPolicy").textContent = payment.refundPolicy || "";
+  byId("successDepositAmount").textContent = money(payment.amountRials);
+  byId("depositDeadline").textContent =
+    `مهلت پرداخت: ${faDigits(payment.dueAt ? formatTehranTime(payment.dueAt) : "—")}`;
+  byId("depositPolicy").textContent = payment.refundPolicy || "";
+  byId("payDeposit").textContent = payButtonLabel(true);
 }
 
 export function wireBooking() {
   renderDates();
-  document.querySelector("#plus").onclick = () => changeGuests(1);
-  document.querySelector("#minus").onclick = () => changeGuests(-1);
-  document.querySelector("#continueBtn").onclick = () => {
+  byId("plus").onclick = () => changeGuests(1);
+  byId("minus").onclick = () => changeGuests(-1);
+  byId("continueBtn").onclick = () => {
     if (!state.time) {
       times.classList.add("attention");
       setTimeout(() => times.classList.remove("attention"), 700);
       return;
     }
-    const selected = state.availability.slots.find((s) => s.time === state.time),
+    const selected = state.availability?.slots.find((s) => s.time === state.time),
       areas = visibleAreas();
     state.availableTableIds = new Set(selected?.tableIds || []);
     state.table = "";
@@ -218,9 +288,9 @@ export function wireBooking() {
       )?.id ||
       areas[0]?.id ||
       "";
-    document.querySelector("#confirmBtn").disabled = true;
-    document.querySelector("#confirmBtn").textContent = "یک میز را انتخاب کنید";
-    document.querySelector("#selectionSummary").textContent =
+    byId("confirmBtn").disabled = true;
+    byId("confirmBtn").textContent = "یک میز را انتخاب کنید";
+    byId("selectionSummary").textContent =
       `${state.dateLabel}، ساعت ${faDigits(state.time)} برای ${faDigits(state.guests)} نفر`;
     tableDialog.showModal();
     renderCustomerMap();
@@ -228,19 +298,21 @@ export function wireBooking() {
   window.addEventListener("resize", () => {
     if (tableDialog.open) renderCustomerMap();
   });
-  document.querySelectorAll(".dialog-close").forEach(
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(".dialog-close")).forEach(
     (button) =>
       (button.onclick = () => {
-        button.closest("dialog").close();
-        const target = button.dataset.backTo && document.querySelector(`#${button.dataset.backTo}`);
+        button.closest("dialog")?.close();
+        const target =
+          button.dataset.backTo &&
+          /** @type {HTMLDialogElement | null} */ (
+            document.querySelector(`#${button.dataset.backTo}`)
+          );
         if (target && !target.open) target.showModal();
       }),
   );
-  document.querySelector("#confirmBtn").onclick = () => {
-    tableDialog.close();
-    document.querySelector("#customerSummary").textContent =
-      `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;
-    document.querySelector("#reservationError").hidden = true;
-    customerDialog.showModal();
-  };
+  byId("confirmBtn").onclick = () => continueWithTable();
+  // Leaving the form without booking gives the held table back.
+  customerDialog.addEventListener("close", () => {
+    if (state.hold) releaseHold();
+  });
 }

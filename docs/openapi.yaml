@@ -1,0 +1,1342 @@
+openapi: 3.1.0
+info:
+  title: Mizo API
+  version: 1.0.0
+  summary: Table reservations, operations and subscriptions for cafés.
+  description: |
+    The JSON API served by the Worker under `/api`. Messages meant for people (`message`) are
+    in Persian; programs should branch on the `error` code.
+
+    **Times.** An instant (`createdAt`, `expiresAt`, `scheduledAt`, `sentAt`, `paidAt`, …) is
+    ISO-8601 UTC with milliseconds, e.g. `2026-10-31T20:15:00.000Z`. A café's schedule is on
+    Tehran's clock without a zone: `date` is `YYYY-MM-DD`, `time` is `HH:MM`.
+
+    **Money** is in rials (`…Rials`).
+
+    **Access.** Staff sign in with a one-time SMS code and then send the `mizo_session` cookie.
+    Each operation lists the role permission it needs; the owner has every permission, and other
+    roles only reach their own branch. Without a session the answer is `401
+    authentication_required`; with one that lacks the permission it is `403 forbidden`.
+
+    **Errors** are `{"error": "<code>", "message"?: "…"}`:
+
+    | Status | `error` | When |
+    | --- | --- | --- |
+    | 400 | `invalid_json` | The body is not a JSON object |
+    | 400 | `invalid_request` | A field has the wrong type or size (public endpoints); `fields` names them |
+    | 401 | `authentication_required` | A staff session is required |
+    | 403 | `forbidden` | The session lacks the permission or the branch |
+    | 404 | `not_found` | No such route |
+    | 405 | `method_not_allowed` | The route exists but not with this method |
+    | 429 | `rate_limited` | A per-IP limit was reached (see `docs/configuration.md`) |
+    | 500 | `internal_error` | An unexpected failure, logged on the server |
+    | 503 | `database_unavailable` and others | A dependency (database, SMS, gateway) is unavailable |
+
+    Business rules answer with their own codes, listed per operation.
+servers:
+  - url: /
+tags:
+  - name: Auth
+    description: Staff sign-in with a one-time SMS code, and sessions.
+  - name: Café
+    description: Café setup and branches.
+  - name: Booking
+    description: Public booking pages and reservation tracking. No sign-in.
+  - name: Operations
+    description: The live operations dashboard of one branch.
+  - name: Branch settings
+    description: Floor map, booking settings, opening hours and SMS of one branch.
+  - name: Payments
+    description: Customer deposits through the payment gateway.
+  - name: Team
+    description: Staff, loyalty and reports.
+  - name: Subscription
+    description: The café's subscription to the platform.
+  - name: Platform
+    description: The SaaS console of the platform owner.
+
+security: []
+
+paths:
+  /api/auth/request:
+    post:
+      operationId: requestCode
+      tags: [Auth]
+      summary: Send a sign-in code
+      description: |
+        Sends a one-time code by SMS to an invited, active staff mobile of the café. With
+        `DEMO_MODE=true` the code is returned as `demoCode` instead. Limited per IP, per mobile
+        (one a minute, twenty an hour).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpRequest" }
+      responses:
+        "200":
+          description: Code sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeId: { type: string }
+                  expiresIn: { type: integer, description: "Seconds, 120." }
+                  delivery: { type: string, enum: [kavenegar, demo] }
+                  demoCode: { type: string, description: "Only in demo mode." }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_login`" }
+        "403": { $ref: "#/components/responses/Error", description: "`not_invited`" }
+        "429": { $ref: "#/components/responses/Error", description: "`too_soon`, `rate_limited`" }
+        "503": { $ref: "#/components/responses/Error", description: "`sms_not_configured`, `sms_unavailable`" }
+  /api/auth/verify:
+    post:
+      operationId: verifyCode
+      tags: [Auth]
+      summary: Sign in with the code
+      description: Five attempts per code. On success sets the `mizo_session` cookie for 7 days.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OtpVerify" }
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie: { schema: { type: string }, description: "`mizo_session`, HttpOnly, Secure, SameSite=Strict" }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { const: true }
+                  staff: { $ref: "#/components/schemas/SessionStaff" }
+        "400": { $ref: "#/components/responses/Error", description: "`expired_code`, `wrong_code`" }
+        "403": { $ref: "#/components/responses/Error", description: "`not_invited`" }
+        "429": { $ref: "#/components/responses/Error", description: "`too_many_attempts`, `rate_limited`" }
+  /api/auth/session:
+    get:
+      operationId: getSession
+      tags: [Auth]
+      summary: The current staff member
+      responses:
+        "200":
+          description: "`authenticated` is false without a valid session."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean }
+                  staff: { $ref: "#/components/schemas/SessionStaff" }
+  /api/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: Sign out this device
+      responses:
+        "200": { $ref: "#/components/responses/SignedOut" }
+  /api/auth/sessions:
+    get:
+      operationId: listSessions
+      tags: [Auth]
+      summary: The signed-in member's devices
+      security: [{ staffSession: [] }]
+      responses:
+        "200":
+          description: Live sessions, most recently used first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        createdAt: { $ref: "#/components/schemas/Instant" }
+                        lastSeenAt: { $ref: "#/components/schemas/Instant" }
+                        current: { type: boolean }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/auth/logout-all:
+    post:
+      operationId: logoutEverywhere
+      tags: [Auth]
+      summary: Sign out of every device
+      security: [{ staffSession: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/SignedOut" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/setup:
+    get:
+      operationId: getCafe
+      tags: [Café]
+      summary: A café's public profile and branches
+      description: The café of `?cafe=`, else `DEFAULT_CAFE_SLUG`, else the signed-in member's café.
+      parameters:
+        - { name: cafe, in: query, schema: { $ref: "#/components/schemas/Slug" } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    post:
+      operationId: createCafe
+      tags: [Café]
+      summary: Create a café
+      description: |
+        Creates the café, its first branch and map, a 14-day subscription trial, and the owner as
+        its first staff member. The owner then signs in with a code. Limited per IP per day and to
+        three cafés an hour per owner mobile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Setup" }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_request`, `invalid_setup`, `owner_mobile_required`" }
+        "429": { $ref: "#/components/responses/Error", description: "`rate_limited`" }
+    patch:
+      operationId: updateCafe
+      tags: [Café]
+      summary: Rename the café or its main branch
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Setup" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/branches:
+    get:
+      operationId: listBranches
+      tags: [Café]
+      summary: A café's public profile and branches
+      description: Same answer as `GET /api/setup`.
+      parameters:
+        - { name: cafe, in: query, schema: { $ref: "#/components/schemas/Slug" } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    post:
+      operationId: createBranch
+      tags: [Café]
+      summary: Add a branch
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BranchInput" }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`setup_required`" }
+  /api/branches/{slug}:
+    patch:
+      operationId: updateBranch
+      tags: [Café]
+      summary: Edit or deactivate a branch
+      security: [{ staffSession: [owner] }]
+      parameters:
+        - { name: slug, in: path, required: true, schema: { $ref: "#/components/schemas/Slug" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BranchInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`last_active_branch`" }
+
+  /api/cafes/{cafe}/branches/{branch}/availability:
+    get:
+      operationId: getAvailability
+      tags: [Booking]
+      summary: Free time slots and tables for a day
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: date, in: query, required: true, schema: { $ref: "#/components/schemas/LocalDate" } }
+        - { name: party_size, in: query, schema: { type: integer, minimum: 1, default: 2 } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_date`" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+  /api/cafes/{cafe}/branches/{branch}/holds:
+    post:
+      operationId: holdTable
+      tags: [Booking]
+      summary: Hold a table while the customer fills in the form
+      description: |
+        Keeps the table for this date, time and party size for 5 minutes. Nobody else can hold or
+        book it meanwhile (a database trigger refuses their booking); the customer's own booking,
+        sent with `holdToken`, uses the hold up. One conditional insert checks overlapping holds
+        and reservations, so two customers can never hold the same table. A client holds at most
+        two tables of a branch at once.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, time, partySize, tableId]
+              properties:
+                date: { $ref: "#/components/schemas/LocalDate" }
+                time: { $ref: "#/components/schemas/LocalTime" }
+                partySize: { oneOf: [{ type: integer }, { type: string, maxLength: 3 }] }
+                tableId: { type: string, maxLength: 160, description: "The table's full id." }
+      responses:
+        "201":
+          description: Held.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  holdId: { type: string }
+                  token: { type: string, description: "Secret; send it as `holdToken` when booking, or to release the hold." }
+                  tableId: { type: string }
+                  expiresAt: { $ref: "#/components/schemas/Instant" }
+                  holdMinutes: { type: integer }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_request`, `invalid_datetime`, `invalid_party_size`, `invalid_table`, `insufficient_capacity`" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`table_unavailable` (booked or held), `outside_hours`, `reservations_disabled`, `online_booking_paused`" }
+        "429": { $ref: "#/components/responses/Error", description: "`too_many_holds`, `rate_limited`" }
+  /api/cafes/{cafe}/branches/{branch}/holds/{id}:
+    delete:
+      operationId: releaseHold
+      tags: [Booking]
+      summary: Release a hold
+      description: When the customer goes back without booking. Only the holder, with the token, can release it.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, maxLength: 80 }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "404": { $ref: "#/components/responses/Error", description: "`hold_not_found`" }
+  /api/cafes/{cafe}/branches/{branch}/reservations:
+    post:
+      operationId: bookTable
+      tags: [Booking]
+      summary: Book a table
+      description: |
+        A public booking. Limited per IP per café, and to a number of active future bookings per
+        mobile. When the branch takes deposits the reservation waits for payment
+        (`POST /api/reservations/{code}/pay`) and the table is held until `payment.dueAt`.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservationInput" }
+      responses:
+        "201":
+          description: Booked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookingResult" }
+        "400":
+          $ref: "#/components/responses/Error"
+          description: "`invalid_request`, `name_required`, `invalid_mobile`, `invalid_datetime`, `invalid_party_size`, `table_required`, `invalid_table`, `insufficient_capacity`"
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+        "409":
+          $ref: "#/components/responses/Error"
+          description: "`slot_taken` (booked, or held by someone else), `outside_hours`, `reservations_disabled`, `online_booking_paused` (subscription past its grace period)"
+        "429": { $ref: "#/components/responses/Error", description: "`rate_limited`, `active_reservation_limit`" }
+        "503": { $ref: "#/components/responses/Error", description: "`payment_not_configured`" }
+    get:
+      operationId: listReservations
+      tags: [Operations]
+      summary: A day's reservations
+      security: [{ staffSession: [reservations.read] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: date, in: query, required: true, schema: { $ref: "#/components/schemas/LocalDate" } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/reservations/{code}:
+    post:
+      operationId: trackReservation
+      tags: [Booking]
+      summary: Look up a reservation
+      description: |
+        The mobile is sent in the body, never in the URL, so it stays out of access logs and
+        browser history. Limited per IP, counting misses.
+      parameters:
+        - $ref: "#/components/parameters/code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrackingAction" }
+      responses:
+        "200":
+          description: The reservation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reservation" }
+        "404": { $ref: "#/components/responses/Error", description: "`reservation_not_found`" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/reservations/{code}/{action}:
+    post:
+      operationId: actOnReservation
+      tags: [Booking]
+      summary: Cancel or pay a reservation
+      description: |
+        `cancel` cancels a pending or confirmed reservation. `pay` starts the deposit payment and
+        returns `redirectUrl`, the gateway page to send the customer to (in demo mode without a
+        gateway it records the payment at once).
+      parameters:
+        - $ref: "#/components/parameters/code"
+        - { name: action, in: path, required: true, schema: { type: string, enum: [cancel, pay] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrackingAction" }
+      responses:
+        "200":
+          description: The reservation after the action; `pay` through a gateway adds `redirectUrl`.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Reservation"
+                  - type: object
+                    properties:
+                      redirectUrl: { type: string, format: uri }
+        "404": { $ref: "#/components/responses/Error", description: "`reservation_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`cannot_cancel`, `cannot_pay`, `payment_not_available`, `payment_expired`" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error", description: "`gateway_unavailable`" }
+        "503": { $ref: "#/components/responses/Error", description: "`payment_not_configured`" }
+  /api/payments/{provider}/callback:
+    get:
+      operationId: gatewayCallback
+      tags: [Payments]
+      summary: Return from the payment gateway
+      description: |
+        The gateway sends the customer here. The attempt is claimed once and verified with the
+        amount stored on the server. The answer redirects to the café page with
+        `payment=success|late|pending|failed`; `pending` (gateway unreachable) can be retried by
+        opening the same URL again.
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [zarinpal] } }
+        - { name: Authority, in: query, required: true, schema: { type: string } }
+        - { name: Status, in: query, required: true, schema: { type: string, enum: [OK, NOK] } }
+      responses:
+        "302": { description: "Redirect to `/?cafe=…&code=…&payment=…`." }
+
+  /api/cafes/{cafe}/branches/{branch}/operations:
+    get:
+      operationId: getOperations
+      tags: [Operations]
+      summary: The live dashboard
+      description: Reservations, waitlist, tables with their live status, and the day's figures.
+      security: [{ staffSession: [dashboard.view] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: date, in: query, schema: { $ref: "#/components/schemas/LocalDate" }, description: "Default today in Tehran." }
+        - { name: time, in: query, schema: { $ref: "#/components/schemas/LocalTime" }, description: "Default now in Tehran." }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_datetime`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+  /api/cafes/{cafe}/branches/{branch}/operations/reservations:
+    post:
+      operationId: createStaffReservation
+      tags: [Operations]
+      summary: Add a phone or walk-in reservation
+      description: Like a public booking, without the per-IP and per-mobile limits.
+      security: [{ staffSession: [reservations.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservationInput" }
+      responses:
+        "201":
+          description: Booked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookingResult" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`slot_taken`, `outside_hours`" }
+  /api/cafes/{cafe}/branches/{branch}/operations/reservations/{id}:
+    patch:
+      operationId: updateReservation
+      tags: [Operations]
+      summary: Edit, move or change the status of a reservation
+      description: A move that would overlap another booking keeps the reservation where it was.
+      security: [{ staffSession: [reservations.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: id, in: path, required: true, schema: { type: string }, description: "The tracking code." }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ReservationInput"
+                - type: object
+                  properties:
+                    status:
+                      type: string
+                      enum: [pending, confirmed, arrived, completed, cancelled, no_show]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_reservation`, `invalid_status`, `table_required`, `invalid_table`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`reservation_not_found`" }
+        "409":
+          $ref: "#/components/responses/Error"
+          description: "`slot_taken`, `table_unavailable`, `terminal_reservation`, `payment_required` (confirming an unpaid deposit), `invalid_datetime` (outside opening hours)"
+  /api/cafes/{cafe}/branches/{branch}/operations/waitlist:
+    post:
+      operationId: addToWaitlist
+      tags: [Operations]
+      summary: Add a party to the waitlist
+      security: [{ staffSession: [waitlist.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customerName: { type: string }
+                mobile: { type: string }
+                partySize: { type: integer }
+                quotedMinutes: { type: integer }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { const: waiting }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_waitlist`" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/cafes/{cafe}/branches/{branch}/operations/waitlist/{id}:
+    patch:
+      operationId: updateWaitlistEntry
+      tags: [Operations]
+      summary: Call, seat or cancel a waiting party
+      security: [{ staffSession: [waitlist.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [waiting, called, seated, cancelled] }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_status`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`waitlist_not_found`" }
+  /api/cafes/{cafe}/branches/{branch}/operations/tables/{id}:
+    patch:
+      operationId: setTableStatus
+      tags: [Operations]
+      summary: Mark a table dirty, out of service or available
+      security: [{ staffSession: [tables.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [available, dirty, inactive] }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_status`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`table_not_found`" }
+
+  /api/cafes/{cafe}/branches/{branch}/map:
+    get:
+      operationId: getMap
+      tags: [Branch settings]
+      summary: The published floor map
+      description: Public; the booking page draws tables from it.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200":
+          description: The map.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FloorMap" }
+        "404": { $ref: "#/components/responses/Error", description: "`map_not_found`" }
+    put:
+      operationId: publishMap
+      tags: [Branch settings]
+      summary: Publish the floor map
+      description: |
+        Replaces areas and tables. A table referenced by existing reservations cannot be deleted.
+        At most 150 kB.
+      security: [{ staffSession: [map.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cafeName: { type: string }
+                branchName: { type: string }
+                city: { type: string }
+                address: { type: string }
+                map: { $ref: "#/components/schemas/FloorMap" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_map`, `map_limit`, `invalid_area_dimensions`, `table_outside_area`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`table_has_reservations`" }
+        "413": { $ref: "#/components/responses/Error", description: "`payload_too_large`" }
+  /api/cafes/{cafe}/branches/{branch}/map/analyze:
+    get:
+      operationId: getMapAnalysis
+      tags: [Branch settings]
+      summary: Whether image analysis is available
+      security: [{ staffSession: [map.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200":
+          description: "`enabled` is true when `OPENAI_API_KEY` is set."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: analyzeMapImage
+      tags: [Branch settings]
+      summary: Suggest tables from a floor-plan photo
+      description: The suggestion is a draft for the owner to review; nothing is published.
+      security: [{ staffSession: [map.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image: { type: string, description: "A JPEG, PNG or WebP `data:image/…;base64,` URL, at most about 2 MB." }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_image`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error", description: "`analysis_empty`: no tables found" }
+        "502": { $ref: "#/components/responses/Error", description: "`analysis_failed`, `analysis_invalid`" }
+        "413": { $ref: "#/components/responses/Error", description: "`image_too_large`" }
+        "503": { $ref: "#/components/responses/Error", description: "`image_analysis_unavailable`" }
+  /api/cafes/{cafe}/branches/{branch}/settings:
+    get:
+      operationId: getSettings
+      tags: [Branch settings]
+      summary: Booking settings
+      description: Public. Adds `paymentMode` and `onlineBookingPaused` to the stored settings.
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Settings"
+                  - type: object
+                    properties:
+                      paymentMode: { type: string, enum: [zarinpal, demo, none], description: "The configured gateway, `demo` (simulated) or `none`." }
+                      onlineBookingPaused: { type: boolean }
+                      virtualCafeOffered: { type: boolean, description: "Whether the platform offers the Virtual Cafe to this café (`VIRTUAL_CAFE`)." }
+    put:
+      operationId: updateSettings
+      tags: [Branch settings]
+      summary: Change booking settings
+      description: Values outside the allowed sets fall back to their defaults.
+      security: [{ staffSession: [settings.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Settings" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/cafes/{cafe}/branches/{branch}/schedule:
+    get:
+      operationId: getSchedule
+      tags: [Branch settings]
+      summary: Opening hours and closures
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200":
+          description: The schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
+    put:
+      operationId: updateSchedule
+      tags: [Branch settings]
+      summary: Replace opening hours and closures
+      security: [{ staffSession: [schedule.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Schedule" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/cafes/{cafe}/branches/{branch}/notifications:
+    get:
+      operationId: getNotifications
+      tags: [Branch settings]
+      summary: SMS settings and the latest 40 messages
+      description: Mobiles are masked.
+      security: [{ staffSession: [messages.read] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateNotificationSettings
+      tags: [Branch settings]
+      summary: Change SMS settings
+      security: [{ staffSession: [messages.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmationEnabled: { type: boolean }
+                reminderEnabled: { type: boolean }
+                reminderMinutes: { type: integer, enum: [60, 120, 180, 360, 1440] }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/cafes/{cafe}/branches/{branch}/notifications/process:
+    post:
+      operationId: sendDueReminders
+      tags: [Branch settings]
+      summary: Send this branch's due reminders now
+      security: [{ staffSession: [messages.write] }]
+      parameters:
+        - $ref: "#/components/parameters/cafe"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/payments:
+    get:
+      operationId: listPayments
+      tags: [Payments]
+      summary: Deposit payments and refunds
+      security: [{ staffSession: [payments.read] }]
+      parameters:
+        - { name: branch, in: query, schema: { type: string }, description: "A branch id; owners only, default all branches." }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/payments/{id}/refund:
+    post:
+      operationId: recordRefund
+      tags: [Payments]
+      summary: Record a refund
+      description: |
+        Gateway refunds are made in the gateway's panel; this records it (provider `manual`) and
+        cancels the reservation. In demo mode it refunds at once.
+      security: [{ staffSession: [payments.write] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, description: "The payment transaction id." }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`payment_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`already_refunded`" }
+
+  /api/staff:
+    get:
+      operationId: listStaff
+      tags: [Team]
+      summary: The café's staff
+      security: [{ staffSession: [staff.manage] }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: inviteStaff
+      tags: [Team]
+      summary: Invite a staff member
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_staff`, `invalid_branch`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`duplicate_mobile`" }
+  /api/staff/{id}:
+    patch:
+      operationId: updateStaff
+      tags: [Team]
+      summary: Change a member's role or branch, or deactivate them
+      description: Deactivating a member ends their sessions.
+      security: [{ staffSession: [owner] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_staff`, `invalid_branch`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`staff_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`self_lockout` (an owner removing their own access), `duplicate_mobile`" }
+  /api/loyalty:
+    get:
+      operationId: listLoyalty
+      tags: [Team]
+      summary: Loyalty members, by points
+      security: [{ staffSession: [loyalty.read] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: "Name or mobile search." }
+        - { name: branch, in: query, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/loyalty/{customer}:
+    patch:
+      operationId: adjustPoints
+      tags: [Team]
+      summary: Add or remove points
+      security: [{ staffSession: [loyalty.write] }]
+      parameters:
+        - { name: customer, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [points]
+              properties:
+                points: { type: integer, description: "Positive to add, negative to remove." }
+                note: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_customer`, `invalid_points`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`customer_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`insufficient_points`" }
+  /api/reports:
+    get:
+      operationId: getReports
+      tags: [Team]
+      summary: Bookings, guests, no-shows and busy hours
+      security: [{ staffSession: [reports.read] }]
+      parameters:
+        - { name: days, in: query, schema: { type: integer, enum: [7, 30, 90], default: 30 }, description: "Days back from today in Tehran." }
+        - { name: branch, in: query, schema: { type: string }, description: "Owners only." }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/subscription:
+    get:
+      operationId: getSubscription
+      tags: [Subscription]
+      summary: Plan, status, history and how to pay
+      description: |
+        `status` is `trial`, `active`, `past_due` or `inactive`. A past-due café keeps online
+        booking for 3 days (`graceEndsAt`); after that `bookingPaused` is true.
+      security: [{ staffSession: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "401": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: enableSubscription
+      tags: [Subscription]
+      summary: Switch the subscription on
+      description: The subscription is required; only the platform console can switch it off.
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { const: true }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`subscription_required`, `subscription_disabled`" }
+  /api/subscription/renew:
+    post:
+      operationId: renewSubscriptionDemo
+      tags: [Subscription]
+      summary: Renew for a month (demo mode only)
+      description: Outside demo mode the café pays card to card instead.
+      security: [{ staffSession: [owner] }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`nothing_to_pay`" }
+        "503": { $ref: "#/components/responses/Error", description: "`payment_not_configured` (outside demo mode)" }
+  /api/subscription/card-transfer:
+    post:
+      operationId: reportCardTransfer
+      tags: [Subscription]
+      summary: Report a card-to-card payment
+      description: |
+        After transferring one month's fee to the platform card, the owner reports the bank
+        reference. The platform owner approves or rejects it in the console. One transfer per café
+        can wait for review at a time.
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference]
+              properties:
+                reference: { type: string, maxLength: 60, description: "The bank's tracking number." }
+                cardLast4: { type: string, pattern: "^[0-9]{4}$" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_reference`, `invalid_card_last4`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`payment_pending`, `nothing_to_pay`, `subscription_disabled`" }
+        "503": { $ref: "#/components/responses/Error", description: "`card_transfer_not_configured`" }
+
+  /api/saas/overview:
+    get:
+      operationId: getPlatformOverview
+      tags: [Platform]
+      summary: Every café, figures and transfers awaiting review
+      security: [{ platformOwner: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateCafeSubscription
+      tags: [Platform]
+      summary: Change a café's subscription
+      description: Switching it off, or setting it active without an end date, makes the café free.
+      security: [{ platformOwner: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cafeId]
+              properties:
+                cafeId: { type: string }
+                enabled: { type: boolean }
+                status: { type: string, enum: [inactive, trial, active, past_due] }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`cafe_not_found`" }
+  /api/saas/payments/{id}/{decision}:
+    post:
+      operationId: reviewCardTransfer
+      tags: [Platform]
+      summary: Approve or reject a card-to-card transfer
+      description: Approving extends the paid period by 30 days and reopens a paused café at once.
+      security: [{ platformOwner: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: decision, in: path, required: true, schema: { type: string, enum: [approve, reject] } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`payment_not_found`" }
+        "409": { $ref: "#/components/responses/Error", description: "`already_reviewed`" }
+
+components:
+  securitySchemes:
+    staffSession:
+      type: apiKey
+      in: cookie
+      name: mizo_session
+      description: |
+        Set by `POST /api/auth/verify`. The scopes listed on an operation are the role
+        permissions it needs (`owner` means the café owner only).
+    platformOwner:
+      type: apiKey
+      in: header
+      name: oai-authenticated-user-id
+      description: |
+        Set by the hosting platform for its signed-in user, and trusted only with
+        `SAAS_ADMIN_AUTH=oai-header`. The first such user becomes the platform owner.
+
+  parameters:
+    cafe:
+      name: cafe
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Slug" }
+    branch:
+      name: branch
+      in: path
+      required: true
+      description: The branch slug; the first branch is `main`.
+      schema: { $ref: "#/components/schemas/Slug" }
+    code:
+      name: code
+      in: path
+      required: true
+      description: The tracking code shown after booking.
+      schema: { type: string, pattern: "^[A-Z0-9-]+$" }
+
+  responses:
+    Error:
+      description: An error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Object:
+      description: Success. The fields are those the panel shows; see the handler for detail.
+      content:
+        application/json:
+          schema: { type: object }
+    SignedOut:
+      description: Signed out; the cookie is cleared.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              authenticated: { const: false }
+              endedSessions: { type: integer, description: "Only for logout-all." }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, description: "A stable code to branch on." }
+        message: { type: string, description: "A Persian sentence for people." }
+        fields: { type: array, items: { type: string }, description: "With `invalid_request`." }
+    Instant:
+      type: string
+      format: date-time
+      description: ISO-8601 UTC with milliseconds.
+      examples: ["2026-10-31T20:15:00.000Z"]
+    LocalDate:
+      type: string
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+      description: A calendar day in Tehran.
+      examples: ["2026-11-01"]
+    LocalTime:
+      type: string
+      pattern: "^\\d{2}:\\d{2}$"
+      description: A time on Tehran's clock.
+      examples: ["19:30"]
+    Slug:
+      type: string
+      pattern: "^[a-z0-9-]{1,64}$"
+    Mobile:
+      oneOf:
+        - type: string
+          maxLength: 20
+        - type: number
+      description: An Iranian mobile, `09…`; Persian digits and `+98` are accepted.
+    OtpRequest:
+      type: object
+      required: [cafeSlug, mobile]
+      properties:
+        cafeSlug: { type: string, maxLength: 64 }
+        mobile: { $ref: "#/components/schemas/Mobile" }
+    OtpVerify:
+      type: object
+      required: [cafeSlug, mobile, challengeId, code]
+      properties:
+        cafeSlug: { type: string, maxLength: 64 }
+        mobile: { $ref: "#/components/schemas/Mobile" }
+        challengeId: { type: string, maxLength: 100 }
+        code: { oneOf: [{ type: string, maxLength: 12 }, { type: number }] }
+        name: { type: string, maxLength: 70 }
+    SessionStaff:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        mobile: { type: string }
+        role: { type: string, enum: [owner, branch_manager, reception, barista] }
+        roleLabel: { type: string }
+        branchId: { type: [string, "null"] }
+        cafeId: { type: string }
+        cafeSlug: { type: string }
+        permissions: { type: array, items: { type: string } }
+    Setup:
+      type: object
+      properties:
+        cafeName: { type: string, maxLength: 200 }
+        city: { type: string, maxLength: 200 }
+        branchName: { type: string, maxLength: 200 }
+        branchSlug: { type: string, maxLength: 64 }
+        address: { type: string, maxLength: 500 }
+        ownerMobile: { $ref: "#/components/schemas/Mobile" }
+        ownerName: { type: string, maxLength: 200 }
+        structure: { type: string, enum: [single, multi] }
+    BranchInput:
+      type: object
+      properties:
+        name: { type: string }
+        city: { type: string }
+        address: { type: string }
+        active: { type: boolean }
+    StaffInput:
+      type: object
+      properties:
+        name: { type: string }
+        mobile: { $ref: "#/components/schemas/Mobile" }
+        role: { type: string, enum: [owner, branch_manager, reception, barista] }
+        branchId: { type: [string, "null"], description: "Required for every role but owner." }
+        active: { type: boolean }
+    ReservationInput:
+      type: object
+      required: [customerName, mobile, date, time, partySize, tableIds]
+      properties:
+        customerName: { type: string, maxLength: 200 }
+        mobile: { $ref: "#/components/schemas/Mobile" }
+        date: { $ref: "#/components/schemas/LocalDate" }
+        time: { $ref: "#/components/schemas/LocalTime" }
+        partySize: { oneOf: [{ type: integer }, { type: string, maxLength: 3 }] }
+        tableIds:
+          type: array
+          maxItems: 10
+          items: { type: string, maxLength: 120 }
+          description: "Full table ids, `<branchId>:<tableId>`."
+        notes: { type: string, maxLength: 1000 }
+        internalNotes: { type: string, description: "Staff only." }
+        source: { type: string, enum: [web, phone, walk_in], default: web }
+        holdToken: { type: string, maxLength: 80, description: "The token of the customer's hold on this table (`POST …/holds`)." }
+    Payment:
+      type: object
+      properties:
+        required: { type: boolean }
+        amountRials: { type: integer }
+        status: { type: string, enum: [not_required, pending, paid, refunded, failed] }
+        dueAt: { oneOf: [{ $ref: "#/components/schemas/Instant" }, { type: "null" }], description: "The table is held until then." }
+        paidAt: { oneOf: [{ $ref: "#/components/schemas/Instant" }, { type: "null" }] }
+        refundPolicy: { type: string }
+    Reservation:
+      type: object
+      properties:
+        trackingCode: { type: string }
+        status: { type: string, enum: [pending, confirmed, arrived, completed, cancelled, no_show] }
+        customerName: { type: string }
+        mobile: { type: string }
+        partySize: { type: integer }
+        date: { $ref: "#/components/schemas/LocalDate" }
+        time: { $ref: "#/components/schemas/LocalTime" }
+        durationMinutes: { type: integer }
+        tables: { type: array, items: { type: string }, description: "Table names." }
+        branchName: { type: string }
+        notes: { type: string }
+        payment: { $ref: "#/components/schemas/Payment" }
+    BookingResult:
+      type: object
+      properties:
+        trackingCode: { type: string }
+        status: { type: string, enum: [pending, confirmed] }
+        reservation:
+          type: object
+          properties:
+            trackingCode: { type: string }
+            customerName: { type: string }
+            partySize: { type: integer }
+            date: { $ref: "#/components/schemas/LocalDate" }
+            time: { $ref: "#/components/schemas/LocalTime" }
+            durationMinutes: { type: integer }
+            tables: { type: array, items: { type: string } }
+            source: { type: string }
+        notifications:
+          type: object
+          description: What happened to the confirmation and reminder SMS.
+          properties:
+            confirmation: { type: string }
+            reminder: { type: string }
+        payment: { $ref: "#/components/schemas/Payment" }
+    TrackingAction:
+      type: object
+      required: [mobile]
+      properties:
+        mobile: { $ref: "#/components/schemas/Mobile" }
+    FloorMap:
+      type: object
+      properties:
+        spaceMode: { type: string, enum: [indoor, outdoor, both] }
+        areas:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              kind: { type: string, enum: [indoor, outdoor] }
+              width: { type: number }
+              height: { type: number }
+              layout:
+                type: object
+                description: Which wall holds the door, the full-height window and the counter.
+                properties:
+                  door: { type: string, enum: [top, right, bottom, left], default: bottom }
+                  window: { type: string, enum: [top, right, bottom, left, none], description: "Default right indoors, none outdoors." }
+                  counter: { type: string, enum: [top, right, bottom, left, none], description: "Default left indoors, none outdoors." }
+        tables:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              area: { type: string }
+              shape: { type: string, enum: [round, square, rect] }
+              capacity: { type: integer, minimum: 1, maximum: 20 }
+              x: { type: number }
+              y: { type: number }
+              reservable: { type: boolean }
+    Settings:
+      type: object
+      properties:
+        reservationsEnabled: { type: boolean, default: true }
+        autoConfirm: { type: boolean, default: true }
+        reservationDuration: { type: integer, enum: [60, 90, 120], default: 90, description: "Minutes." }
+        maxPartySize: { type: integer, minimum: 1, maximum: 20, default: 8 }
+        customerNotice: { type: string, maxLength: 140 }
+        bufferMinutes: { type: integer, enum: [0, 15, 30, 45], default: 15 }
+        slotInterval: { type: integer, enum: [15, 30, 60], default: 30 }
+        smsConfirmationEnabled: { type: boolean, default: true }
+        smsReminderEnabled: { type: boolean, default: true }
+        smsReminderMinutes: { type: integer, enum: [60, 120, 180, 360, 1440], default: 120 }
+        depositEnabled: { type: boolean, default: false }
+        depositMode: { type: string, enum: [fixed, per_person], default: fixed }
+        depositAmountRials: { type: integer, minimum: 100000, maximum: 100000000, default: 2000000 }
+        depositPeakOnly: { type: boolean, default: false }
+        depositPeakStart: { $ref: "#/components/schemas/LocalTime" }
+        depositPeakEnd: { $ref: "#/components/schemas/LocalTime" }
+        paymentDeadlineMinutes: { type: integer, enum: [10, 15, 30], default: 15 }
+        refundPolicy: { type: string, maxLength: 240 }
+        virtualCafeEnabled: { type: boolean, default: true, description: "The owner's switch; the booking page shows the Virtual Cafe when this and `virtualCafeOffered` are both true." }
+    Schedule:
+      type: object
+      properties:
+        hours:
+          type: array
+          maxItems: 7
+          items:
+            type: object
+            properties:
+              weekday: { type: integer, minimum: 0, maximum: 6, description: "0 is Sunday, 6 is Saturday." }
+              openTime: { $ref: "#/components/schemas/LocalTime" }
+              closeTime: { $ref: "#/components/schemas/LocalTime" }
+              closed: { type: boolean }
+        closures:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              startDate: { $ref: "#/components/schemas/LocalDate" }
+              endDate: { $ref: "#/components/schemas/LocalDate" }
+              reason: { type: string }

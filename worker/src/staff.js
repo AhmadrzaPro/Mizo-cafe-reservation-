@@ -22,6 +22,12 @@ export async function listStaff(db, session) {
     })),
   });
 }
+/**
+ * @param {D1Database} db
+ * @param {import("./types").Staff} session
+ * @param {Record<string, any>} body
+ * @param {string | null} [id]
+ */
 export async function saveStaff(db, session, body, id = null) {
   if (session.role !== "owner")
     return reply(
@@ -61,6 +67,14 @@ export async function saveStaff(db, session, body, id = null) {
         .bind(mobile, name, role, branchId, active ? 1 : 0, now, id, session.cafe_id)
         .run();
       if (!result.meta?.changes) return reply({ error: "staff_not_found" }, 404);
+      // A deactivated member is signed out everywhere at once.
+      if (!active)
+        await db
+          .prepare(
+            "DELETE FROM staff_sessions WHERE staff_id=? AND staff_id IN (SELECT id FROM staff_members WHERE cafe_id=?)",
+          )
+          .bind(id, session.cafe_id)
+          .run();
     } else
       await db
         .prepare(

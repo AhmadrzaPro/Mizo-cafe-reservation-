@@ -8,3 +8,7 @@ dist/
 upload/
 *.tar.gz
 *.log
+.dev.vars
+.wrangler/
+playwright-report/
+test-results/

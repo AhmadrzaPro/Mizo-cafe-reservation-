@@ -1,5 +1,5 @@
 import { dayRules } from "./settings.js";
-import { minutes, pad, tehranNow, timeAt, validDate, validTime } from "./util/dates.js";
+import { isoInstant, minutes, pad, tehranNow, timeAt, validDate, validTime } from "./util/dates.js";
 // Locks retain their audit role; exact overlap is enforced by database triggers.
 export function lockTimes(date, time) {
   return [`${date}T${time}`];
@@ -23,9 +23,10 @@ export async function availableTables(db, date, time, settings, tables) {
     end = timeAt(date, minutes(time) + settings.reservationDuration + settings.bufferMinutes);
   const result = await db
     .prepare(
-      "SELECT DISTINCT rt.table_id FROM reservation_tables rt JOIN reservations r ON r.id=rt.reservation_id WHERE r.status NOT IN ('cancelled','completed','no_show') AND r.reserved_at<? AND datetime(r.reserved_at,'+'||(r.duration_minutes+r.buffer_minutes)||' minutes')>datetime(?)",
+      // Booked tables, and tables someone holds while filling in the booking form (holds.js).
+      "SELECT DISTINCT rt.table_id FROM reservation_tables rt JOIN reservations r ON r.id=rt.reservation_id WHERE r.status NOT IN ('cancelled','completed','no_show') AND r.reserved_at<? AND datetime(r.reserved_at,'+'||(r.duration_minutes+r.buffer_minutes)||' minutes')>datetime(?) UNION SELECT h.table_id FROM table_holds h WHERE h.expires_at>? AND h.starts_at<? AND h.ends_at>?",
     )
-    .bind(end, start)
+    .bind(end, start, isoInstant(), end, start)
     .all();
   const busy = new Set((result.results || []).map((r) => r.table_id));
   return tables.filter(

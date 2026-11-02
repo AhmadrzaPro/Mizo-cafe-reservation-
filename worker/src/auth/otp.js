@@ -1,5 +1,6 @@
 import { staffSessionPublic } from "./session.js";
 import { reply, replyWithHeaders } from "../http.js";
+import { isoInstant } from "../util/dates.js";
 import { isDemo } from "../util/env.js";
 import { randomId, safeSlug, secureCode, sha256 } from "../util/ids.js";
 import { normalizeDigits, normalizeMobile } from "../util/mobile.js";
@@ -27,13 +28,14 @@ export async function requestOtp(env, body) {
     .first();
   if (!staff)
     return reply({ error: "not_invited", message: "این شماره در تیم این کافه فعال نیست." }, 403);
-  const now = Date.now(),
+  const nowMs = Date.now(),
+    now = isoInstant(nowMs),
     recent = await env.DB.prepare(
       "SELECT COUNT(*) AS count,MAX(created_at) AS last FROM otp_challenges WHERE cafe_id=? AND mobile=? AND created_at>?",
     )
-      .bind(staff.cafe_id, mobile, now - 3600000)
+      .bind(staff.cafe_id, mobile, isoInstant(nowMs - 3600000))
       .first();
-  if (!isDemo(env) && recent.last && now - Number(recent.last) < 60000)
+  if (!isDemo(env) && recent.last && nowMs - Date.parse(String(recent.last)) < 60000)
     return reply({ error: "too_soon", message: "برای ارسال دوباره کد یک دقیقه صبر کنید." }, 429);
   if (Number(recent.count) >= 20)
     return reply(
@@ -56,7 +58,7 @@ export async function requestOtp(env, body) {
     ).bind(now, staff.cafe_id, mobile),
     env.DB.prepare(
       "INSERT INTO otp_challenges (id,cafe_id,mobile,salt,code_hash,expires_at,attempts,consumed_at,created_at) VALUES (?,?,?,?,?,?,0,NULL,?)",
-    ).bind(challengeId, staff.cafe_id, mobile, salt, codeHash, now + 120000, now),
+    ).bind(challengeId, staff.cafe_id, mobile, salt, codeHash, isoInstant(nowMs + 120000), now),
   ]);
   return reply({
     challengeId,
@@ -69,7 +71,8 @@ export async function requestOtp(env, body) {
 export async function verifyOtp(env, body) {
   const mobile = normalizeMobile(body.mobile),
     code = normalizeDigits(body.code).replace(/\D/g, ""),
-    now = Date.now();
+    nowMs = Date.now(),
+    now = isoInstant(nowMs);
   const challenge = await env.DB.prepare(
     "SELECT o.* FROM otp_challenges o JOIN cafes c ON c.id=o.cafe_id WHERE o.id=? AND c.slug=?",
   )
@@ -80,7 +83,7 @@ export async function verifyOtp(env, body) {
     !challenge ||
     challenge.mobile !== mobile ||
     challenge.consumed_at ||
-    Number(challenge.expires_at) <= now
+    Date.parse(String(challenge.expires_at)) <= nowMs
   )
     return reply({ error: "expired_code", message: "کد منقضی یا نامعتبر است." }, 400);
   const attempt = await env.DB.prepare(
@@ -109,7 +112,7 @@ export async function verifyOtp(env, body) {
   await env.DB.prepare(
     "INSERT INTO staff_sessions (id,staff_id,token_hash,expires_at,created_at,last_seen_at) VALUES (?,?,?,?,?,?)",
   )
-    .bind(randomId("session"), staff.id, tokenHash, now + 604800000, now, now)
+    .bind(randomId("session"), staff.id, tokenHash, isoInstant(nowMs + 604800000), now, now)
     .run();
   return replyWithHeaders({ authenticated: true, staff: staffSessionPublic(staff) }, 200, {
     "set-cookie": `mizo_session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`,

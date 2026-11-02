@@ -1,10 +1,12 @@
 import { bookingTimeError, lockTimes } from "./availability.js";
+import { paymentMode } from "./gateway.js";
 import { reply } from "./http.js";
 import { queueReservationMessages } from "./notifications.js";
+import { consumeHoldStatement } from "./holds.js";
 import { limitValue } from "./rate-limit.js";
+import { onlineBookingPaused } from "./subscription.js";
 import { dayRules, defaultSettings } from "./settings.js";
 import { minutes, tehranNow, validDate, validTime } from "./util/dates.js";
-import { isDemo } from "./util/env.js";
 import { randomId, trackingCode } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
 export function depositFor(settings, time, partySize) {
@@ -19,6 +21,7 @@ export function depositFor(settings, time, partySize) {
     ? settings.depositAmountRials * partySize
     : settings.depositAmountRials;
 }
+/** @param {D1Database} db @param {string | null} [branchId] */
 export async function expireUnpaidReservations(db, branchId = null) {
   const now = new Date().toISOString();
   const result = await db.batch([
@@ -52,7 +55,7 @@ export async function createReservation(env, branch, body, settings, operational
     partySize = Number(body.partySize),
     ids = [...new Set(Array.isArray(body.tableIds) ? body.tableIds.map(String) : [])],
     source = ["phone", "walk_in"].includes(body.source) ? body.source : "web";
-  if (!operational && settings.depositEnabled && !isDemo(env))
+  if (!operational && settings.depositEnabled && paymentMode(env) === "none")
     return reply(
       {
         error: "payment_not_configured",
@@ -62,6 +65,15 @@ export async function createReservation(env, branch, body, settings, operational
     );
   if (!operational && !settings.reservationsEnabled)
     return reply({ error: "reservations_disabled", message: "رزرو آنلاین موقتاً متوقف است." }, 409);
+  // An unpaid subscription past its grace period pauses public booking; staff can still book.
+  if (!operational && (await onlineBookingPaused(db, branch.cafe_id)))
+    return reply(
+      {
+        error: "online_booking_paused",
+        message: "رزرو آنلاین این کافه موقتاً در دسترس نیست؛ لطفاً با کافه تماس بگیرید.",
+      },
+      409,
+    );
   if (!name) return reply({ error: "name_required", message: "نام مشتری را وارد کنید." }, 400);
   if (!operational && !rawMobile)
     return reply({ error: "invalid_mobile", message: "شماره موبایل معتبر وارد کنید." }, 400);
@@ -73,8 +85,7 @@ export async function createReservation(env, branch, body, settings, operational
     return reply({ error: "invalid_party_size", message: "تعداد مهمان‌ها معتبر نیست." }, 400);
   if (!ids.length || ids.length > 4)
     return reply({ error: "table_required", message: "یک میز انتخاب کنید." }, 400);
-  const rules = await dayRules(db, branch, date),
-    start = minutes(time);
+  const rules = await dayRules(db, branch, date);
   if (bookingTimeError(date, time, settings.reservationDuration, rules, operational))
     return reply(
       {
@@ -125,28 +136,28 @@ export async function createReservation(env, branch, body, settings, operational
             ? "confirmed"
             : "pending",
     reservedAt = `${date}T${time}`,
-    locks = lockTimes(
-      date,
-      time,
-      settings.reservationDuration,
-      settings.bufferMinutes,
-      settings.slotInterval,
-    ),
+    locks = lockTimes(date, time),
     statements = [],
     // Public bookings are capped per mobile and branch. The cap is evaluated inside the booking
     // batch, so concurrent requests cannot both pass it; a capped booking writes nothing.
     activeCap = operational ? null : limitValue(env, "MAX_ACTIVE_RESERVATIONS_PER_MOBILE", 3),
-    underActiveCap = [
+    underActiveCap = /** @type {[string, unknown[]]} */ ([
       "(SELECT COUNT(*) FROM reservations WHERE branch_id=? AND mobile=? AND status IN ('pending','confirmed') AND reserved_at>=?)<?",
       [branch.id, mobile, tehranNow().key, activeCap],
-    ],
-    reservationInserted = ["EXISTS (SELECT 1 FROM reservations WHERE id=?)", [reservationId]],
+    ]),
+    reservationInserted = /** @type {[string, unknown[]]} */ ([
+      "EXISTS (SELECT 1 FROM reservations WHERE id=?)",
+      [reservationId],
+    ]),
     insert = (sql, args, [condition, conditionArgs]) =>
       activeCap
         ? db
             .prepare(sql.replace(/ VALUES \(([?,]+)\)/, ` SELECT $1 WHERE ${condition}`))
             .bind(...args, ...conditionArgs)
         : db.prepare(sql).bind(...args);
+  // The customer's own hold on the table is removed first, in this same transaction, so the
+  // reservation_table_held trigger lets their booking through while still refusing everyone else.
+  if (body.holdToken) statements.push(await consumeHoldStatement(db, branch, body.holdToken));
   if (customerId)
     statements.push(
       insert(
@@ -217,7 +228,7 @@ export async function createReservation(env, branch, body, settings, operational
       409,
     );
   }
-  if (activeCap && !results[customerId ? 1 : 0].meta?.changes)
+  if (activeCap && !results[(body.holdToken ? 1 : 0) + (customerId ? 1 : 0)].meta?.changes)
     return reply(
       {
         error: "active_reservation_limit",

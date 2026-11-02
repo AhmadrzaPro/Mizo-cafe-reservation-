@@ -20,10 +20,21 @@ export function timeAt(date, total) {
   d.setUTCDate(d.getUTCDate() + dayOffset);
   return `${d.toISOString().slice(0, 10)}T${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
 }
-export function subtractLocalMinutes(value, amount) {
-  const date = new Date(`${value}:00Z`);
-  date.setUTCMinutes(date.getUTCMinutes() - amount);
-  return date.toISOString().slice(0, 16);
+/*
+ * Two kinds of time are stored, and only two:
+ * - an instant (created_at, expires_at, sent_at, scheduled_at…) is ISO-8601 UTC text with
+ *   milliseconds, exactly as Date.prototype.toISOString() writes it, e.g. 2026-10-31T20:15:00.000Z.
+ *   Equal-length UTC strings sort and compare correctly as text.
+ * - a café's wall-clock schedule (reserved_at, closure dates, opening hours) is Tehran local
+ *   time without a zone: YYYY-MM-DDTHH:MM, YYYY-MM-DD or HH:MM.
+ */
+/** The instant as stored. @param {number | Date} [at] */
+export const isoInstant = (at = Date.now()) => new Date(at).toISOString();
+// Iran has had no daylight saving time since 2022, so Tehran is always UTC+03:30.
+const TEHRAN_OFFSET_MS = 210 * 60000;
+/** The instant at which Tehran's clock shows this local time, less some minutes. */
+export function tehranInstant(local, minutesBefore = 0) {
+  return isoInstant(Date.parse(`${local}:00Z`) - TEHRAN_OFFSET_MS - minutesBefore * 60000);
 }
 export function tehranNow() {
   const parts = Object.fromEntries(

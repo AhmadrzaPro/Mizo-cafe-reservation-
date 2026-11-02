@@ -1,31 +1,57 @@
 import { scheduleUrl } from "./api.js";
 import { fetchAvailability } from "./booking.js";
+import { byId, html, setHtml, required } from "./dom.js";
 import { formatPersianDate, isoValue, setJalaliInput } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { store } from "./state.js";
 
 export const weekNames = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 export function renderSchedule() {
-  const wrap = document.querySelector("#weekHours");
-  wrap.innerHTML = "";
+  const wrap = byId("weekHours");
+  wrap.replaceChildren();
   store.cafeSchedule.hours.forEach((h) => {
     const row = document.createElement("div");
     row.className = "hour-row";
-    row.innerHTML = `<b>${weekNames[h.weekday]}</b><label><input type="checkbox" data-closed="${h.weekday}" ${h.closed ? "checked" : ""}> تعطیل</label><input type="time" data-open="${h.weekday}" value="${h.openTime}" ${h.closed ? "disabled" : ""}><span>تا</span><input type="time" data-close="${h.weekday}" value="${h.closeTime}" ${h.closed ? "disabled" : ""}>`;
-    row.querySelector("[data-closed]").onchange = (e) => {
-      h.closed = e.target.checked;
+    setHtml(
+      row,
+      html`<b>${weekNames[h.weekday]}</b
+        ><label
+          ><input type="checkbox" data-closed="${h.weekday}" ${h.closed && "checked"} />
+          تعطیل</label
+        ><input
+          type="time"
+          data-open="${h.weekday}"
+          value="${h.openTime}"
+          ${h.closed && "disabled"}
+        /><span>تا</span
+        ><input
+          type="time"
+          data-close="${h.weekday}"
+          value="${h.closeTime}"
+          ${h.closed && "disabled"}
+        />`,
+    );
+    /** @type {HTMLInputElement} */ (row.querySelector("[data-closed]")).onchange = (e) => {
+      h.closed = /** @type {HTMLInputElement} */ (e.target).checked;
       renderSchedule();
     };
-    row.querySelector("[data-open]").onchange = (e) => (h.openTime = e.target.value);
-    row.querySelector("[data-close]").onchange = (e) => (h.closeTime = e.target.value);
+    /** @type {HTMLInputElement} */ (row.querySelector("[data-open]")).onchange = (e) =>
+      (h.openTime = /** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLInputElement} */ (row.querySelector("[data-close]")).onchange = (e) =>
+      (h.closeTime = /** @type {HTMLInputElement} */ (e.target).value);
     wrap.appendChild(row);
   });
-  const list = document.querySelector("#closureList");
-  list.innerHTML = "";
+  const list = byId("closureList");
+  list.replaceChildren();
   store.cafeSchedule.closures.forEach((c, index) => {
     const item = document.createElement("div");
-    item.innerHTML = `<span>${formatPersianDate(c.startDate)} تا ${formatPersianDate(c.endDate)}${c.reason ? ` · ${escapeHtml(c.reason)}` : ""}</span><button type="button">حذف</button>`;
-    item.querySelector("button").onclick = () => {
+    setHtml(
+      item,
+      html`<span
+          >${formatPersianDate(c.startDate)} تا
+          ${formatPersianDate(c.endDate)}${c.reason && ` · ${c.reason}`}</span
+        ><button type="button">حذف</button>`,
+    );
+    required("button", item).onclick = () => {
       store.cafeSchedule.closures.splice(index, 1);
       renderSchedule();
     };
@@ -33,7 +59,7 @@ export function renderSchedule() {
   });
 }
 export async function fetchSchedule() {
-  const status = document.querySelector("#scheduleStatus");
+  const status = byId("scheduleStatus");
   status.textContent = "در حال دریافت تقویم…";
   try {
     const response = await fetch(scheduleUrl()),
@@ -48,25 +74,25 @@ export async function fetchSchedule() {
 }
 
 export function wireSchedule() {
-  document.querySelector("#addClosure").onclick = () => {
-    const start = isoValue(document.querySelector("#closureStart")),
-      end = isoValue(document.querySelector("#closureEnd")),
-      reason = document.querySelector("#closureReason").value.trim(),
-      status = document.querySelector("#scheduleStatus");
+  byId("addClosure").onclick = () => {
+    const start = isoValue(byId("closureStart")),
+      end = isoValue(byId("closureEnd")),
+      reason = byId("closureReason").value.trim(),
+      status = byId("scheduleStatus");
     if (!start || !end || end < start) {
       status.textContent = "بازه تاریخ تعطیلی را درست انتخاب کنید.";
       return;
     }
     store.cafeSchedule.closures.push({ startDate: start, endDate: end, reason });
-    setJalaliInput(document.querySelector("#closureStart"), "");
-    setJalaliInput(document.querySelector("#closureEnd"), "");
-    document.querySelector("#closureReason").value = "";
+    setJalaliInput(byId("closureStart"), "");
+    setJalaliInput(byId("closureEnd"), "");
+    byId("closureReason").value = "";
     status.textContent = "";
     renderSchedule();
   };
-  document.querySelector("#saveSchedule").onclick = async () => {
-    const button = document.querySelector("#saveSchedule"),
-      status = document.querySelector("#scheduleStatus");
+  byId("saveSchedule").onclick = async () => {
+    const button = byId("saveSchedule"),
+      status = byId("scheduleStatus");
     button.disabled = true;
     status.textContent = "در حال ذخیره…";
     try {

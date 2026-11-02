@@ -7,45 +7,60 @@ import {
   loyaltyDialog,
   scheduleDialog,
 } from "./dialogs.js";
+import { byId, html, setHtml } from "./dom.js";
 import { renderEditor } from "./editor.js";
 import { faDigits } from "./format.js";
-import { escapeHtml } from "./operations.js";
 import { fetchMap, fetchSettings } from "./profile.js";
 import { fetchSchedule } from "./schedule.js";
 import { store } from "./state.js";
 
 export function renderLoyalty() {
-  document.querySelector("#loyaltyTotal").textContent = faDigits(store.loyaltyData.stats.total);
-  document.querySelector("#loyaltyReturning").textContent = faDigits(
-    store.loyaltyData.stats.returning,
-  );
-  document.querySelector("#loyaltyPoints").textContent = faDigits(store.loyaltyData.stats.points);
-  const list = document.querySelector("#loyaltyList");
-  if (!store.loyaltyData.customers.length) {
-    list.innerHTML = '<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>';
+  const data = store.loyaltyData;
+  if (!data) return;
+  byId("loyaltyTotal").textContent = faDigits(data.stats.total);
+  byId("loyaltyReturning").textContent = faDigits(data.stats.returning);
+  byId("loyaltyPoints").textContent = faDigits(data.stats.points);
+  const list = byId("loyaltyList");
+  if (!data.customers.length) {
+    setHtml(
+      list,
+      html`<div class="insight-empty">هنوز مشتری‌ای با این مشخصات پیدا نشده است.</div>`,
+    );
     return;
   }
-  list.innerHTML = "";
-  store.loyaltyData.customers.forEach((customer) => {
-    const progress = Math.min(
-        100,
-        Math.round((customer.points / store.loyaltyData.rewardThreshold) * 100),
-      ),
+  list.replaceChildren();
+  data.customers.forEach((customer) => {
+    const progress = Math.min(100, Math.round((customer.points / data.rewardThreshold) * 100)),
       item = document.createElement("article");
     item.className = "loyalty-customer";
-    item.innerHTML = `<span class="loyalty-avatar">${escapeHtml(customer.name.trim().charAt(0) || "م")}</span><div class="loyalty-info"><h3>${escapeHtml(customer.name)}</h3><p>${faDigits(customer.mobile)} · ${faDigits(customer.completedVisits)} مراجعه تکمیل‌شده</p><div class="loyalty-progress"><i><b style="width:${progress}%"></b></i><small>${faDigits(customer.points)} از ${faDigits(store.loyaltyData.rewardThreshold)} امتیاز</small></div></div><strong>${faDigits(customer.points)}<small> امتیاز</small></strong>${store.loyaltyData.canWrite ? '<button type="button">تغییر امتیاز</button>' : ""}`;
+    setHtml(
+      item,
+      html`<span class="loyalty-avatar">${customer.name.trim().charAt(0) || "م"}</span>
+        <div class="loyalty-info">
+          <h3>${customer.name}</h3>
+          <p>
+            ${faDigits(customer.mobile)} · ${faDigits(customer.completedVisits)} مراجعه تکمیل‌شده
+          </p>
+          <div class="loyalty-progress">
+            <i><b style="width:${progress}%"></b></i
+            ><small>${faDigits(customer.points)} از ${faDigits(data.rewardThreshold)} امتیاز</small>
+          </div>
+        </div>
+        <strong>${faDigits(customer.points)}<small> امتیاز</small></strong
+        >${data.canWrite && html`<button type="button">تغییر امتیاز</button>`}`,
+    );
     item.querySelector("button")?.addEventListener("click", () => openLoyaltyAdjust(customer));
     list.appendChild(item);
   });
 }
 export async function fetchLoyalty() {
-  const error = document.querySelector("#loyaltyError"),
-    query = document.querySelector("#loyaltySearch").value.trim(),
-    list = document.querySelector("#loyaltyList"),
-    refresh = document.querySelector("#refreshLoyalty"),
-    search = document.querySelector("#searchLoyalty");
+  const error = byId("loyaltyError"),
+    query = byId("loyaltySearch").value.trim(),
+    list = byId("loyaltyList"),
+    refresh = byId("refreshLoyalty"),
+    search = byId("searchLoyalty");
   error.textContent = "";
-  list.innerHTML = '<div class="insight-empty">در حال دریافت اطلاعات مشتریان…</div>';
+  setHtml(list, html`<div class="insight-empty">در حال دریافت اطلاعات مشتریان…</div>`);
   refresh.disabled = true;
   search.disabled = true;
   try {
@@ -57,8 +72,10 @@ export async function fetchLoyalty() {
     store.loyaltyData = data;
     renderLoyalty();
   } catch (err) {
-    list.innerHTML =
-      '<div class="insight-empty">اطلاعات مشتریان دریافت نشد. دوباره تلاش کنید.</div>';
+    setHtml(
+      list,
+      html`<div class="insight-empty">اطلاعات مشتریان دریافت نشد. دوباره تلاش کنید.</div>`,
+    );
     error.textContent = readableError(
       err,
       "ارتباط با باشگاه مشتریان برقرار نشد. دوباره تلاش کنید.",
@@ -69,34 +86,36 @@ export async function fetchLoyalty() {
   }
 }
 export function openLoyaltyAdjust(customer) {
-  document.querySelector("#loyaltyCustomerId").value = customer.id;
-  document.querySelector("#loyaltyAdjustTitle").textContent = `امتیاز ${customer.name}`;
-  document.querySelector("#loyaltyAdjustment").value = "";
-  document.querySelector("#loyaltyNote").value = "";
-  document.querySelector("#loyaltyAdjustError").textContent = "";
+  byId("loyaltyCustomerId").value = customer.id;
+  byId("loyaltyAdjustTitle").textContent = `امتیاز ${customer.name}`;
+  byId("loyaltyAdjustment").value = "";
+  byId("loyaltyNote").value = "";
+  byId("loyaltyAdjustError").textContent = "";
   loyaltyDialog.close();
   loyaltyAdjustDialog.showModal();
 }
 
 export function wireLoyalty() {
-  document.querySelector("#openLoyalty").onclick = async () => {
+  byId("openLoyalty").onclick = async () => {
     adminDialog.close();
     loyaltyDialog.showModal();
     await fetchLoyalty();
   };
-  document.querySelector("#refreshLoyalty").onclick = fetchLoyalty;
-  document.querySelector("#searchLoyalty").onclick = fetchLoyalty;
-  document.querySelector("#loyaltySearch").onkeydown = (event) => {
+  byId("refreshLoyalty").onclick = fetchLoyalty;
+  byId("searchLoyalty").onclick = fetchLoyalty;
+  byId("loyaltySearch").onkeydown = (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
       fetchLoyalty();
     }
   };
-  document.querySelector("#loyaltyAdjustForm").onsubmit = async (event) => {
+  byId("loyaltyAdjustForm").onsubmit = async (event) => {
     event.preventDefault();
-    const id = document.querySelector("#loyaltyCustomerId").value,
-      error = document.querySelector("#loyaltyAdjustError"),
-      button = event.currentTarget.querySelector('button[type="submit"]'),
+    const id = byId("loyaltyCustomerId").value,
+      error = byId("loyaltyAdjustError"),
+      button = /** @type {HTMLButtonElement} */ (
+        /** @type {HTMLFormElement} */ (event.currentTarget).querySelector('button[type="submit"]')
+      ),
       originalText = button.textContent;
     button.disabled = true;
     button.textContent = "در حال ثبت…";
@@ -106,8 +125,8 @@ export function wireLoyalty() {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            points: Number(document.querySelector("#loyaltyAdjustment").value),
-            note: document.querySelector("#loyaltyNote").value,
+            points: Number(byId("loyaltyAdjustment").value),
+            note: byId("loyaltyNote").value,
           }),
         }),
         data = await safeResponseJson(response, "تغییر امتیاز انجام نشد.");
@@ -125,20 +144,22 @@ export function wireLoyalty() {
       button.textContent = originalText;
     }
   };
-  document.querySelector("#openMapEditor").onclick = async () => {
+  // Editable dialogs load first and open after: data arriving once a dialog is open would
+  // overwrite whatever was already changed in it.
+  byId("openMapEditor").onclick = async () => {
     adminDialog.close();
-    renderEditor();
-    editor.showModal();
     await fetchMap();
+    editor.showModal();
+    renderEditor();
   };
-  document.querySelector("#openControlCenter").onclick = async () => {
+  byId("openControlCenter").onclick = async () => {
     adminDialog.close();
-    controlDialog.showModal();
     await fetchSettings();
+    controlDialog.showModal();
   };
-  document.querySelector("#openSchedule").onclick = async () => {
+  byId("openSchedule").onclick = async () => {
     adminDialog.close();
-    scheduleDialog.showModal();
     await fetchSchedule();
+    scheduleDialog.showModal();
   };
 }

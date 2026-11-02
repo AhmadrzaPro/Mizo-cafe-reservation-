@@ -1,0 +1,170 @@
+/* Portfolio presentation and editor consistency */
+.admin-dialog {
+  width: min(94vw, 850px);
+  background: radial-gradient(circle at 95% 0%, #fae8d6, transparent 42%), #f8f5f0;
+  padding: clamp(20px, 3vw, 36px);
+}
+.admin-dialog h2 {
+  font-size: clamp(1.55rem, 3vw, 2.3rem);
+  line-height: 1.45;
+  letter-spacing: -0.04em;
+}
+.admin-dialog > p {
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+.admin-grid {
+  gap: 11px;
+}
+.admin-feature {
+  min-height: 126px;
+  padding: 19px;
+  border-radius: 17px;
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s,
+    border-color 0.18s;
+}
+.admin-feature:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px #45352a17;
+  border-color: #bf916d;
+}
+.admin-feature b {
+  display: block;
+  font-size: 1rem;
+}
+.admin-feature span {
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+.admin-feature em {
+  font-size: 0.8rem;
+  margin-top: 13px;
+}
+.admin-feature.featured {
+  background: linear-gradient(135deg, #292019, #17120f);
+  border-color: #6c4e35;
+  box-shadow: 0 12px 25px #291b1240;
+}
+.admin-feature.featured em {
+  color: #f0b77e;
+}
+.editor-toolbar {
+  min-height: 58px;
+}
+.map-canvas {
+  width: 820px;
+  height: 520px;
+}
+.canvas-wrap {
+  overscroll-behavior: contain;
+}
+.editor-table {
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+.editor-table:not(.dragging):hover {
+  border-color: #d18d56;
+  box-shadow:
+    0 0 0 4px #c8814533,
+    0 12px 22px #786b5f35;
+}
+@media (max-width: 1050px) {
+  .map-canvas {
+    width: 820px;
+    height: 520px;
+  }
+}
+@media (max-width: 850px) {
+  .map-editor-dialog .editor-shell {
+    min-height: 0;
+  }
+  .map-editor-dialog .canvas-wrap {
+    display: block;
+    overflow: auto;
+  }
+  .map-canvas {
+    width: 820px;
+    height: 520px;
+    margin: 12px auto;
+  }
+  .editor-toolbar {
+    gap: 8px;
+  }
+  .editor-toolbar .preview-toggle {
+    white-space: nowrap;
+  }
+}
+@media (max-width: 600px) {
+  .top-actions #openTracking {
+    display: inline-flex;
+  }
+  .admin-dialog {
+    width: 100vw;
+    max-height: 100dvh;
+    padding: 24px 17px calc(20px + env(safe-area-inset-bottom));
+  }
+  .admin-dialog h2 {
+    font-size: 1.5rem;
+    padding-left: 87px;
+  }
+  .admin-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .admin-feature {
+    min-height: 96px;
+    padding: 14px;
+  }
+  .admin-feature b {
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  .admin-feature span {
+    font-size: 0.72rem;
+  }
+  .admin-feature em {
+    font-size: 0.73rem;
+  }
+  .admin-feature.featured {
+    grid-column: 1/-1;
+    min-height: 110px;
+  }
+  .map-editor-dialog .canvas-wrap {
+    padding: 12px;
+  }
+  .map-canvas {
+    width: 820px;
+    height: 520px;
+  }
+  .editor-toolbar .preview-toggle {
+    font-size: 0.72rem;
+    padding: 8px;
+  }
+  .editor-toolbar .map-tools-toggle {
+    font-size: 0.72rem;
+  }
+  .editor-toolbar > div button {
+    width: 30px;
+  }
+  .editor-toolbar > div span {
+    min-width: 43px;
+  }
+}
+@media (max-width: 390px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-feature.featured {
+    grid-column: auto;
+  }
+  .admin-feature {
+    min-height: 94px;
+  }
+  .editor-toolbar .preview-toggle {
+    padding-inline: 6px;
+    font-size: 0.65rem;
+  }
+}
