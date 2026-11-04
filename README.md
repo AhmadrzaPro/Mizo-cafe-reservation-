@@ -47,6 +47,7 @@ Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
 | [docs/payments.md](docs/payments.md) | Customer deposits through ZarinPal, and café subscriptions paid card to card |
 | [docs/architecture.md](docs/architecture.md) | How the code is organised, tenancy and booking rules, sessions, times, background work |
 | [docs/virtual-cafe/](docs/virtual-cafe/phase-2-report.md) | The optional 3D Virtual Cafe: architecture audit, Phase 0, 1 and 2 reports, performance baseline |
+| [docs/space-capture/](docs/space-capture/integration-plan.md) | Space Capture (3D scenes filmed on a phone): the original spec and how it fits Mizo's stack |
 | [docs/testing.md](docs/testing.md) | Unit, API and browser tests, and the checks CI runs |
 | [docs/openapi.yaml](docs/openapi.yaml) | The HTTP API (OpenAPI 3.1): every route, its access, body and error codes |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and what each release needs on deploy |
