@@ -4,7 +4,7 @@ A Persian, right-to-left table reservation platform for cafés, built as a Cloud
 
 ## Highlights
 
-- **Customers:** Jalali dates, free time slots, table choice on the floor map (held for them while they fill in the form), tracking and cancellation, and deposits through ZarinPal.
+- **Customers:** a booking link per branch, Jalali dates, free time slots, table choice on the floor map (held for them while they fill in the form), tracking and cancellation, and deposits through ZarinPal.
 - **Operations:** reservations, walk-ins, waitlist, table status, opening hours and closures.
 - **Floor editor:** indoor and outdoor areas, draggable tables, the door, window and counter on the walls the owner picks, tracing from a photo, and a draft reviewed before publication.
 - **Team:** owner, branch manager, reception and barista, each limited to their branch and permissions.
@@ -35,7 +35,7 @@ npx wrangler dev
 
 Wrangler runs `npm run build` first (`wrangler.toml`).
 
-Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
+Open `/?new=1` to create a café. Each branch has its own booking link, `/<café>/<branch>`. The owner picks readable names for both in the branches panel, for example `/lamiz/vanak`; until then the link uses the internal slugs. Old `/?cafe=<slug>` links still work.
 
 ## Documentation
 

@@ -27,7 +27,8 @@ The build (`scripts/build.sh`):
 
 ## Tenancy and booking rules
 
-- Every café has its own URL, `/?cafe=<slug>`; `/?new=1` creates a café. Nothing falls back to "the last café". `DEFAULT_CAFE_SLUG` can choose one café for `/`, and signed-in staff default to their own.
+- Every branch has its own booking link, `/<café>/<branch>`. Each part is the owner's link name (`cafes.link_slug`, `branches.link_slug`) or, without one, the internal slug, which always keeps working. `worker/src/links.js` holds the rules: 3 to 40 lowercase Latin letters, digits or single hyphens; a café's name may not be a path of the app (`api`, `assets`, …) or look like an internal slug (`cafe-…`), nor a branch's (`main`, `branch-…`). The Worker serves the page at any such path, with `404` for an unknown café. The page reads the café and branch from the path, shows a branch picker when the café has more than one open branch, and keeps the address bar on the readable link of the branch on screen.
+- Old `/?cafe=<slug>` links still open the café and are rewritten to the readable link. `/?new=1` creates a café. Nothing falls back to "the last café". `DEFAULT_CAFE_SLUG` can choose one café for `/`, and signed-in staff default to their own.
 - Setup records the owner's mobile together with the café, its first branch and map. From then on, only invited mobiles sign in, with a code bound to the café and used once.
 - Staff APIs check both the café and the branch: only the owner reaches every branch.
 - Database triggers (`0012_tenant_booking_integrity.sql`) reject overlapping reservations, buffer time included, whatever the start time. Availability applies the same interval rules.

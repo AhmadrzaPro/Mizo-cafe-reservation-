@@ -234,13 +234,15 @@ export interface CafeBranch {
   name: string;
   city: string;
   address: string;
+  /** The owner's link name for the branch's booking link; empty means the slug is used. */
+  link?: string;
   active?: boolean;
 }
 
 /** GET /api/setup: the café of the page and its branches. */
 export interface CafeProfile {
   configured: boolean;
-  cafe: { id?: string; slug: string; name: string; structure: "single" | "multi" };
+  cafe: { id?: string; slug: string; name: string; link?: string; structure: "single" | "multi" };
   branches: CafeBranch[];
 }
 

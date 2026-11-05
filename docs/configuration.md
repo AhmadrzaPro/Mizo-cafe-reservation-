@@ -8,7 +8,7 @@ Every setting is an environment variable. `.env.example` lists them all; copy it
 | --- | --- | --- |
 | `DB` | — | The D1 binding. Required. |
 | `DEMO_MODE` | off | `true` shows sign-in codes on screen and simulates payments. See [Runtime modes](#runtime-modes). |
-| `DEFAULT_CAFE_SLUG` | — | The café shown at `/` when the URL has no `?cafe=`. |
+| `DEFAULT_CAFE_SLUG` | — | The café shown at `/` when the URL names no café (`/<café>/<branch>` or `?cafe=`). |
 | `KAVENEGAR_API_KEY` | — | Kavenegar SMS account (secret). |
 | `KAVENEGAR_TEMPLATE` | — | Kavenegar template for sign-in codes. |
 | `KAVENEGAR_CONFIRMATION_TEMPLATE` | — | Template for booking confirmations. |

@@ -792,3 +792,28 @@
 .hold-countdown[hidden] {
   display: none;
 }
+
+/* The customer's branch picker, shown only when the café has more than one open branch. */
+.customer-branch {
+  display: block;
+  margin-bottom: 4px;
+}
+.customer-branch[hidden] {
+  display: none;
+}
+/* Matches the guest picker on the dark booking card. */
+.customer-branch select {
+  width: 100%;
+  height: 54px;
+  margin-bottom: 14px;
+  padding: 0 16px;
+  border: 1px solid #ffffff30;
+  border-radius: 13px;
+  background: #ffffff0d;
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.customer-branch select option {
+  color: #191410;
+}

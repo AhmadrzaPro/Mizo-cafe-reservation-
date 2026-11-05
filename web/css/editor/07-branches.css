@@ -219,7 +219,7 @@
   .branch-actions {
     grid-column: 1/-1;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     width: 100%;
   }
   .branch-actions button {
@@ -227,6 +227,12 @@
   }
   .branch-form-dialog {
     padding: 24px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+  .cafe-link-form {
+    grid-template-columns: 1fr;
+  }
+  .link-field input {
+    font-size: 16px;
   }
   .branch-form-dialog input[type="text"],
   .branch-form-dialog input:not([type]) {
@@ -236,4 +242,75 @@
 }
 .branch-active-row[hidden] {
   display: none;
+}
+
+/* The café's booking link name, and each branch's link. */
+.cafe-link-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 8px 10px;
+  margin: 0 0 14px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #ddd5cc;
+  border-radius: 15px;
+}
+.cafe-link-form label {
+  grid-column: 1/-1;
+  font-size: 0.8rem;
+}
+.cafe-link-form label b,
+.cafe-link-form label small {
+  display: block;
+}
+.cafe-link-form label small {
+  margin-top: 3px;
+  color: #847970;
+  font-size: 0.66rem;
+}
+.cafe-link-form .form-error {
+  grid-column: 1/-1;
+  margin: 0;
+}
+.cafe-link-form .form-error:empty {
+  display: none;
+}
+.link-field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #d8cfc6;
+  border-radius: 10px;
+  background: #faf7f3;
+  overflow: hidden;
+}
+.link-field span {
+  padding: 0 4px 0 12px;
+  color: #8c8179;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.link-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 11px 12px 11px 0;
+  background: transparent;
+  font: inherit;
+  color: #332a25;
+}
+.branch-link {
+  display: block;
+  margin-top: 5px;
+  color: #8e5c38;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+.branch-link-preview {
+  display: block;
+  margin-top: 5px;
+  color: #8c8179;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
 }

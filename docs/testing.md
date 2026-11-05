@@ -27,6 +27,7 @@ New API tests should use the shared fixture in `tests/helpers/worker.mjs`: `setu
 | `openapi.test.mjs` | `docs/openapi.yaml` documents exactly the routes the API serves, and its references resolve |
 | `configuration-docs.test.mjs` | Every environment variable the Worker reads is in `docs/configuration.md` and `.env.example` |
 | `table-holds.test.mjs` | Table holds: hidden from availability, single under concurrent requests, used by the holder's booking and refused to others by the trigger, release, expiry and cleanup, per-client cap and rate limit, and a settings save answering with the computed fields |
+| `booking-links.test.mjs` | Link names: their rules and reserved words, setting and clearing them, refusal when taken by another café or branch, resolving either name, the page at `/<café>/<branch>` with 404 for an unknown café, and old `?cafe=` links |
 | `venue-layout.test.mjs` | Each room's door, window and counter: defaults, unknown values, conflicts between walls, and the map API saving and reading back a clean layout |
 | `html.test.mjs` | Escaping in the `html` tag, and `required()` |
 | `floor-studio.test.mjs` | Floor-studio furniture, undo and redo, zoom and gestures, without a browser |
@@ -49,6 +50,7 @@ npm run test:e2e
 - **Staff:** signing in with a code through the dialog, every admin panel and its controls, slow loads that must not overwrite edits, and signing out everywhere.
 - **Payments:** a ZarinPal deposit through to the return page.
 - **Subscriptions:** a card-to-card payment approved in the SaaS console, booking paused after the grace period, and the console showing café names as text and saving a café's subscription.
+- **Booking links:** the owner names the café and a branch in the panel, the branch's link opens that branch with a branch picker, an old `?cafe=` link shows the readable one, and an unknown café answers 404.
 - **Holds and layout:** the 2D form holding the table and releasing it on going back; the door, window and counter chosen in the editor reaching the customer's map.
 
 Any script error, console error or CSP violation fails a test.

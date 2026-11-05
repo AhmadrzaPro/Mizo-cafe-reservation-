@@ -6,10 +6,11 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 
 ### Upgrade
 
-- Apply migrations `0015` to `0020` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
+- Apply migrations `0015` to `0021` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
   - `0015_payment_attempts.sql` and `0016_subscription_payments.sql` add tables.
   - `0017_required_subscription.sql` gives cafés without a subscription, or with it off, a 14-day trial.
   - `0018_iso_instants.sql` stores sign-in codes, sessions and reminder times as ISO UTC text.
+  - `0021_booking_links.sql` adds optional café and branch link names.
   - `0019_virtual_cafe_phase_2.sql` adds table holds (a table and a trigger) and each room's door/window/counter layout. It also added a Virtual Cafe switch to `branch_settings`, which `0020_remove_virtual_cafe.sql` drops again.
 - Sites deployments must set `SAAS_ADMIN_AUTH=oai-header` to keep the SaaS console.
 - Set `SUBSCRIPTION_CARD_NUMBER` for subscription payments, and `PAYMENT_GATEWAY` and `ZARINPAL_MERCHANT_ID` for online deposits. Make one ZarinPal sandbox payment first.
@@ -26,6 +27,13 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Browser tests with Playwright at desktop and phone size, run in CI.
 - `docs/` with configuration, deployment, payments, architecture and testing guides, and `docs/openapi.yaml`, an OpenAPI 3.1 reference of every API route. A test fails when the routes and the reference disagree.
 - `wrangler.toml` and `.env.example`.
+
+### Added: booking links per branch
+
+- Each branch has its own booking link, `/<café>/<branch>`. The owner names the café and each branch in the branches panel, for example `/lamiz/vanak`, and copies a branch's link from its card. Without names the links use the internal slugs.
+- Customers of a café with several open branches can switch branch on the booking page; before, they always got the first one.
+- Old `/?cafe=<slug>` links keep working and show the readable link. After a ZarinPal payment, the customer returns to the reservation's own branch link.
+- `PATCH /api/cafe/link` sets the café's link name; branches take `link` when created or edited.
 
 ### Added: table holds and room layouts
 

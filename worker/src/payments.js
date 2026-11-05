@@ -86,17 +86,20 @@ export async function completeGatewayPayment(env, provider, url) {
     new Response(null, {
       status: 303,
       headers: {
-        location: `/?${new URLSearchParams({
-          ...(attempt ? { cafe: attempt.cafe_slug, code: attempt.tracking_code } : {}),
-          payment: result,
-        })}`,
+        // Back to the booking link of the reservation's own café and branch.
+        location: `${attempt ? `/${attempt.cafe_slug}/${attempt.branch_slug}` : "/"}?${new URLSearchParams(
+          {
+            ...(attempt ? { code: attempt.tracking_code } : {}),
+            payment: result,
+          },
+        )}`,
         "cache-control": "no-store",
       },
     });
   if (!gateway || gateway.name !== provider || !authority) return back("failed");
   const attempt = await db
     .prepare(
-      "SELECT a.*,r.tracking_code,r.status AS reservation_status,r.payment_status,r.payment_due_at,r.deposit_amount_rials,c.slug AS cafe_slug FROM payment_attempts a JOIN reservations r ON r.id=a.reservation_id JOIN branches b ON b.id=a.branch_id JOIN cafes c ON c.id=b.cafe_id WHERE a.provider=? AND a.authority=? LIMIT 1",
+      "SELECT a.*,r.tracking_code,r.status AS reservation_status,r.payment_status,r.payment_due_at,r.deposit_amount_rials,c.slug AS cafe_slug,b.slug AS branch_slug FROM payment_attempts a JOIN reservations r ON r.id=a.reservation_id JOIN branches b ON b.id=a.branch_id JOIN cafes c ON c.id=b.cafe_id WHERE a.provider=? AND a.authority=? LIMIT 1",
     )
     .bind(provider, authority)
     .first();

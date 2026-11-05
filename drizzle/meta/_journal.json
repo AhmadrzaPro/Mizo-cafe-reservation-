@@ -148,6 +148,13 @@
       "when": 1793750400000,
       "tag": "0020_remove_virtual_cafe",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1793836800000,
+      "tag": "0021_booking_links",
+      "breakpoints": true
     }
   ]
 }

@@ -44,6 +44,8 @@ export interface ElementIds {
   "branchFormTitle": HTMLElement;
   "branchInactive": HTMLElement;
   "branchIsActive": HTMLInputElement;
+  "branchLink": HTMLInputElement;
+  "branchLinkPreview": HTMLElement;
   "branchList": HTMLElement;
   "branchName": HTMLInputElement;
   "branchSelect": HTMLSelectElement;
@@ -51,6 +53,10 @@ export interface ElementIds {
   "branchTotal": HTMLElement;
   "bufferMinutes": HTMLSelectElement;
   "cafeContext": HTMLElement;
+  "cafeLink": HTMLInputElement;
+  "cafeLinkError": HTMLElement;
+  "cafeLinkForm": HTMLFormElement;
+  "cafeLinkOrigin": HTMLElement;
   "capacityMinus": HTMLButtonElement;
   "capacityPlus": HTMLButtonElement;
   "capacityValue": HTMLElement;
@@ -70,6 +76,8 @@ export interface ElementIds {
   "customAreaKind": HTMLSelectElement;
   "customAreaName": HTMLInputElement;
   "customerAreaTabs": HTMLElement;
+  "customerBranch": HTMLSelectElement;
+  "customerBranchRow": HTMLLabelElement;
   "customerDialog": HTMLDialogElement;
   "customerFloorPlan": HTMLElement;
   "customerMapStage": HTMLElement;
@@ -245,6 +253,7 @@ export interface ElementIds {
   "resetMap": HTMLButtonElement;
   "retryOtp": HTMLButtonElement;
   "saveBranch": HTMLButtonElement;
+  "saveCafeLink": HTMLButtonElement;
   "saveControls": HTMLButtonElement;
   "saveOperationalReservation": HTMLButtonElement;
   "savePaymentSettings": HTMLButtonElement;

@@ -40,6 +40,7 @@
         </div>
         <div class="progress"><span class="active"></span><span></span><span></span></div>
         <div class="customer-notice" id="customerNoticeBanner" hidden></div>
+        <label class="customer-branch" id="customerBranchRow" hidden><span class="field-label">شعبه</span><select id="customerBranch" aria-label="انتخاب شعبه"></select></label>
 
         <label class="field-label">تعداد مهمان‌ها</label>
         <div class="guest-picker" role="group" aria-label="تعداد مهمان‌ها">
@@ -130,12 +131,13 @@
     <button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button>
     <header class="branches-head"><div><span class="step-label">ساختار کافه</span><h2>مدیریت شعب</h2><p>هر شعبه نقشه، ساعت کاری و تنظیمات رزرو مستقل دارد.</p></div><button id="addBranch" class="publish-btn">+ افزودن شعبه</button></header>
     <section class="branch-summary"><article><span>کل شعب</span><strong id="branchTotal">—</strong></article><article><span>فعال</span><strong id="branchActive">—</strong></article><article><span>غیرفعال</span><strong id="branchInactive">—</strong></article></section>
+    <form class="cafe-link-form" id="cafeLinkForm"><label for="cafeLink"><b>لینک رزرو کافه</b><small>نامی کوتاه با حروف انگلیسی، عدد یا خط تیره؛ لینک هر شعبه با آن شروع می‌شود.</small></label><div class="link-field" dir="ltr"><span id="cafeLinkOrigin"></span><input id="cafeLink" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="my-cafe"></div><button class="publish-btn" id="saveCafeLink" type="submit">ذخیره لینک</button><p class="form-error" id="cafeLinkError" role="alert"></p></form>
     <div id="branchList" class="branch-list"></div><p class="form-error" id="branchesError"></p>
   </dialog>
 
   <dialog id="branchFormDialog" class="branch-form-dialog">
     <button class="dialog-close back-btn" data-back-to="branchesDialog" aria-label="بازگشت به مدیریت شعب">→ بازگشت</button><span class="step-label">اطلاعات شعبه</span><h2 id="branchFormTitle">افزودن شعبه</h2>
-    <form id="branchForm"><input type="hidden" id="branchSlug"><label>نام شعبه<input id="branchName" required maxlength="80" placeholder="مثلاً شعبه سعادت‌آباد"></label><label>شهر<input id="branchCity" required maxlength="60" placeholder="مثلاً تهران"></label><label>آدرس<input id="branchAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label><label class="branch-active-row" id="branchActiveRow"><span><b>شعبه فعال باشد</b><small>شعبه غیرفعال در رزرو و عملیات نمایش داده نمی‌شود.</small></span><input id="branchIsActive" type="checkbox" checked></label><p class="form-error" id="branchFormError"></p><button class="primary-btn" id="saveBranch" type="submit">ذخیره شعبه</button></form>
+    <form id="branchForm"><input type="hidden" id="branchSlug"><label>نام شعبه<input id="branchName" required maxlength="80" placeholder="مثلاً شعبه سعادت‌آباد"></label><label>شهر<input id="branchCity" required maxlength="60" placeholder="مثلاً تهران"></label><label>آدرس<input id="branchAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label><label>نام لینک شعبه (اختیاری)<input id="branchLink" maxlength="40" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="vanak"><small class="branch-link-preview" id="branchLinkPreview" dir="ltr"></small></label><label class="branch-active-row" id="branchActiveRow"><span><b>شعبه فعال باشد</b><small>شعبه غیرفعال در رزرو و عملیات نمایش داده نمی‌شود.</small></span><input id="branchIsActive" type="checkbox" checked></label><p class="form-error" id="branchFormError"></p><button class="primary-btn" id="saveBranch" type="submit">ذخیره شعبه</button></form>
   </dialog>
 
   <dialog id="controlDialog" class="control-dialog">
