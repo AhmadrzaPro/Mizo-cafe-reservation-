@@ -194,7 +194,7 @@ export function renderCustomerMap() {
   });
 }
 /**
- * Chooses a table for the booking in progress. The 2D map and the Virtual Cafe both use it.
+ * Chooses a table for the booking in progress. Used by the customer's map.
  * @param {string} fullId The table's full id, as availability lists it.
  * @param {string} label What the customer sees, e.g. "میز ۳، سالن اصلی".
  */
@@ -208,9 +208,8 @@ export function chooseTable(fullId, label) {
 /**
  * Goes on from the chosen table to the customer's details, after the server holds the table for
  * them. Returns false, staying on the table step with the reason shown, when it cannot be held.
- * @param {() => void} [beforeOpen] Runs once the table is held, just before the form opens.
  */
-export async function continueWithTable(beforeOpen) {
+export async function continueWithTable() {
   const confirm = byId("confirmBtn"),
     error = byId("tableHoldError");
   confirm.disabled = true;
@@ -233,7 +232,6 @@ export async function continueWithTable(beforeOpen) {
     }
     return false;
   }
-  beforeOpen?.();
   tableDialog.close();
   byId("customerSummary").textContent =
     `${state.table} · ${state.dateLabel} · ساعت ${faDigits(state.time)} · ${faDigits(state.guests)} نفر`;

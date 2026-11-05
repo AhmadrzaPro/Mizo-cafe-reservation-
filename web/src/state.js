@@ -57,9 +57,6 @@ export const store = {
     depositPeakEnd: "22:00",
     paymentDeadlineMinutes: 15,
     refundPolicy: "تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود.",
-    // Virtual Cafe: offered by the platform (VIRTUAL_CAFE), and the branch owner's own switch.
-    virtualCafeOffered: false,
-    virtualCafeEnabled: true,
   },
   cafeSchedule: {
     hours: /** @type {import("./types").OpeningHours[]} */ ([]),

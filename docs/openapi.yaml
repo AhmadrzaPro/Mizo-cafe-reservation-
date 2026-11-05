@@ -714,7 +714,6 @@ paths:
                     properties:
                       paymentMode: { type: string, enum: [zarinpal, demo, none], description: "The configured gateway, `demo` (simulated) or `none`." }
                       onlineBookingPaused: { type: boolean }
-                      virtualCafeOffered: { type: boolean, description: "Whether the platform offers the Virtual Cafe to this café (`VIRTUAL_CAFE`)." }
     put:
       operationId: updateSettings
       tags: [Branch settings]
@@ -1316,7 +1315,6 @@ components:
         depositPeakEnd: { $ref: "#/components/schemas/LocalTime" }
         paymentDeadlineMinutes: { type: integer, enum: [10, 15, 30], default: 15 }
         refundPolicy: { type: string, maxLength: 240 }
-        virtualCafeEnabled: { type: boolean, default: true, description: "The owner's switch; the booking page shows the Virtual Cafe when this and `virtualCafeOffered` are both true." }
     Schedule:
       type: object
       properties:

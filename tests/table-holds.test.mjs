@@ -128,24 +128,16 @@ test("holds only take real, reservable tables of the branch, within opening hour
   assert.equal(bad.data.error, "invalid_party_size");
 });
 
-test("the owner can switch the Virtual Cafe off for a branch where the platform offers it", async () => {
-  const { f, cafe } = await setup({ VIRTUAL_CAFE: "all" });
+test("saving settings answers with the same computed fields as reading them", async () => {
+  const { f, cafe } = await setup();
   const owner = await f.login(cafe);
-  let settings = (await f.call(`${cafe.base}/settings`)).data;
-  assert.equal(settings.virtualCafeOffered, true);
-  assert.equal(settings.virtualCafeEnabled, true, "on by default where offered");
+  const settings = (await f.call(`${cafe.base}/settings`)).data;
   const saved = await f.call(`${cafe.base}/settings`, {
     method: "PUT",
     cookie: owner,
-    body: { ...settings, virtualCafeEnabled: false },
+    body: settings,
   });
   assert.equal(saved.status, 200);
-  assert.equal(saved.data.virtualCafeEnabled, false);
-  assert.equal(
-    saved.data.virtualCafeOffered,
-    true,
-    "the answer to a save carries the computed fields",
-  );
-  settings = (await f.call(`${cafe.base}/settings`)).data;
-  assert.equal(settings.virtualCafeEnabled, false);
+  assert.equal(saved.data.paymentMode, settings.paymentMode);
+  assert.equal(saved.data.onlineBookingPaused, settings.onlineBookingPaused);
 });

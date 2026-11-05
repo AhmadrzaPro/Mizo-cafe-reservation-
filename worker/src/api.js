@@ -59,7 +59,7 @@ import {
   updateSubscription,
 } from "./subscription.js";
 import { tehranNow, validDate, validTime } from "./util/dates.js";
-import { isDemo, virtualCafeOffered } from "./util/env.js";
+import { isDemo } from "./util/env.js";
 import { safeSlug } from "./util/ids.js";
 
 /** @typedef {import("./types").Env} Env */
@@ -429,7 +429,6 @@ const settingsForPage = async (c, settings) => ({
   ...settings,
   paymentMode: paymentMode(c.env),
   onlineBookingPaused: await cafeBookingPaused(c),
-  virtualCafeOffered: virtualCafeOffered(c.env, c.req.param("cafe") || ""),
 });
 app.get(`${BRANCH}/settings`, async (c) =>
   reply(await settingsForPage(c, await branchSettings(c))),

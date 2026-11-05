@@ -84,7 +84,6 @@ export const branchSettings = sqliteTable("branch_settings", {
   depositPeakEnd: text("deposit_peak_end").notNull().default("22:00"),
   paymentDeadlineMinutes: integer("payment_deadline_minutes").notNull().default(15),
   refundPolicy: text("refund_policy").notNull().default("تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود."),
-  virtualCafeEnabled: integer("virtual_cafe_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: text("updated_at").notNull(),
 });
 

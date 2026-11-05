@@ -6,16 +6,15 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 
 ### Upgrade
 
-- Apply migrations `0015` to `0019` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
+- Apply migrations `0015` to `0020` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
   - `0015_payment_attempts.sql` and `0016_subscription_payments.sql` add tables.
   - `0017_required_subscription.sql` gives cafés without a subscription, or with it off, a 14-day trial.
   - `0018_iso_instants.sql` stores sign-in codes, sessions and reminder times as ISO UTC text.
-  - `0019_virtual_cafe_phase_2.sql` adds table holds (a table and a trigger), the owner's Virtual Cafe switch and each room's door/window/counter layout. Nothing existing changes.
+  - `0019_virtual_cafe_phase_2.sql` adds table holds (a table and a trigger) and each room's door/window/counter layout. It also added a Virtual Cafe switch to `branch_settings`, which `0020_remove_virtual_cafe.sql` drops again.
 - Sites deployments must set `SAAS_ADMIN_AUTH=oai-header` to keep the SaaS console.
 - Set `SUBSCRIPTION_CARD_NUMBER` for subscription payments, and `PAYMENT_GATEWAY` and `ZARINPAL_MERCHANT_ID` for online deposits. Make one ZarinPal sandbox payment first.
 - Cafés whose trial or paid period has already ended become past due on deploy, and their online booking pauses three days after the end date. Check the SaaS console first.
-- Optional: `VIRTUAL_CAFE` (`all` or café slugs) offers the Virtual Cafe; owners can switch it off per branch. `RATE_LIMIT_HOLDS_PER_IP_HOUR` (default 30) limits table holds.
-- API clients: the settings answer's `virtualCafeEnabled` is now the owner's switch; the platform's offer is `virtualCafeOffered`.
+- Optional: `RATE_LIMIT_HOLDS_PER_IP_HOUR` (default 30) limits table holds. `VIRTUAL_CAFE` is no longer read; remove it if set.
 - API clients: tracking lookup moved from `GET /api/reservations/<code>?mobile=…` to `POST /api/reservations/<code>` with `{mobile}`, and SMS `scheduledAt` is now a UTC instant.
 
 ### Added
@@ -28,22 +27,13 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - `docs/` with configuration, deployment, payments, architecture and testing guides, and `docs/openapi.yaml`, an OpenAPI 3.1 reference of every API route. A test fails when the routes and the reference disagree.
 - `wrangler.toml` and `.env.example`.
 
-### Added: Virtual Cafe, Phase 2
+### Added: table holds and room layouts
 
-- The chosen table is held for 5 minutes while the customer fills in the booking form, from the 2D map or the Virtual Cafe. Nobody else can hold or book it meanwhile (a conditional insert and a database trigger), the form shows a countdown, and going back releases it.
-- Owners choose which wall holds each room's door, full-height window and counter in the map editor. The editor, the customer's map and the Virtual Cafe all draw them there.
-- Owners can switch the Virtual Cafe off per branch in the control centre, where the platform offers it.
-- `app.js` and the SaaS console's script are minified. The booking page's script is now smaller than before the Virtual Cafe.
-- Fixed: saving settings returned only stored fields, so the page lost `onlineBookingPaused` and the payment mode until it reloaded.
-- Report in `docs/virtual-cafe/phase-2-report.md`.
-
-### Added: Virtual Cafe (Phases 0 and 1)
-
-- An optional 3D view of the café, generated from the branch's published floor map, where customers walk around and pick a real table. "Reserve this table" reads availability again and continues in the standard booking form; the backend stays the only judge of availability. Off unless `VIRTUAL_CAFE` lists the café or is `all`.
-- three.js lives in its own bundle, `/virtual-cafe.js` (≈142 KB gzipped), loaded only when a customer opens the Virtual Cafe. The booking page's first load grows by about 6.9 KB gzipped.
-- Any failure (no WebGL, download error or timeout, crash) falls back to the 2D map.
+- The chosen table is held for 5 minutes while the customer fills in the booking form. Nobody else can hold or book it meanwhile (a conditional insert and a database trigger), the form shows a countdown, and going back releases it. Staff walk-ins respect holds too.
+- Owners choose which wall holds each room's door, full-height window and counter in the map editor. The editor and the customer's map both draw them there.
+- `app.js` and the SaaS console's script are minified.
 - A booking refused with `409` now refreshes availability and the map, and clears the taken table.
-- Reports in `docs/virtual-cafe/`.
+- Fixed: saving settings returned only stored fields, so the page lost `onlineBookingPaused` and the payment mode until it reloaded.
 
 ### Changed
 
