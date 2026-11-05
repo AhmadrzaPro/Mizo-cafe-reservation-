@@ -1,6 +1,6 @@
 // Where a room's door, full-height window and counter are. The owner picks a wall for each in the
 // map editor; this module turns that choice into rectangles in map pixels (40 px = 1 m), which the
-// editor, the customer's 2D map and the Virtual Cafe all draw from. Pure: no DOM.
+// editor and the customer's map both draw from. Pure: no DOM.
 
 /** @typedef {"top" | "right" | "bottom" | "left"} Side */
 /** @typedef {{ door: Side, window: Side | "none", counter: Side | "none" }} VenueLayout */

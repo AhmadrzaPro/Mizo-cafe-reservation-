@@ -73,20 +73,23 @@ export async function readSetup(db, cafeSlug = null, session = null) {
   let cafe;
   if (cafeSlug && safeSlug(cafeSlug))
     cafe = await db
-      .prepare("SELECT id,slug,name,created_at FROM cafes WHERE slug=?")
-      .bind(cafeSlug)
+      // The internal slug or the owner's link name; the slug wins if both somehow match.
+      .prepare(
+        "SELECT id,slug,name,link_slug,created_at FROM cafes WHERE slug=? OR link_slug=? ORDER BY slug=? DESC LIMIT 1",
+      )
+      .bind(cafeSlug, cafeSlug, cafeSlug)
       .first();
   else if (session)
     cafe = await db
-      .prepare("SELECT id,slug,name,created_at FROM cafes WHERE id=?")
+      .prepare("SELECT id,slug,name,link_slug,created_at FROM cafes WHERE id=?")
       .bind(session.cafe_id)
       .first();
   if (!cafe) return { configured: false };
   const own = session?.cafe_id === cafe.id;
-  /** @type {D1Result<{ id: string, slug: string, name: string, city: string, address: string, active: number }>} */
+  /** @type {D1Result<{ id: string, slug: string, name: string, city: string, address: string, active: number, link_slug: string | null }>} */
   const result = await db
     .prepare(
-      "SELECT id,slug,name,city,address,active FROM branches WHERE cafe_id=? ORDER BY updated_at,id",
+      "SELECT id,slug,name,city,address,active,link_slug FROM branches WHERE cafe_id=? ORDER BY updated_at,id",
     )
     .bind(cafe.id)
     .all();
@@ -97,9 +100,15 @@ export async function readSetup(db, cafeSlug = null, session = null) {
       id: cafe.id,
       slug: cafe.slug,
       name: cafe.name,
+      // The café's part of its booking links: the owner's link name, else the slug.
+      link: cafe.link_slug || "",
       structure: branches.length > 1 || cafe.slug.startsWith("multi-") ? "multi" : "single",
     },
-    branches: branches.map((b) => ({ ...b, active: Boolean(b.active) })),
+    branches: branches.map(({ link_slug, ...b }) => ({
+      ...b,
+      link: link_slug || "",
+      active: Boolean(b.active),
+    })),
   };
 }
 /**

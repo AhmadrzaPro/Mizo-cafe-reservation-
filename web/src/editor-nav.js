@@ -45,4 +45,5 @@ export function wireEditorNav() {
   byId("editorExit").onclick = exitMapEditor;
   byId("branchSelect").onchange = () => switchBranch(byId("branchSelect").value);
   byId("controlBranch").onchange = () => switchBranch(byId("controlBranch").value);
+  byId("customerBranch").onchange = () => switchBranch(byId("customerBranch").value);
 }

@@ -174,7 +174,10 @@ paths:
       operationId: getCafe
       tags: [Café]
       summary: A café's public profile and branches
-      description: The café of `?cafe=`, else `DEFAULT_CAFE_SLUG`, else the signed-in member's café.
+      description: |
+        The café of `?cafe=` (its slug or the owner's link name), else `DEFAULT_CAFE_SLUG`, else
+        the signed-in member's café. `cafe.link` and each branch's `link` are the owner's link
+        names, empty when unset; a booking link is `/<cafe.link or cafe.slug>/<link or slug>`.
       parameters:
         - { name: cafe, in: query, schema: { $ref: "#/components/schemas/Slug" } }
       responses:
@@ -208,6 +211,29 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Object" }
         "403": { $ref: "#/components/responses/Error" }
+  /api/cafe/link:
+    patch:
+      operationId: updateCafeLink
+      tags: [Café]
+      summary: Set or clear the café's link name
+      description: |
+        The first part of the café's booking links, `/<link>/<branch>`. 3 to 40 lowercase letters,
+        digits or single hyphens; not a reserved word, nor starting with `cafe-` or `multi-`. An
+        empty value clears it, and links go back to the café's slug, which always keeps working.
+      security: [{ staffSession: [owner] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                link: { type: string, maxLength: 40 }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_link`" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error", description: "`link_taken`" }
   /api/branches:
     get:
       operationId: listBranches
@@ -230,9 +256,9 @@ paths:
             schema: { $ref: "#/components/schemas/BranchInput" }
       responses:
         "201": { $ref: "#/components/responses/Object" }
-        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`, `invalid_link`" }
         "403": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error", description: "`setup_required`" }
+        "409": { $ref: "#/components/responses/Error", description: "`setup_required`, `link_taken`" }
   /api/branches/{slug}:
     patch:
       operationId: updateBranch
@@ -248,10 +274,10 @@ paths:
             schema: { $ref: "#/components/schemas/BranchInput" }
       responses:
         "200": { $ref: "#/components/responses/Object" }
-        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_branch`, `invalid_link`" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
-        "409": { $ref: "#/components/responses/Error", description: "`last_active_branch`" }
+        "409": { $ref: "#/components/responses/Error", description: "`last_active_branch`, `link_taken`" }
 
   /api/cafes/{cafe}/branches/{branch}/availability:
     get:
@@ -714,7 +740,6 @@ paths:
                     properties:
                       paymentMode: { type: string, enum: [zarinpal, demo, none], description: "The configured gateway, `demo` (simulated) or `none`." }
                       onlineBookingPaused: { type: boolean }
-                      virtualCafeOffered: { type: boolean, description: "Whether the platform offers the Virtual Cafe to this café (`VIRTUAL_CAFE`)." }
     put:
       operationId: updateSettings
       tags: [Branch settings]
@@ -1183,6 +1208,10 @@ components:
         city: { type: string }
         address: { type: string }
         active: { type: boolean }
+        link:
+          type: string
+          maxLength: 40
+          description: The branch's link name, the second part of `/<café>/<branch>`. Rules as for the café's, except it may not be `main` or start with `branch-`. Empty clears it; omitted keeps it.
     StaffInput:
       type: object
       properties:
@@ -1316,7 +1345,6 @@ components:
         depositPeakEnd: { $ref: "#/components/schemas/LocalTime" }
         paymentDeadlineMinutes: { type: integer, enum: [10, 15, 30], default: 15 }
         refundPolicy: { type: string, maxLength: 240 }
-        virtualCafeEnabled: { type: boolean, default: true, description: "The owner's switch; the booking page shows the Virtual Cafe when this and `virtualCafeOffered` are both true." }
     Schedule:
       type: object
       properties:

@@ -8,7 +8,7 @@ Every setting is an environment variable. `.env.example` lists them all; copy it
 | --- | --- | --- |
 | `DB` | — | The D1 binding. Required. |
 | `DEMO_MODE` | off | `true` shows sign-in codes on screen and simulates payments. See [Runtime modes](#runtime-modes). |
-| `DEFAULT_CAFE_SLUG` | — | The café shown at `/` when the URL has no `?cafe=`. |
+| `DEFAULT_CAFE_SLUG` | — | The café shown at `/` when the URL names no café (`/<café>/<branch>` or `?cafe=`). |
 | `KAVENEGAR_API_KEY` | — | Kavenegar SMS account (secret). |
 | `KAVENEGAR_TEMPLATE` | — | Kavenegar template for sign-in codes. |
 | `KAVENEGAR_CONFIRMATION_TEMPLATE` | — | Template for booking confirmations. |
@@ -21,7 +21,6 @@ Every setting is an environment variable. `.env.example` lists them all; copy it
 | `SAAS_ADMIN_AUTH` | — | `oai-header` opens the SaaS console. See [SaaS console](#saas-console). |
 | `OPENAI_API_KEY` | — | Enables floor-plan photo analysis in the map editor (secret). Manual tracing works without it. |
 | `MAP_VISION_MODEL` | `gpt-4.1-mini` | The model used for that analysis. |
-| `VIRTUAL_CAFE` | off | `all`, or café slugs separated by commas, to offer the Virtual Cafe (3D table selection) to those cafés. Each branch's owner can still switch it off in the control centre. See [virtual-cafe/phase-2-report.md](virtual-cafe/phase-2-report.md). |
 | `CLIENT_IP_HEADER` | `CF-Connecting-IP` | The request header holding the client IP. See [Client IP](#client-ip). |
 | `RATE_LIMIT_…`, `MAX_…`, `SMS_DAILY_CAP_PER_CAFE` | see below | [Abuse protection](#abuse-protection) limits. |
 

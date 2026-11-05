@@ -17,6 +17,14 @@ export const state = {
 // globalThis keeps this module importable outside a browser (unit tests).
 export const pageParams = new URLSearchParams(globalThis.location?.search);
 export const studioDemo = pageParams.get("studio") === "1";
+/** The booking link the page was opened at, /<café>/<branch>: slugs or the owner's link names. */
+export const pagePath = (() => {
+  const parts = String(globalThis.location?.pathname || "/")
+    .split("/")
+    .filter(Boolean);
+  const valid = parts.length <= 2 && parts.every((part) => /^[a-z0-9-]{1,64}$/.test(part));
+  return { cafe: valid ? parts[0] || "" : "", branch: valid ? parts[1] || "" : "" };
+})();
 export const mapViewportPointers = new Map();
 
 // Mutable application state shared across modules (formerly top-level `let` globals).
@@ -33,7 +41,7 @@ export const store = {
   selectedId: /** @type {string | null} */ (null),
   zoom: 1,
   dirty: false,
-  currentCafeSlug: pageParams.get("cafe") || "",
+  currentCafeSlug: pageParams.get("cafe") || pagePath.cafe,
   currentBranch: "main",
   // Replaced by the café's real profile once it loads; no café is shown before that.
   cafeProfile: /** @type {import("./types").CafeProfile} */ ({
@@ -57,9 +65,6 @@ export const store = {
     depositPeakEnd: "22:00",
     paymentDeadlineMinutes: 15,
     refundPolicy: "تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود.",
-    // Virtual Cafe: offered by the platform (VIRTUAL_CAFE), and the branch owner's own switch.
-    virtualCafeOffered: false,
-    virtualCafeEnabled: true,
   },
   cafeSchedule: {
     hours: /** @type {import("./types").OpeningHours[]} */ ([]),

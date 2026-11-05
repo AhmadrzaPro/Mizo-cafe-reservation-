@@ -10,8 +10,6 @@
   <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="editor.css">
-  <!-- The Virtual Cafe engine: loaded only when a customer opens it (web/src/virtual-cafe/loader.js). -->
-  <meta name="virtual-cafe-src" content="virtual-cafe.js">
 </head>
 <body>
   <header class="topbar">
@@ -42,6 +40,7 @@
         </div>
         <div class="progress"><span class="active"></span><span></span><span></span></div>
         <div class="customer-notice" id="customerNoticeBanner" hidden></div>
+        <label class="customer-branch" id="customerBranchRow" hidden><span class="field-label">شعبه</span><select id="customerBranch" aria-label="انتخاب شعبه"></select></label>
 
         <label class="field-label">تعداد مهمان‌ها</label>
         <div class="guest-picker" role="group" aria-label="تعداد مهمان‌ها">
@@ -82,20 +81,8 @@
     <p class="floor-swipe-hint">برای دیدن تمام میزها، نقشه را به چپ و راست بکشید.</p>
     <div class="floor-navigation" data-floor-controls="customer"><button type="button" data-zoom="out" aria-label="کوچک‌نمایی نقشه">−</button><button type="button" data-zoom="fit">نمایش کامل</button><button type="button" data-zoom="in" aria-label="بزرگ‌نمایی نقشه">+</button><small>برای دیدن بخش‌های دیگر نقشه را بکشید</small></div><div class="floor-viewport" id="customerMapViewport"><div id="customerMapStage"><div class="floor-plan" id="customerFloorPlan" aria-label="نقشه میزها"></div></div></div>
     <div class="legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-selected"></i>انتخاب شما</span><span><i class="lg-busy"></i>رزرو شده</span></div>
-    <button class="virtual-cafe-entry" id="openVirtualCafe" type="button" hidden><span aria-hidden="true">⌂</span><b>ورود به کافه مجازی</b><small>در کافه قدم بزنید و میز را سه‌بعدی انتخاب کنید</small></button>
     <p class="form-error" id="tableHoldError" role="alert" hidden></p>
     <button class="primary-btn" id="confirmBtn" disabled>یک میز را انتخاب کنید</button>
-  </dialog>
-
-  <dialog id="virtualCafeDialog" class="virtual-cafe-dialog" aria-label="کافه مجازی">
-    <header class="virtual-cafe-bar"><button class="virtual-cafe-back" id="virtualCafeBack" type="button">→ نقشه معمولی</button><div class="virtual-cafe-title"><b>کافه مجازی</b><small id="virtualCafeSummary"></small></div><button class="virtual-list-toggle" id="virtualTableListToggle" type="button" aria-expanded="false" aria-controls="virtualTableList">فهرست میزها</button></header>
-    <nav class="virtual-area-tabs" id="virtualAreaTabs" aria-label="فضاهای کافه" hidden></nav>
-    <div class="virtual-cafe-stage" id="virtualCafeStage"></div>
-    <p class="virtual-cafe-hint" id="virtualCafeHint" aria-live="polite">با حرکت در کافه به میزی نزدیک شوید یا روی آن بزنید.</p>
-    <div class="virtual-table-list" id="virtualTableList" hidden></div>
-    <section class="virtual-table-card" id="virtualTableCard" aria-live="polite" hidden><button class="virtual-card-close" id="virtualTableClose" type="button" aria-label="بستن">×</button><h3 id="virtualTableName"></h3><p id="virtualTableMeta"></p><b class="virtual-table-state" id="virtualTableState"></b><button class="primary-btn" id="virtualTableReserve" type="button">رزرو این میز</button></section>
-    <div class="virtual-cafe-status" id="virtualCafeStatus" role="status"><i class="virtual-spinner" aria-hidden="true"></i><b id="virtualCafeStatusTitle"></b><p id="virtualCafeStatusText"></p><div class="virtual-cafe-status-actions"><button class="virtual-retry" id="virtualCafeRetry" type="button" hidden>تلاش دوباره</button><button class="primary-btn" id="virtualCafeStandard" type="button">ادامه با نقشه معمولی</button></div></div>
-    <pre class="virtual-cafe-debug" id="virtualCafeDebug" hidden></pre>
   </dialog>
 
   <dialog id="customerDialog" class="form-dialog"><button class="dialog-close back-btn" data-back-to="tableDialog" aria-label="بازگشت به انتخاب میز">→ بازگشت</button><span class="step-label">مرحله سوم</span><h2>اطلاعات رزرو</h2><p id="customerSummary"></p><p class="hold-countdown" id="holdCountdown" role="status" hidden></p><form id="reservationForm"><label>نام و نام خانوادگی<input id="customerName" autocomplete="name" maxlength="70" required placeholder="مثلاً نیلوفر رضایی"></label><label>شماره موبایل<input id="customerMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><label>یادداشت برای کافه <small>اختیاری</small><textarea id="customerNotes" maxlength="240" placeholder="مثلاً میز نزدیک پنجره باشد"></textarea></label><p class="form-error" id="reservationError" hidden></p><button class="primary-btn" id="submitReservation" type="submit">ثبت نهایی رزرو</button></form></dialog>
@@ -144,12 +131,13 @@
     <button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button>
     <header class="branches-head"><div><span class="step-label">ساختار کافه</span><h2>مدیریت شعب</h2><p>هر شعبه نقشه، ساعت کاری و تنظیمات رزرو مستقل دارد.</p></div><button id="addBranch" class="publish-btn">+ افزودن شعبه</button></header>
     <section class="branch-summary"><article><span>کل شعب</span><strong id="branchTotal">—</strong></article><article><span>فعال</span><strong id="branchActive">—</strong></article><article><span>غیرفعال</span><strong id="branchInactive">—</strong></article></section>
+    <form class="cafe-link-form" id="cafeLinkForm"><label for="cafeLink"><b>لینک رزرو کافه</b><small>نامی کوتاه با حروف انگلیسی، عدد یا خط تیره؛ لینک هر شعبه با آن شروع می‌شود.</small></label><div class="link-field" dir="ltr"><span id="cafeLinkOrigin"></span><input id="cafeLink" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="my-cafe"></div><button class="publish-btn" id="saveCafeLink" type="submit">ذخیره لینک</button><p class="form-error" id="cafeLinkError" role="alert"></p></form>
     <div id="branchList" class="branch-list"></div><p class="form-error" id="branchesError"></p>
   </dialog>
 
   <dialog id="branchFormDialog" class="branch-form-dialog">
     <button class="dialog-close back-btn" data-back-to="branchesDialog" aria-label="بازگشت به مدیریت شعب">→ بازگشت</button><span class="step-label">اطلاعات شعبه</span><h2 id="branchFormTitle">افزودن شعبه</h2>
-    <form id="branchForm"><input type="hidden" id="branchSlug"><label>نام شعبه<input id="branchName" required maxlength="80" placeholder="مثلاً شعبه سعادت‌آباد"></label><label>شهر<input id="branchCity" required maxlength="60" placeholder="مثلاً تهران"></label><label>آدرس<input id="branchAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label><label class="branch-active-row" id="branchActiveRow"><span><b>شعبه فعال باشد</b><small>شعبه غیرفعال در رزرو و عملیات نمایش داده نمی‌شود.</small></span><input id="branchIsActive" type="checkbox" checked></label><p class="form-error" id="branchFormError"></p><button class="primary-btn" id="saveBranch" type="submit">ذخیره شعبه</button></form>
+    <form id="branchForm"><input type="hidden" id="branchSlug"><label>نام شعبه<input id="branchName" required maxlength="80" placeholder="مثلاً شعبه سعادت‌آباد"></label><label>شهر<input id="branchCity" required maxlength="60" placeholder="مثلاً تهران"></label><label>آدرس<input id="branchAddress" maxlength="180" placeholder="محله، خیابان و پلاک"></label><label>نام لینک شعبه (اختیاری)<input id="branchLink" maxlength="40" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="vanak"><small class="branch-link-preview" id="branchLinkPreview" dir="ltr"></small></label><label class="branch-active-row" id="branchActiveRow"><span><b>شعبه فعال باشد</b><small>شعبه غیرفعال در رزرو و عملیات نمایش داده نمی‌شود.</small></span><input id="branchIsActive" type="checkbox" checked></label><p class="form-error" id="branchFormError"></p><button class="primary-btn" id="saveBranch" type="submit">ذخیره شعبه</button></form>
   </dialog>
 
   <dialog id="controlDialog" class="control-dialog">
@@ -161,7 +149,6 @@
       <label class="control-item"><span>فاصله بین رزروها</span><small>زمان آماده‌سازی میز بعد از هر رزرو</small><select id="bufferMinutes"><option value="0">بدون فاصله</option><option value="15">۱۵ دقیقه</option><option value="30">۳۰ دقیقه</option><option value="45">۴۵ دقیقه</option></select></label>
       <label class="control-item"><span>حداکثر مهمان</span><small>سقف تعداد نفرات هر رزرو</small><div class="control-stepper"><button type="button" id="maxPartyMinus">−</button><strong id="maxPartyValue">۸</strong><button type="button" id="maxPartyPlus">+</button></div></label>
       <label class="control-item wide"><div class="inline-setting"><div><span>تأیید خودکار رزرو</span><small>رزرو بدون بررسی مدیر تأیید شود</small></div><label class="toggle"><input type="checkbox" id="autoConfirm" checked><span></span></label></div></label>
-      <label class="control-item wide" id="virtualCafeControl" hidden><div class="inline-setting"><div><span>کافه مجازی</span><small>مشتری‌ها می‌توانند در نمای سه‌بعدی کافه قدم بزنند و میز را آنجا انتخاب کنند</small></div><label class="toggle"><input type="checkbox" id="virtualCafeSetting" checked><span></span></label></div></label>
       <label class="control-item wide"><span>پیام برای مشتری‌ها</span><small>این پیام بالای فرم رزرو نمایش داده می‌شود.</small><textarea id="customerNotice" maxlength="140" placeholder="مثلاً: جمعه‌ها موسیقی زنده داریم."></textarea><em><span id="noticeCount">۰</span>/۱۴۰</em></label>
     </div>
     <div class="control-footer"><span id="controlSaveStatus">تنظیمات آماده است</span><button class="publish-btn" id="saveControls">ذخیره و اعمال تغییرات</button></div>

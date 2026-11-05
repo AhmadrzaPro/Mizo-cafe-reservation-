@@ -4,8 +4,9 @@ export const cafes = sqliteTable("cafes", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull(),
   name: text("name").notNull(),
+  linkSlug: text("link_slug"),
   createdAt: text("created_at").notNull(),
-}, (table) => [uniqueIndex("idx_cafes_slug").on(table.slug)]);
+}, (table) => [uniqueIndex("idx_cafes_slug").on(table.slug), uniqueIndex("idx_cafes_link_slug").on(table.linkSlug)]);
 
 export const saasAdmins = sqliteTable("saas_admins", {
   id: text("id").primaryKey(),
@@ -61,8 +62,9 @@ export const branches = sqliteTable("branches", {
   address: text("address").notNull().default(""),
   spaceMode: text("space_mode").notNull().default("indoor"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  linkSlug: text("link_slug"),
   updatedAt: text("updated_at").notNull(),
-}, (table) => [uniqueIndex("idx_branches_cafe_slug").on(table.cafeId, table.slug), index("idx_branches_cafe_id").on(table.cafeId)]);
+}, (table) => [uniqueIndex("idx_branches_cafe_slug").on(table.cafeId, table.slug), uniqueIndex("idx_branches_cafe_link_slug").on(table.cafeId, table.linkSlug), index("idx_branches_cafe_id").on(table.cafeId)]);
 
 export const branchSettings = sqliteTable("branch_settings", {
   branchId: text("branch_id").primaryKey().references(() => branches.id, { onDelete: "cascade" }),
@@ -84,7 +86,6 @@ export const branchSettings = sqliteTable("branch_settings", {
   depositPeakEnd: text("deposit_peak_end").notNull().default("22:00"),
   paymentDeadlineMinutes: integer("payment_deadline_minutes").notNull().default(15),
   refundPolicy: text("refund_policy").notNull().default("تا ۲ ساعت قبل از زمان رزرو، بیعانه کامل بازگردانده می‌شود."),
-  virtualCafeEnabled: integer("virtual_cafe_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: text("updated_at").notNull(),
 });
 

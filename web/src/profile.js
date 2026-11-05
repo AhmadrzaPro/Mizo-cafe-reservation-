@@ -7,8 +7,10 @@ import { recordMapHistory, resetMapHistory } from "./floor/history.js";
 import { faDigits } from "./format.js";
 import { cloneDefault } from "./map-defaults.js";
 import { visibleAreas } from "./map-model.js";
-import { pageParams, state, store, studioDemo } from "./state.js";
-import { applyVirtualCafeSetting } from "./virtual-cafe/index.js";
+import { pagePath, pageParams, state, store, studioDemo } from "./state.js";
+
+// The branch the page was opened for (its slug or link name), applied once the profile loads.
+let requestedBranch = pageParams.get("branch") || pagePath.branch;
 
 export function markDirty() {
   recordMapHistory();
@@ -32,7 +34,14 @@ export function activeBranchProfile() {
 export function syncBranchSelectors() {
   const branches = activeBranches(),
     single = branches.length === 1;
-  ["branchSelect", "controlBranch", "opsBranch", "smsBranch", "paymentsBranch"].forEach((id) => {
+  [
+    "branchSelect",
+    "controlBranch",
+    "opsBranch",
+    "smsBranch",
+    "paymentsBranch",
+    "customerBranch",
+  ].forEach((id) => {
     const select = /** @type {HTMLSelectElement} */ (document.querySelector(`#${id}`));
     if (!select) return;
     select.replaceChildren();
@@ -45,16 +54,26 @@ export function syncBranchSelectors() {
     select.value = store.currentBranch;
     select.classList.toggle("single-branch", single);
   });
+  byId("customerBranchRow").hidden = single;
+}
+/**
+ * A branch's booking link path: /<café>/<branch>, with the owner's link names where set.
+ * @param {import("./types").CafeProfile} profile @param {import("./types").CafeBranch} branch
+ */
+export function bookingPath(profile, branch) {
+  return `/${profile.cafe.link || profile.cafe.slug}/${branch.link || branch.slug}`;
 }
 export function applyCafeProfile(profile) {
   if (!profile?.configured) return;
   store.cafeProfile = profile;
   store.currentCafeSlug = profile.cafe.slug;
-  const url = new URL(location.href);
-  url.searchParams.set("cafe", store.currentCafeSlug);
-  url.searchParams.delete("new");
-  history.replaceState(null, "", url);
-  pageParams.delete("new");
+  if (requestedBranch) {
+    const asked = profile.branches.find(
+      (b) => b.active !== false && (b.slug === requestedBranch || b.link === requestedBranch),
+    );
+    if (asked) store.currentBranch = asked.slug;
+    requestedBranch = "";
+  }
   if (
     !profile.branches.some(
       (branch) => branch.slug === store.currentBranch && branch.active !== false,
@@ -64,6 +83,12 @@ export function applyCafeProfile(profile) {
   syncBranchSelectors();
   const branch = activeBranchProfile();
   if (!branch) return;
+  // The address bar always shows the readable booking link of the café and branch on screen.
+  const url = new URL(location.href);
+  url.pathname = bookingPath(profile, branch);
+  ["cafe", "branch", "new"].forEach((name) => url.searchParams.delete(name));
+  history.replaceState(null, "", url);
+  pageParams.delete("new");
   required(".cafe-meta span:first-child").textContent = profile.cafe.name;
   required(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
     .filter(Boolean)
@@ -104,7 +129,6 @@ export function applySettingsToCustomer() {
     open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
   );
   required(".booking-card").classList.toggle("booking-paused", !open);
-  applyVirtualCafeSetting();
   if (state.guests > store.cafeSettings.maxPartySize) {
     state.guests = store.cafeSettings.maxPartySize;
     byId("guestCount").textContent = faDigits(state.guests);
