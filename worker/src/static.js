@@ -1,4 +1,5 @@
 import { assets, page, pageHash, saasPage } from "./site-content.js";
+import { bookingLink } from "./links.js";
 import { requireSaasAdmin } from "./saas-admin.js";
 // Everything the pages load comes from this origin. Inline style attributes stay allowed because
 // rendered markup sets positions and sizes with style="…"; scripts are limited to our own files.
@@ -34,6 +35,15 @@ function notModified(request, etag, headers) {
     ? new Response(null, { status: 304, headers: { ...headers, etag } })
     : null;
 }
+/** @param {import("./types").Env} env @param {string} key the café's slug or link name */
+async function cafeExists(env, key) {
+  if (!env.DB) return false;
+  return Boolean(
+    await env.DB.prepare("SELECT 1 FROM cafes WHERE slug=? OR link_slug=? LIMIT 1")
+      .bind(key, key)
+      .first(),
+  );
+}
 export async function serveStatic(request, env, url) {
   if (url.pathname === "/saas-admin") {
     if (!(await requireSaasAdmin(env, request)))
@@ -50,7 +60,18 @@ export async function serveStatic(request, env, url) {
       },
     });
   }
-  if (url.pathname === "/" || url.pathname === "/index.html") {
+  const bookingPath = bookingLink(url.pathname);
+  if (bookingPath && !(await cafeExists(env, bookingPath.cafe)))
+    // An unknown café: the page explains it, with a status search engines and scripts understand.
+    return new Response(page, {
+      status: 404,
+      headers: {
+        ...securityHeaders,
+        "cache-control": "no-cache",
+        "content-type": "text/html; charset=utf-8",
+      },
+    });
+  if (url.pathname === "/" || url.pathname === "/index.html" || bookingPath) {
     // The page itself is revalidated on every load so a deploy is picked up at once.
     const etag = `"${pageHash}"`,
       headers = { ...securityHeaders, "cache-control": "no-cache" };

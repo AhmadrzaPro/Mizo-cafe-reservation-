@@ -1,31 +1,3 @@
-.deposit-payment {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid #d7b18e;
-  background: #fff8f0;
-  border-radius: 16px;
-  text-align: right;
-}
-.deposit-payment > span,
-.deposit-payment > strong,
-.deposit-payment > small {
-  display: block;
-}
-.deposit-payment > strong {
-  font-size: 1.45rem;
-  margin: 4px 0;
-}
-.deposit-payment > small {
-  color: #876e5b;
-}
-.deposit-payment p {
-  font-size: 0.75rem;
-  color: #786a60;
-  line-height: 1.8;
-}
-.deposit-payment .primary-btn {
-  margin-top: 10px;
-}
 .payment-success {
   display: block;
   color: #2d7652;
@@ -354,26 +326,6 @@
     width: 40px;
     height: 40px;
   }
-  .success-dialog {
-    width: calc(100vw - 24px);
-    max-height: calc(100dvh - 24px);
-    padding: 22px 18px calc(18px + env(safe-area-inset-bottom));
-    overflow: auto;
-  }
-  .success-dialog .deposit-payment {
-    margin: 16px -18px -2px;
-    padding: 18px;
-    border: 0;
-    border-top: 1px solid #dfd4c8;
-    border-radius: 0;
-    background: #fff9f2;
-  }
-  .success-dialog .booking-code {
-    margin-top: 16px;
-  }
-  .success-dialog > #doneBtn {
-    margin-top: 12px;
-  }
   .tracking-result .tracking-payment {
     margin: 14px -16px;
     padding: 14px 16px;
@@ -398,13 +350,6 @@
   }
   .payment-mode {
     margin-inline: -13px;
-  }
-  .success-dialog {
-    width: 100vw;
-    height: 100dvh;
-    max-height: none;
-    border-radius: 0;
-    margin: 0;
   }
 }
 .payment-return {

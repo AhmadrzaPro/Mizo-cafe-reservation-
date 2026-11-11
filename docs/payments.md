@@ -20,7 +20,7 @@ A configured gateway is used even with `DEMO_MODE=true`. Without one, demo mode 
 1. **Booking.** The reservation is `pending` with its deposit due, and the table is held until `payment.dueAt` (the branch's payment deadline).
 2. **Start.** "Pay deposit" calls `POST /api/reservations/{code}/pay`. The Worker requests a payment for the deposit stored with the reservation (rials), records it in `payment_attempts` and returns `redirectUrl`. The page sends the customer to ZarinPal. The table stays held for at least 10 more minutes so they can finish at the bank.
 3. **Return.** ZarinPal returns the customer to `GET /api/payments/zarinpal/callback?Authority=…&Status=OK|NOK`. The Worker claims the attempt once, then verifies the payment with the amount stored on the server, never one from the URL.
-4. **Outcome.** A verified payment marks the deposit paid, records the ZarinPal reference, confirms the reservation (unless the branch confirms by hand) and sends the confirmation SMS. The customer lands on `/?cafe=…&code=…&payment=success|late|pending|failed`, where the tracking dialog shows the result.
+4. **Outcome.** A verified payment marks the deposit paid, records the ZarinPal reference, confirms the reservation (unless the branch confirms by hand) and sends the confirmation SMS. The customer lands on the reservation's branch link, `/<café>/<branch>?code=…&payment=success|late|pending|failed`, where the tracking dialog shows the result.
 
 When it goes wrong:
 

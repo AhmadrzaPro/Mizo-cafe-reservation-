@@ -1,16 +1,16 @@
 # Mizo — Café Table Reservation
 
-A Persian, right-to-left table reservation platform for cafés, built as a Cloudflare Worker with D1 persistence. Each café gets a customer booking page, a floor-map editor, a live operations dashboard and a staff panel; the platform owner runs a console for subscriptions.
+A Persian, right-to-left table reservation platform for cafés, built as a Cloudflare Worker with D1 persistence. Each café gets a 3D booking page where customers pick a real table on the café's floor, a 3D floor editor, a live operations dashboard and a staff panel; the platform owner runs a console for subscriptions.
 
 ## Highlights
 
-- **Customers:** Jalali dates, free time slots, table choice on the floor map (held for them while they fill in the form), tracking and cancellation, and deposits through ZarinPal.
+- **Customers:** a booking link per branch, Jalali dates, free time slots, tracking and cancellation, and deposits through ZarinPal.
 - **Operations:** reservations, walk-ins, waitlist, table status, opening hours and closures.
-- **Floor editor:** indoor and outdoor areas, draggable tables, tracing from a photo, and a draft reviewed before publication.
+- **3D floor:** customers choose the day, time and party over an isometric 3D view of the café, see free tables in green, a table's schedule and features, and book it in a side panel; the table is held for them while they fill it in.
+- **Floor editor:** in the same view ("چینش کافه"), the owner sets the hall and terrace size, drags tables (six types), a bar, plants and a VIP area into place, gives tables features, and publishes with one save.
 - **Team:** owner, branch manager, reception and barista, each limited to their branch and permissions.
-- **Integrations:** Kavenegar SMS for sign-in codes, confirmations and reminders; optional OpenAI floor-plan analysis.
+- **Integrations:** Kavenegar SMS for sign-in codes, confirmations and reminders.
 - **Platform:** a required monthly subscription per café, paid card to card and approved in the SaaS console.
-- **Virtual Cafe (optional):** customers can walk through a 3D version of the café and pick a real table, then book it through the normal form. Off unless `VIRTUAL_CAFE` enables it.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ npx wrangler dev
 
 Wrangler runs `npm run build` first (`wrangler.toml`).
 
-Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
+Open `/?new=1` to create a café. Each branch has its own booking link, `/<café>/<branch>`. The owner picks readable names for both in the branches panel, for example `/lamiz/vanak`; until then the link uses the internal slugs. Old `/?cafe=<slug>` links still work.
 
 ## Documentation
 
@@ -46,7 +46,6 @@ Open `/?new=1` to create a café. Its booking page is `/?cafe=<slug>`.
 | [docs/deployment.md](docs/deployment.md) | Deploying to Cloudflare Workers or Sites, migrations, upgrading an existing database, caching and CSP |
 | [docs/payments.md](docs/payments.md) | Customer deposits through ZarinPal, and café subscriptions paid card to card |
 | [docs/architecture.md](docs/architecture.md) | How the code is organised, tenancy and booking rules, sessions, times, background work |
-| [docs/virtual-cafe/](docs/virtual-cafe/phase-2-report.md) | The optional 3D Virtual Cafe: architecture audit, Phase 0, 1 and 2 reports, performance baseline |
 | [docs/testing.md](docs/testing.md) | Unit, API and browser tests, and the checks CI runs |
 | [docs/openapi.yaml](docs/openapi.yaml) | The HTTP API (OpenAPI 3.1): every route, its access, body and error codes |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and what each release needs on deploy |

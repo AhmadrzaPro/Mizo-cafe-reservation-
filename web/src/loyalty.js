@@ -2,15 +2,13 @@ import { readableError, safeResponseJson } from "./api.js";
 import {
   adminDialog,
   controlDialog,
-  editor,
   loyaltyAdjustDialog,
   loyaltyDialog,
   scheduleDialog,
 } from "./dialogs.js";
 import { byId, html, setHtml } from "./dom.js";
-import { renderEditor } from "./editor.js";
 import { faDigits } from "./format.js";
-import { fetchMap, fetchSettings } from "./profile.js";
+import { fetchSettings } from "./profile.js";
 import { fetchSchedule } from "./schedule.js";
 import { store } from "./state.js";
 
@@ -146,12 +144,6 @@ export function wireLoyalty() {
   };
   // Editable dialogs load first and open after: data arriving once a dialog is open would
   // overwrite whatever was already changed in it.
-  byId("openMapEditor").onclick = async () => {
-    adminDialog.close();
-    await fetchMap();
-    editor.showModal();
-    renderEditor();
-  };
   byId("openControlCenter").onclick = async () => {
     adminDialog.close();
     await fetchSettings();

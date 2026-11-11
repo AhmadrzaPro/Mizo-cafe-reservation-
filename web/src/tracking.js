@@ -4,12 +4,14 @@ import { faDigits, formatPersianDate, latinDigits } from "./format.js";
 import { followGatewayRedirect, payButtonLabel, payingLabel } from "./payment-flow.js";
 
 export function wireTracking() {
-  byId("openTracking").onclick = () => {
+  const openTracking = () => {
     byId("trackingResult").hidden = true;
     byId("trackingError").hidden = true;
     byId("paymentReturn").hidden = true;
     trackingDialog.showModal();
   };
+  byId("openTracking").onclick = openTracking;
+  byId("floorTrack").onclick = openTracking;
   byId("trackingForm").onsubmit = async (e) => {
     e.preventDefault();
     const code = latinDigits(byId("trackingCode").value).toUpperCase().trim(),

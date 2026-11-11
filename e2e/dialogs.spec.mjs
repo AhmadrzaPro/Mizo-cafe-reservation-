@@ -22,6 +22,8 @@ test("slow loads never overwrite edits in the SMS, schedule, control and subscri
   page,
   request,
 }) => {
+  // Many page loads, each drawing the 3D floor without a GPU in CI.
+  test.slow();
   const cafe = await createCafe(request);
   await signInOwner(page, cafe);
 
@@ -54,18 +56,4 @@ test("slow loads never overwrite edits in the SMS, schedule, control and subscri
   await expect(page.locator("#subscriptionCardPayment input[name=reference]")).toHaveValue(
     "123456",
   );
-});
-
-test("a slow map load never discards a table edit", async ({ page, request }) => {
-  const cafe = await createCafe(request);
-  await signInOwner(page, cafe);
-  await slowDown(page, "**/map");
-  await openPanel(page, cafe, "#openMapEditor");
-  await expect(page.locator("#mapEditorDialog")).toBeVisible();
-  await page.locator(".editor-table").first().click();
-  if (!(await page.locator("#tableName").isVisible()))
-    await page.locator("#editSelectedTable").click();
-  await page.locator("#tableName").fill("میز کنار پنجره");
-  await page.waitForTimeout(SLOW + 300);
-  await expect(page.locator(".editor-table").first()).toContainText("کنار پنجره");
 });

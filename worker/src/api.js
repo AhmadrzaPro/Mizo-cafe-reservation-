@@ -13,9 +13,10 @@ import {
 } from "./auth/session.js";
 import { availability } from "./availability.js";
 import { branchRow, createBranch, updateBranch } from "./branches.js";
+import { updateCafeLink } from "./links.js";
 import { clientIp, InvalidJsonError, readJson, reply } from "./http.js";
 import { adjustLoyalty, readLoyalty } from "./loyalty.js";
-import { analyzeMapImage, readMap, writeMap } from "./map.js";
+import { readMap, writeMap } from "./map.js";
 import {
   processDueReminders,
   readNotifications,
@@ -59,7 +60,7 @@ import {
   updateSubscription,
 } from "./subscription.js";
 import { tehranNow, validDate, validTime } from "./util/dates.js";
-import { isDemo, virtualCafeOffered } from "./util/env.js";
+import { isDemo } from "./util/env.js";
 import { safeSlug } from "./util/ids.js";
 
 /** @typedef {import("./types").Env} Env */
@@ -264,6 +265,13 @@ app.patch("/api/setup", requireOwner("فقط مالک کافه به این بخ�
   writeSetup(c.env.DB, await readJson(c.req.raw), c.get("session")),
 );
 app.all("/api/setup", methodNotAllowed);
+// The café's link name, the first part of its booking links.
+app.patch(
+  "/api/cafe/link",
+  requireOwner("فقط مالک کافه می‌تواند لینک کافه را تغییر دهد."),
+  async (c) => updateCafeLink(c.env.DB, await readJson(c.req.raw), c.get("session")),
+);
+app.all("/api/cafe/link", methodNotAllowed);
 const ownsBranches = requireOwner("فقط مالک کافه می‌تواند شعب را مدیریت کند.");
 app.get("/api/branches", readCafe);
 app.post("/api/branches", ownsBranches, async (c) =>
@@ -391,13 +399,6 @@ for (const path of [
 ])
   app.all(BRANCH + path, opsAccess, methodNotAllowed);
 
-const mapWrite = requireBranch("map.write", "به ویرایش نقشه این شعبه دسترسی ندارید.");
-app.get(`${BRANCH}/map/analyze`, mapWrite, (c) =>
-  reply({ enabled: Boolean(c.env.OPENAI_API_KEY) }),
-);
-app.post(`${BRANCH}/map/analyze`, mapWrite, (c) => analyzeMapImage(c.req.raw, c.env));
-app.all(`${BRANCH}/map/analyze`, methodNotAllowed);
-
 // Map, settings, schedule, availability and reservations of one branch. Writes and the
 // reservation list need staff with the matching permission; the rest is public.
 /** @param {string} resource */
@@ -429,7 +430,6 @@ const settingsForPage = async (c, settings) => ({
   ...settings,
   paymentMode: paymentMode(c.env),
   onlineBookingPaused: await cafeBookingPaused(c),
-  virtualCafeOffered: virtualCafeOffered(c.env, c.req.param("cafe") || ""),
 });
 app.get(`${BRANCH}/settings`, async (c) =>
   reply(await settingsForPage(c, await branchSettings(c))),

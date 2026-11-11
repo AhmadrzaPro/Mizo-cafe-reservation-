@@ -1,7 +1,8 @@
 import { reply } from "./http.js";
-import { writeMap } from "./map.js";
+import { branchLinkProblem, invalidLink, linkName } from "./links.js";
+import { layoutStatements, starterLayout } from "./map.js";
 import { defaultSettings, writeSchedule, writeSettings } from "./settings.js";
-import { defaultHours, readSetup, starterMap } from "./setup.js";
+import { defaultHours, readSetup } from "./setup.js";
 export async function branchRow(db, cafeSlug, branchSlug) {
   return db
     .prepare(
@@ -23,14 +24,21 @@ export async function createBranch(db, body, session) {
       .trim()
       .slice(0, 180);
   if (name.length < 2 || city.length < 2) return reply({ error: "invalid_branch" }, 400);
+  const link = linkName(body.link, "branch");
+  if (link === null) return invalidLink();
+  const linkProblem = link && (await branchLinkProblem(db, current.cafe.id, link, null));
+  if (linkProblem) return linkProblem;
   const slug = `branch-${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
-  await writeMap(db, current.cafe.slug, slug, {
-    cafeName: current.cafe.name,
-    branchName: name,
-    city,
-    address,
-    map: starterMap,
-  });
+  const branchId = `branch:${current.cafe.slug}:${slug}`,
+    now = new Date().toISOString();
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO branches (id,cafe_id,slug,name,city,address,space_mode,updated_at) VALUES (?,?,?,?,?,?,'indoor',?)",
+      )
+      .bind(branchId, current.cafe.id, slug, name, city, address, now),
+    ...layoutStatements(db, branchId, starterLayout, now),
+  ]);
   await writeSettings(db, current.cafe.slug, slug, {
     ...defaultSettings,
     cafeName: current.cafe.name,
@@ -42,6 +50,11 @@ export async function createBranch(db, body, session) {
     hours: defaultHours(),
     closures: [],
   });
+  if (link)
+    await db
+      .prepare("UPDATE branches SET link_slug=? WHERE cafe_id=? AND slug=?")
+      .bind(link, current.cafe.id, slug)
+      .run();
   return reply(await readSetup(db, null, session), 201);
 }
 export async function updateBranch(db, slug, body, session) {
@@ -57,15 +70,28 @@ export async function updateBranch(db, slug, body, session) {
     address = String(body.address ?? branch.address)
       .trim()
       .slice(0, 180),
-    active = body.active !== false;
+    active = body.active !== false,
+    link = body.link === undefined ? branch.link || "" : linkName(body.link, "branch");
   if (name.length < 2 || city.length < 2) return reply({ error: "invalid_branch" }, 400);
+  if (link === null) return invalidLink();
+  const linkProblem = link && (await branchLinkProblem(db, session.cafe_id, link, branch.id));
+  if (linkProblem) return linkProblem;
   if (!active && branch.active && current.branches?.filter((b) => b.active).length === 1)
     return reply({ error: "last_active_branch", message: "حداقل یک شعبه باید فعال بماند." }, 409);
   await db
     .prepare(
-      "UPDATE branches SET name=?,city=?,address=?,active=?,updated_at=? WHERE id=? AND cafe_id=?",
+      "UPDATE branches SET name=?,city=?,address=?,active=?,link_slug=?,updated_at=? WHERE id=? AND cafe_id=?",
     )
-    .bind(name, city, address, active ? 1 : 0, new Date().toISOString(), branch.id, session.cafe_id)
+    .bind(
+      name,
+      city,
+      address,
+      active ? 1 : 0,
+      link || null,
+      new Date().toISOString(),
+      branch.id,
+      session.cafe_id,
+    )
     .run();
   return reply(await readSetup(db, null, session));
 }

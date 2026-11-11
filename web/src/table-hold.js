@@ -2,7 +2,6 @@
 // a few minutes (worker/src/holds.js), so nobody else can take it meanwhile; the booking then
 // uses the hold up. Going back releases it.
 import { cafeBaseUrl } from "./api.js";
-import { byId } from "./dom.js";
 import { faDigits } from "./format.js";
 import { state } from "./state.js";
 
@@ -64,25 +63,29 @@ export function forgetHold() {
   stopCountdown();
 }
 
-/** Shows, on the booking form, how long the table stays held. */
-export function startCountdown() {
+/**
+ * Shows, on the booking form, how long the table stays held.
+ * @param {() => HTMLElement | null} lineOf where to write; the panel may redraw it
+ */
+export function startCountdown(lineOf) {
   stopCountdown();
-  const line = byId("holdCountdown"),
-    tick = () => {
-      const left = state.hold ? Date.parse(state.hold.expiresAt) - Date.now() : 0;
-      line.hidden = !state.hold;
-      if (!state.hold) return;
-      if (left <= 0) {
-        line.dataset.expired = "true";
-        line.textContent =
-          "مهلت نگه‌داشتن میز تمام شد؛ اگر میز هنوز آزاد باشد، رزرو همچنان ثبت می‌شود.";
-        stopCountdown();
-        return;
-      }
-      const seconds = Math.ceil(left / 1000);
-      line.dataset.expired = "false";
-      line.textContent = `این میز تا ${faDigits(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`)} دیگر برای شما نگه داشته شده است.`;
-    };
+  const tick = () => {
+    const line = lineOf();
+    if (!line) return;
+    const left = state.hold ? Date.parse(state.hold.expiresAt) - Date.now() : 0;
+    line.hidden = !state.hold;
+    if (!state.hold) return;
+    if (left <= 0) {
+      line.dataset.expired = "true";
+      line.textContent =
+        "مهلت نگه‌داشتن میز تمام شد؛ اگر میز هنوز آزاد باشد، رزرو همچنان ثبت می‌شود.";
+      stopCountdown();
+      return;
+    }
+    const seconds = Math.ceil(left / 1000);
+    line.dataset.expired = "false";
+    line.textContent = `این میز تا ${faDigits(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`)} دیگر برای شما نگه داشته شده است.`;
+  };
   tick();
   countdown = setInterval(tick, 1000);
 }

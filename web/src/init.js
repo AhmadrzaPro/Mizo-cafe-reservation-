@@ -1,63 +1,20 @@
-import { fetchAvailability, renderCustomerMap, times } from "./booking.js";
-import { editor } from "./dialogs.js";
 import { byId } from "./dom.js";
-import { renderEditor } from "./editor.js";
-import { fitMap } from "./floor/editor-tools.js";
-import { resetMapHistory } from "./floor/history.js";
-import { faDigits } from "./format.js";
-import { cloneDefault } from "./map-defaults.js";
-import { applyCafeProfile, fetchMap, fetchSettings, loadCafeProfile } from "./profile.js";
-import { store, studioDemo } from "./state.js";
+import { repaintFloor, startFloor } from "./floor3d/view.js";
+import { loadManagerSession } from "./manager.js";
+import { applyCafeProfile, fetchSettings, loadCafeProfile } from "./profile.js";
 
 export async function initializeApp() {
-  if (studioDemo) {
-    store.cafeMap = cloneDefault();
-    store.cafeMap.areas.forEach((a) => {
-      a.width = a.id === "main" ? 1600 : 1200;
-      a.height = a.id === "main" ? 1000 : 800;
-    });
-    store.cafeMap.tables = [
-      ...Array.from({ length: 6 }, (_, i) => ({
-        id: `demo-in-${i}`,
-        area: "main",
-        name: `میز ${faDigits(i + 1)}`,
-        shape: i % 3 === 1 ? "rect" : i % 3 === 2 ? "square" : "round",
-        capacity: i % 3 === 1 ? 6 : 4,
-        x: 260 + (i % 3) * 450,
-        y: 160 + Math.floor(i / 3) * 500,
-        reservable: true,
-      })),
-      ...Array.from({ length: 4 }, (_, i) => ({
-        id: `demo-out-${i}`,
-        area: "terrace",
-        name: `تراس ${faDigits(i + 1)}`,
-        shape: i % 2 ? "rect" : "round",
-        capacity: i % 2 ? 6 : 4,
-        x: 210 + (i % 2) * 560,
-        y: 160 + Math.floor(i / 2) * 400,
-        reservable: true,
-      })),
-    ];
-    resetMapHistory();
-    renderEditor();
-    /** @type {HTMLButtonElement} */ (byId("publishMap")).disabled = true;
-    byId("saveStatus").textContent = "دموی تعاملی · بدون تغییر اطلاعات کافه";
-    /** @type {HTMLSelectElement} */ (byId("branchSelect")).disabled = true;
-    editor.showModal();
-    requestAnimationFrame(fitMap);
-    return;
-  }
   const profile = await loadCafeProfile();
   if (!profile.configured || !profile.branches?.length) {
     // No café to book: the page introduces Mizo to cafés instead.
     document.body.dataset.mode = "platform";
-    /** @type {HTMLButtonElement} */ (byId("continueBtn")).disabled = true;
-    times.textContent =
-      "برای رزرو، لینک اختصاصی کافه را باز کنید. برای راه‌اندازی، مدیریت کافه را انتخاب کنید.";
+    byId("floorApp").hidden = true;
     return;
   }
   applyCafeProfile(profile);
-  renderCustomerMap();
-  await Promise.all([fetchMap(), fetchSettings()]);
-  await fetchAvailability();
+  // The floor shows at once; the settings (party limit, a paused café) redraw it when they arrive.
+  await Promise.all([fetchSettings(), startFloor()]);
+  // Signed-in staff of this café get the floor editor's switch at once.
+  await loadManagerSession();
+  repaintFloor();
 }

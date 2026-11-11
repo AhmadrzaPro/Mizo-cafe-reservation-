@@ -10,25 +10,21 @@ html:has(dialog[open]) {
   overflow: hidden;
   overscroll-behavior: none;
 }
-dialog.ops-dialog,
-dialog.map-editor-dialog {
+dialog.ops-dialog {
   display: none;
   overflow: hidden;
   overscroll-behavior: none;
 }
-dialog.ops-dialog[open],
-dialog.map-editor-dialog[open] {
+dialog.ops-dialog[open] {
   display: flex;
   flex-direction: column;
 }
-.ops-header,
-.editor-header {
+.ops-header {
   position: relative;
   z-index: 20;
   flex: 0 0 auto;
 }
-.ops-shell,
-.editor-shell {
+.ops-shell {
   flex: 1 1 auto;
   height: auto;
   min-height: 0;
@@ -38,25 +34,17 @@ dialog.map-editor-dialog[open] {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
-.editor-shell {
-  overflow: hidden;
-}
 .ops-mobile-back {
   display: none;
 }
 
 @media (max-width: 850px) {
-  dialog.ops-dialog,
-  dialog.map-editor-dialog {
+  dialog.ops-dialog {
     width: 100vw;
     height: 100dvh;
     max-height: 100dvh;
     margin: 0;
     border-radius: 0;
-  }
-  .editor-header {
-    padding-top: env(safe-area-inset-top);
-    height: calc(72px + env(safe-area-inset-top));
   }
 }
 @media (max-width: 820px) {

@@ -26,7 +26,7 @@ async function stylesheet(folder) {
 }
 // Vazirmatn variable font (OFL) from the pinned npm package, served from our own origin.
 const fontDir = resolve(dirname(require.resolve("vazirmatn/package.json")), "fonts/webfonts");
-const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, virtualCafeJs, hero, font] =
+const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, floorJs, hero, font] =
   await Promise.all([
     read("web/index.html"),
     stylesheet("main"),
@@ -35,8 +35,8 @@ const [page, stylesCss, editorCss, appJs, saasPage, saasCss, saasJs, virtualCafe
     read("web/saas-admin.html"),
     stylesheet("saas"),
     bundle("web/src/saas-console.js", { minify: true }),
-    // The Virtual Cafe engine (three.js): its own bundle, requested only when a customer opens it.
-    bundle("web/src/virtual-cafe/engine/index.js", { minify: true }),
+    // The 3D floor engine (three.js): its own bundle, loaded only on a café's page.
+    bundle("web/src/floor3d/engine-entry.js", { minify: true }),
     read("web/assets/cafe-hero.webp", null),
     readFile(resolve(fontDir, "Vazirmatn[wght].woff2")),
   ]);
@@ -63,7 +63,7 @@ const urls = {
   hero: addAsset("/assets/cafe-hero.webp", "image/webp", hero),
   saasCss: addAsset("/saas-admin.css", "text/css; charset=utf-8", withFont(saasCss)),
   saasJs: addAsset("/saas-admin.js", "text/javascript; charset=utf-8", saasJs),
-  virtualCafe: addAsset("/virtual-cafe.js", "text/javascript; charset=utf-8", virtualCafeJs),
+  floor: addAsset("/floor3d.js", "text/javascript; charset=utf-8", floorJs),
 };
 function versioned(html, replacements) {
   for (const [from, to] of replacements) {
@@ -78,7 +78,7 @@ const mainPage = versioned(page, [
   ['href="editor.css"', `href="${urls.editor}"`],
   ['src="assets/cafe-hero.webp"', `src="${urls.hero}"`],
   ['src="app.js"', `src="${urls.app}"`],
-  ['content="virtual-cafe.js"', `content="${urls.virtualCafe}"`],
+  ['content="floor3d.js"', `content="${urls.floor}"`],
 ]);
 const adminPage = versioned(saasPage, [
   ['href="/fonts/vazirmatn.woff2"', `href="${urls.font}"`],

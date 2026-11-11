@@ -110,7 +110,7 @@ test("a verified callback marks the deposit paid once, however often it arrives"
     [303, 303],
   );
   assert.ok(
-    locations.includes(`/?cafe=${f.cafe.slug}&code=${f.booked.data.trackingCode}&payment=success`),
+    locations.includes(`/${f.cafe.slug}/main?code=${f.booked.data.trackingCode}&payment=success`),
   );
   const again = await f.callback(authority);
   assert.match(again.headers.get("location"), /payment=success/);

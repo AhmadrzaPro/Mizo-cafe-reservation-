@@ -55,8 +55,7 @@ body {
   color: #bdb7b3;
   text-decoration: none;
 }
-.ghost-btn,
-.icon-btn {
+.ghost-btn {
   font: inherit;
   color: #fff;
   background: transparent;
@@ -108,13 +107,6 @@ h1 {
   margin: 28px 0 22px;
   letter-spacing: -0.08em;
 }
-.cafe-meta {
-  display: flex;
-  color: #c7c0bb;
-}
-.cafe-meta span + span {
-  border-right: 1px solid #625952;
-}
 .booking-card {
   justify-self: start;
 }
@@ -130,12 +122,6 @@ h1 {
   font-size: 0.75rem;
   color: #c99568;
 }
-.icon-btn {
-  border-radius: 50%;
-  padding: 0;
-  width: 38px;
-  height: 38px;
-}
 .progress {
   display: flex;
   gap: 6px;
@@ -149,34 +135,6 @@ h1 {
 }
 .progress .active {
   background: var(--copper);
-}
-.field-label {
-  display: block;
-  margin-bottom: 9px;
-}
-.guest-picker {
-  display: flex;
-  align-items: center;
-  border: 1px solid #423a35;
-  border-radius: 13px;
-  margin-bottom: 18px;
-  overflow: hidden;
-}
-.guest-picker button {
-  height: 100%;
-  font-size: 1.3rem;
-  background: transparent;
-  border: 0;
-  color: #fff;
-  cursor: pointer;
-}
-.guest-picker strong {
-  margin-right: auto;
-  font-size: 1.05rem;
-}
-.guest-picker span {
-  color: #aaa19a;
-  margin: 0 6px auto auto;
 }
 .dates,
 .times {
@@ -200,16 +158,6 @@ h1 {
 }
 .date b {
   margin-top: 3px;
-}
-.time-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 18px;
-}
-.time-title span {
-  font-size: 0.68rem;
-  color: #827a74;
 }
 .times {
   flex-wrap: wrap;
@@ -371,40 +319,12 @@ dialog::backdrop {
   font-size: 1.3rem;
   cursor: pointer;
 }
-.dialog-head {
-  text-align: center;
-}
-.dialog-head h2,
-.success-dialog h2,
 .admin-dialog h2 {
   margin: 6px 0;
 }
-.dialog-head p,
 .admin-dialog > p {
   color: #766d66;
   font-size: 0.85rem;
-}
-.floor-plan {
-  height: 360px;
-  margin: 24px 0 13px;
-  background: #e9e2d8;
-  border: 1px solid #d7cec3;
-  border-radius: 18px;
-  position: relative;
-  overflow: hidden;
-}
-.window-label {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 30px;
-  writing-mode: vertical-rl;
-  display: grid;
-  place-items: center;
-  background: #bed0cf;
-  color: #4b6665;
-  font-size: 0.7rem;
 }
 .table {
   position: absolute;
@@ -421,32 +341,6 @@ dialog::backdrop {
 }
 .table small {
   font-size: 0.6rem;
-}
-.table.reserved {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.t1 {
-  right: 75px;
-  top: 55px;
-}
-.t2 {
-  right: 205px;
-  top: 48px;
-}
-.t3 {
-  right: 345px;
-  top: 55px;
-  width: 95px;
-  border-radius: 22px;
-}
-.t4 {
-  right: 105px;
-  top: 205px;
-}
-.t5 {
-  right: 280px;
-  top: 210px;
 }
 .bar {
   position: absolute;
@@ -480,44 +374,8 @@ dialog::backdrop {
   background: #fff;
   border: 1px solid #aaa;
 }
-.lg-selected {
-  background: var(--copper);
-}
 .lg-busy {
   background: #aaa;
-}
-.success-dialog {
-  text-align: center;
-  width: min(90vw, 420px);
-}
-.success-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #d9e9df;
-  color: var(--green);
-  font-size: 1.8rem;
-  margin: auto;
-}
-.booking-code {
-  background: #eae3da;
-  border-radius: 14px;
-  padding: 13px;
-  margin-top: 20px;
-}
-.booking-code span,
-.booking-code strong {
-  display: block;
-}
-.booking-code span {
-  font-size: 0.7rem;
-  color: #776c64;
-}
-.booking-code strong {
-  font-size: 1.3rem;
-  letter-spacing: 0.08em;
 }
 .admin-grid {
   display: grid;
@@ -554,13 +412,6 @@ dialog::backdrop {
   .hero-copy > p {
     font-size: 0.95rem;
   }
-  .cafe-meta {
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .cafe-meta span + span {
-    padding-right: 10px;
-  }
   .booking-card {
     justify-self: center;
   }
@@ -579,13 +430,6 @@ dialog::backdrop {
   }
   .dashboard-preview {
     transform: none;
-  }
-  .floor-plan {
-    transform: scale(0.88);
-    margin-inline: -28px;
-  }
-  .t3 {
-    right: 330px;
   }
 }
 @media (max-width: 480px) {
@@ -616,32 +460,9 @@ dialog::backdrop {
   .admin-grid {
     grid-template-columns: 1fr;
   }
-  .floor-plan {
-    height: 325px;
-    transform: none;
-    margin-inline: 0;
-  }
   .table {
     width: 64px;
     height: 64px;
-  }
-  .t1 {
-    right: 48px;
-  }
-  .t2 {
-    right: 155px;
-  }
-  .t3 {
-    right: 95px;
-    top: 145px;
-  }
-  .t4 {
-    right: 36px;
-    top: 240px;
-  }
-  .t5 {
-    right: 170px;
-    top: 240px;
   }
   .bar {
     display: none;
@@ -741,17 +562,6 @@ textarea:focus-visible {
   color: #f1bd8f;
   font-size: 0.88rem;
 }
-.cafe-meta {
-  margin-top: 37px;
-  padding-top: 18px;
-  border-top: 1px solid #ffffff42;
-  gap: 16px;
-  font-size: 0.91rem;
-}
-.cafe-meta span + span {
-  border-color: #ffffff42;
-  padding-right: 16px;
-}
 .booking-card {
   width: 100%;
   padding: 29px;
@@ -766,27 +576,6 @@ textarea:focus-visible {
 .booking-head h2 {
   font-size: 1.62rem;
   line-height: 1.45;
-}
-.booking-live {
-  font-size: 0.77rem;
-  color: #f3c398;
-  background: #d9925030;
-  border: 1px solid #d9925066;
-  border-radius: 99px;
-  padding: 7px 10px;
-  white-space: nowrap;
-}
-.field-label {
-  font-size: 0.9rem;
-  color: #ded1c6;
-}
-.guest-picker {
-  height: 54px;
-  background: #ffffff0d;
-  border-color: #ffffff30;
-}
-.guest-picker button {
-  width: 58px;
 }
 .date,
 .time {
@@ -974,25 +763,12 @@ dialog[open] {
   .hero .eyebrow {
     font-size: 0.78rem;
   }
-  .cafe-meta {
-    margin-top: 21px;
-    font-size: 0.76rem;
-    gap: 8px;
-    padding-top: 12px;
-  }
-  .cafe-meta span + span {
-    padding-right: 8px;
-  }
   .booking-card {
     padding: 18px;
     border-radius: 19px;
   }
   .booking-head h2 {
     font-size: 1.32rem;
-  }
-  .booking-live {
-    font-size: 0.68rem;
-    padding: 6px 8px;
   }
   .date small {
     font-size: 0.7rem;
@@ -1052,11 +828,6 @@ dialog[open] {
   .reservations em {
     display: none;
   }
-  .floor-plan {
-    transform: none;
-    max-width: 100%;
-    margin-inline: 0;
-  }
   .table {
     width: 60px;
     height: 60px;
@@ -1080,11 +851,6 @@ dialog[open] {
     width: 30px;
     height: 30px;
   }
-  .booking-live {
-    max-width: 116px;
-    text-align: center;
-    line-height: 1.3;
-  }
   .trust-strip span {
     display: none;
   }
@@ -1098,47 +864,9 @@ dialog[open] {
     transition-duration: 0.01ms !important;
   }
 }
-.floor-viewport {
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-color: #bf9875 #e9e2d8;
-  border-radius: 18px;
-  margin: 24px 0 13px;
-}
-.floor-viewport .floor-plan {
-  min-width: 540px;
-  max-width: none;
-  margin: 0;
-  transform: none;
-}
-.floor-swipe-hint {
-  display: none;
-  font-size: 0.77rem;
-  color: #796e65;
-  margin: 16px 0 -10px;
-  line-height: 1.6;
-}
-@media (max-width: 600px) {
-  .floor-viewport {
-    margin: 12px 0 10px;
-  }
-  .floor-viewport .floor-plan {
-    height: 330px;
-    min-width: 540px;
-    max-width: none;
-    margin: 0;
-    transform: none;
-  }
-  .floor-swipe-hint {
-    display: block;
-  }
-}
 /* One page, two roles: a café's booking page (?cafe=…) or Mizo's introduction for cafés. */
 /* Until the page knows which, it shows only the neutral parts. */
 body[data-mode="cafe"] .platform-only,
-body[data-mode="platform"] .cafe-only,
-body:not([data-mode]) .platform-only,
-body:not([data-mode]) .cafe-meta {
+body:not([data-mode]) .platform-only {
   display: none;
 }

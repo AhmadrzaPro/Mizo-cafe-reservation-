@@ -40,7 +40,7 @@ Sites has no cron. The Worker instead runs the scheduled work in the background 
 
 - Configure Kavenegar, and leave `DEMO_MODE` unset.
 - Make one ZarinPal sandbox payment end to end (see [payments.md](payments.md#before-going-live)).
-- Give customers and staff the café's own URL, `/?cafe=<slug>`. There is no global default café unless `DEFAULT_CAFE_SLUG` is set.
+- Give customers each branch's booking link, `/<café>/<branch>`, copied from the branches panel after the owner names them. There is no global default café unless `DEFAULT_CAFE_SLUG` is set.
 
 ## Upgrading an existing database
 
@@ -53,7 +53,10 @@ Migrations with effects beyond adding tables:
 | `0012_tenant_booking_integrity.sql` | Adds triggers that reject overlapping reservations. Review overlapping active reservations first; they are not cancelled or rewritten. Invalidates pending sign-in codes. |
 | `0017_required_subscription.sql` | Cafés without a subscription, or with it off, get a 14-day trial from that moment. Running trials and paid periods are unchanged. |
 | `0018_iso_instants.sql` | Rebuilds `otp_challenges` and `staff_sessions` with ISO-8601 text times and converts SMS reminder times to UTC. Staff stay signed in. |
-| `0019_virtual_cafe_phase_2.sql` | Adds `table_holds` and the `reservation_table_held` trigger, which refuses a booking on a table someone else holds. Adds the owner's Virtual Cafe switch (on) and each room's layout (NULL keeps the classic one). |
+| `0019_virtual_cafe_phase_2.sql` | Adds `table_holds` and the `reservation_table_held` trigger, which refuses a booking on a table someone else holds. Adds each room's layout (NULL keeps the classic one), and a Virtual Cafe switch that 0020 drops. |
+| `0020_remove_virtual_cafe.sql` | Drops `branch_settings.virtual_cafe_enabled`, left by the removed 3D Virtual Cafe. |
+| `0021_booking_links.sql` | Adds the optional link names `cafes.link_slug` and `branches.link_slug`, each unique. Existing links keep working. |
+| `0022_floor_3d.sql` | Adds each table's turn and features for the 3D floor. Existing floors keep working and become one room when first saved in the 3D editor. |
 
 A café created before owners were recorded (before `0012`) has no staff. Provision its verified owner's mobile in `staff_members` through a trusted administrative migration; public sign-in deliberately cannot claim it.
 

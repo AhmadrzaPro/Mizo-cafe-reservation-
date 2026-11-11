@@ -4,6 +4,8 @@ test("panel controls respond: notice, schedule, table editing and branch switche
   page,
   request,
 }) => {
+  // Many page loads, each drawing the 3D floor without a GPU in CI.
+  test.slow();
   const cafe = await createCafe(request);
   await signInOwner(page, cafe);
   await api(page, "POST", "/api/branches", { name: "شعبه دوم", city: "تهران" });
@@ -25,18 +27,16 @@ test("panel controls respond: notice, schedule, table editing and branch switche
   await expect(page.locator(".hour-row").first().locator("[data-open]")).toBeDisabled();
   await page.locator(".hour-row").first().locator("[data-closed]").uncheck();
   await page.locator(".hour-row").first().locator("[data-open]").fill("09:30");
-  // Map editor: select a table, rename, change shape and reservable.
+  // Floor editor: select a table, rename it, change its type and turn off online booking.
   await open("#openMapEditor");
-  await page.locator(".editor-table").first().click();
-  // On a phone the properties open in a sheet from the "edit table" button.
-  if (!(await page.locator("#tableName").isVisible()))
-    await page.locator("#editSelectedTable").click();
-  await page.locator("#tableName").fill("میز تست");
-  await expect(page.locator(".editor-table.selected")).toContainText("تست");
-  await page.locator("#tableShape").selectOption({ index: 1 });
-  await page.locator("#tableReservable").setChecked(false);
-  await expect(page.locator("#tableReservable")).not.toBeChecked();
-  await page.locator("#branchSelect").selectOption({ index: 1 });
+  await expect(page.locator("#floorApp")).toHaveAttribute("data-mode", "edit");
+  await page.locator(".tlabel").first().click();
+  await page.locator("#e-name").fill("تست");
+  await page.locator("#e-name").press("Enter");
+  await expect(page.locator(".tlabel").first()).toContainText("تست");
+  await page.locator('#floorPanel [data-type="long6"]').click();
+  await page.locator("#e-reservable").setChecked(false);
+  await expect(page.locator("#e-reservable")).not.toBeChecked();
   // Payments and SMS branch selectors.
   await open("#openPayments");
   await page.locator("#paymentsBranch").selectOption({ index: 1 });
@@ -46,7 +46,7 @@ test("panel controls respond: notice, schedule, table editing and branch switche
   await page.locator("#opsBranch").selectOption({ index: 1 });
 });
 
-test("the map editor's back button returns to the panel, and asks first about unpublished changes", async ({
+test("the floor editor returns to the panel, and asks first about unsaved changes", async ({
   page,
   request,
 }) => {
@@ -55,30 +55,27 @@ test("the map editor's back button returns to the panel, and asks first about un
   await page.goto(cafe.url);
   await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
   await page.locator("#openMapEditor").click();
-  const back = page.locator("#editorExit");
+  const back = page.locator('#floorEditTools [data-et="back"]');
   await expect(back).toBeVisible();
   await back.click();
-  await expect(page.locator("#mapEditorDialog")).not.toBeVisible();
   await expect(page.locator("#adminDialog")).toBeVisible();
+  await expect(page.locator("#floorApp")).toHaveAttribute("data-mode", "book");
 
-  // With unpublished changes, declining the question keeps the editor open.
+  // With unsaved changes, declining the question keeps the editor open.
   await page.locator("#openMapEditor").click();
-  // Wait for the map to load: loading resets the "unpublished changes" state.
-  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
-  await page
-    .locator("[data-add-shape=round]")
-    .first()
-    .evaluate((button) => button.click());
+  await page.locator('#floorPalette [data-add="decor:plant"]').click();
   page.once("dialog", (dialog) => dialog.dismiss());
   await back.click();
-  await expect(page.locator("#mapEditorDialog")).toBeVisible();
+  await expect(page.locator("#floorApp")).toHaveAttribute("data-mode", "edit");
   page.once("dialog", (dialog) => dialog.accept());
   await back.click();
   await expect(page.locator("#adminDialog")).toBeVisible();
 });
 
-test("the door, window and counter chosen in the editor appear on the customer's map", async ({
+test("a table the owner adds and saves in the floor editor is offered to customers", async ({
   page,
+  browser,
+  baseURL,
   request,
 }) => {
   const cafe = await createCafe(request);
@@ -86,32 +83,23 @@ test("the door, window and counter chosen in the editor appear on the customer's
   await page.goto(cafe.url);
   await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
   await page.locator("#openMapEditor").click();
-  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
-  await page.locator("#areaSizeToggle").click();
-  await page.locator("#areaWindow").selectOption("none");
-  await page.locator("#areaCounter").selectOption("right");
-  await page.locator("#areaDoor").selectOption("top");
-  // The editor redraws at once.
-  await expect(page.locator(".canvas-window")).toBeHidden();
-  await expect(page.locator(".canvas-bar")).toHaveAttribute("data-side", "right");
-  await expect(page.locator(".canvas-door")).toHaveAttribute("data-side", "top");
-  await page.locator("#publishMap").click();
-  await expect(page.locator("#saveStatus")).toHaveText("همگام با دیتابیس");
+  await page.locator('#floorPalette [data-add="table:booth6"]').click();
+  await page.locator("#e-name").fill("V1");
+  await page.locator("#e-name").press("Enter");
+  await page.locator('#floorPanel [data-tag="مبل راحتی"]').click();
+  await page.locator('#floorEditTools [data-et="save"]').click();
+  await expect(page.locator("#floorToast")).toContainText("منتشر شد");
 
-  const map = await api(page, "GET", `${cafe.api}/map`);
-  expect(map.areas[0].layout).toEqual({ door: "top", window: "none", counter: "right" });
-  // The customer's map draws the counter on the right wall and no window.
-  await page.goto(cafe.url);
-  await page.locator("#dates button").nth(1).click();
-  await page.locator("#times button:not([disabled])").last().click();
-  await page.locator("#continueBtn").click();
-  await expect(page.locator("#customerFloorPlan .window-label")).toHaveCount(0);
-  const counter = page.locator("#customerFloorPlan .bar");
-  if (await counter.isVisible()) {
-    const box = await counter.evaluate((element) => ({
-      left: parseFloat(element.style.left),
-      width: parseFloat(element.style.width),
-    }));
-    expect(box.left + box.width).toBe(820 - 24);
-  } else await expect(counter).toHaveCount(1); // phones hide the counter label, as before
+  const context = await browser.newContext({ baseURL }),
+    customer = await context.newPage();
+  await customer.goto(cafe.url);
+  await customer.locator("#floorPlus").click();
+  await customer.locator("#floorPlus").click();
+  await customer.locator("#floorPlus").click();
+  await customer.locator("#floorListToggle").click();
+  const v1 = customer.locator("#floorList .list-table", { hasText: "V1" });
+  await expect(v1).toContainText("۶ نفره");
+  await v1.click();
+  await expect(customer.locator("#floorPanel .tags")).toContainText("مبل راحتی");
+  await context.close();
 });

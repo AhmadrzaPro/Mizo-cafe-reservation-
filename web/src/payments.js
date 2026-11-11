@@ -2,7 +2,7 @@ import { settingsUrl } from "./api.js";
 import { fetchAvailability, money } from "./booking.js";
 import { adminDialog, paymentsCard, paymentsDialog } from "./dialogs.js";
 import { byId, html, setHtml, required } from "./dom.js";
-import { switchBranch } from "./editor-nav.js";
+import { switchBranch } from "./branch-switch.js";
 import { faDigits, formatPersianDate } from "./format.js";
 import { activeBranchProfile } from "./profile.js";
 import { store } from "./state.js";

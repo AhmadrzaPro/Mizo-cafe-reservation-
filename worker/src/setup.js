@@ -1,4 +1,5 @@
 import { reply } from "./http.js";
+import { layoutStatements, starterLayout } from "./map.js";
 import { randomId, safeSlug } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
 export const defaultHours = () =>
@@ -8,62 +9,6 @@ export const defaultHours = () =>
     closeTime: "23:00",
     closed: false,
   }));
-export const starterMap = {
-  spaceMode: "indoor",
-  areas: [{ id: "main", name: "سالن اصلی", kind: "indoor" }],
-  tables: [
-    {
-      id: "t1",
-      area: "main",
-      name: "میز ۱",
-      shape: "round",
-      capacity: 2,
-      x: 655,
-      y: 62,
-      reservable: true,
-    },
-    {
-      id: "t2",
-      area: "main",
-      name: "میز ۲",
-      shape: "round",
-      capacity: 2,
-      x: 505,
-      y: 60,
-      reservable: true,
-    },
-    {
-      id: "t3",
-      area: "main",
-      name: "میز ۳",
-      shape: "rect",
-      capacity: 4,
-      x: 345,
-      y: 68,
-      reservable: true,
-    },
-    {
-      id: "t4",
-      area: "main",
-      name: "میز ۴",
-      shape: "square",
-      capacity: 2,
-      x: 620,
-      y: 230,
-      reservable: true,
-    },
-    {
-      id: "t5",
-      area: "main",
-      name: "میز ۵",
-      shape: "round",
-      capacity: 2,
-      x: 430,
-      y: 235,
-      reservable: true,
-    },
-  ],
-};
 /**
  * @param {D1Database} db
  * @param {string | null} [cafeSlug]
@@ -73,20 +18,23 @@ export async function readSetup(db, cafeSlug = null, session = null) {
   let cafe;
   if (cafeSlug && safeSlug(cafeSlug))
     cafe = await db
-      .prepare("SELECT id,slug,name,created_at FROM cafes WHERE slug=?")
-      .bind(cafeSlug)
+      // The internal slug or the owner's link name; the slug wins if both somehow match.
+      .prepare(
+        "SELECT id,slug,name,link_slug,created_at FROM cafes WHERE slug=? OR link_slug=? ORDER BY slug=? DESC LIMIT 1",
+      )
+      .bind(cafeSlug, cafeSlug, cafeSlug)
       .first();
   else if (session)
     cafe = await db
-      .prepare("SELECT id,slug,name,created_at FROM cafes WHERE id=?")
+      .prepare("SELECT id,slug,name,link_slug,created_at FROM cafes WHERE id=?")
       .bind(session.cafe_id)
       .first();
   if (!cafe) return { configured: false };
   const own = session?.cafe_id === cafe.id;
-  /** @type {D1Result<{ id: string, slug: string, name: string, city: string, address: string, active: number }>} */
+  /** @type {D1Result<{ id: string, slug: string, name: string, city: string, address: string, active: number, link_slug: string | null }>} */
   const result = await db
     .prepare(
-      "SELECT id,slug,name,city,address,active FROM branches WHERE cafe_id=? ORDER BY updated_at,id",
+      "SELECT id,slug,name,city,address,active,link_slug FROM branches WHERE cafe_id=? ORDER BY updated_at,id",
     )
     .bind(cafe.id)
     .all();
@@ -97,9 +45,15 @@ export async function readSetup(db, cafeSlug = null, session = null) {
       id: cafe.id,
       slug: cafe.slug,
       name: cafe.name,
+      // The café's part of its booking links: the owner's link name, else the slug.
+      link: cafe.link_slug || "",
       structure: branches.length > 1 || cafe.slug.startsWith("multi-") ? "multi" : "single",
     },
-    branches: branches.map((b) => ({ ...b, active: Boolean(b.active) })),
+    branches: branches.map(({ link_slug, ...b }) => ({
+      ...b,
+      link: link_slug || "",
+      active: Boolean(b.active),
+    })),
   };
 }
 /**
@@ -189,29 +143,7 @@ export async function writeSetup(db, body, session = null) {
       )
       .bind(randomId("subevent"), cafeId, now),
   ];
-  for (const area of starterMap.areas)
-    statements.push(
-      db
-        .prepare("INSERT INTO areas (id,branch_id,name,kind,sort_order) VALUES (?,?,?,'indoor',0)")
-        .bind(`${branchId}:${area.id}`, branchId, area.name),
-    );
-  for (const t of starterMap.tables)
-    statements.push(
-      db
-        .prepare(
-          "INSERT INTO cafe_tables (id,area_id,name,shape,capacity,position_x,position_y,reservable,operational_status,updated_at) VALUES (?,?,?,?,?,?,?,1,'available',?)",
-        )
-        .bind(
-          `${branchId}:${t.id}`,
-          `${branchId}:${t.area}`,
-          t.name,
-          t.shape,
-          t.capacity,
-          t.x,
-          t.y,
-          now,
-        ),
-    );
+  statements.push(...layoutStatements(db, branchId, starterLayout, now));
   for (const h of defaultHours())
     statements.push(
       db

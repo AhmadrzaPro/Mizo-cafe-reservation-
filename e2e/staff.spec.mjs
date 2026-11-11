@@ -2,6 +2,8 @@ import { createCafe, expect, signInOwner, test } from "./fixtures.mjs";
 import { faDigitsToLatin } from "./text.mjs";
 
 test("the owner signs in with a one-time code and opens every panel", async ({ page, request }) => {
+  // Many page loads, each drawing the 3D floor without a GPU in CI.
+  test.slow();
   const cafe = await createCafe(request);
   await page.goto(cafe.url);
   await page.getByRole("button", { name: "پنل مدیر کافه" }).first().click();
