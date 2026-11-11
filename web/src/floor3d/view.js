@@ -44,6 +44,8 @@ let engineState = "idle"; // idle | loading | ready | failed
 /** @type {import("./model.js").FloorLayout & { items: Item[] }} */
 let layout = { room: { w: 16, d: 11, terrace: 0 }, items: [] };
 let savedJSON = "";
+/** Whether the editor's "more" menu is open. */
+let moreOpen = false;
 /** A refusal from the server, kept so it survives the panel being redrawn with fresh data. */
 let panelNote = "";
 let mode = "book",
@@ -59,7 +61,8 @@ let lastBooking = null;
 
 const fullId = (t) => `branch:${store.currentCafeSlug}:${store.currentBranch}:${t.id}`;
 const dirty = () => JSON.stringify(exportLayout(layout)) !== savedJSON;
-const canEdit = () => hasManagerPermission("map.write");
+const canEdit = () =>
+  hasManagerPermission("map.write") && store.managerSession?.cafeSlug === store.currentCafeSlug;
 const tables = () => /** @type {Item[]} */ (tablesOf(layout));
 const timeLabel = (time) => faDigits(time || "");
 /** "میز ۵" or "میز T5": a label is shown with the word table once. */
@@ -193,39 +196,44 @@ function renderTop() {
     renderEditTools();
     return;
   }
+  const day = dayOf(state.date);
+  byId("floorDayLabel").textContent = `${day.label} ${day.sub}`;
   setHtml(
     byId("floorDays"),
-    html`<span class="lbl">روز</span>${days().map(
-        (d) =>
-          html`<button
-            type="button"
-            class="chip ${d.date === state.date ? "on" : ""}"
-            data-d="${d.date}"
-          >
-            ${d.label}<small><bdi>${d.sub}</bdi></small>
-          </button>`,
-      )}`,
+    html`${days().map(
+      (d) =>
+        html`<button
+          type="button"
+          class="chip ${d.date === state.date ? "on" : ""}"
+          data-d="${d.date}"
+        >
+          ${d.label}<small><bdi>${d.sub}</bdi></small>
+        </button>`,
+    )}`,
   );
   const data = state.availability;
+  byId("floorTimeLabel").textContent = !data
+    ? "…"
+    : data.closed || !data.slots.length
+      ? "بسته"
+      : timeLabel(state.time) || "—";
   setHtml(
     byId("floorHours"),
     !data
-      ? html`<span class="lbl">در حال بررسی ظرفیت…</span>`
+      ? html`<p class="pop-note">در حال بررسی ظرفیت…</p>`
       : data.closed || !data.slots.length
-        ? html`<span class="lbl">${data.reason || "در این روز زمان آزادی نیست."}</span>`
-        : html`<span class="lbl">ساعت</span>${data.slots.map((s) => {
-              const free = tables().filter(
-                (t) => suits(t) && s.tableIds.includes(fullId(t)),
-              ).length;
-              return html`<button
-                type="button"
-                class="chip ${s.time === state.time ? "on" : ""}"
-                data-h="${s.time}"
-              >
-                <bdi>${timeLabel(s.time)}</bdi
-                ><small><bdi>${free ? `${faDigits(free)} میز` : "پر"}</bdi></small>
-              </button>`;
-            })}`,
+        ? html`<p class="pop-note">${data.reason || "در این روز زمان آزادی نیست."}</p>`
+        : html`${data.slots.map((s) => {
+            const free = tables().filter((t) => suits(t) && s.tableIds.includes(fullId(t))).length;
+            return html`<button
+              type="button"
+              class="chip ${s.time === state.time ? "on" : ""} ${free ? "" : "full"}"
+              data-h="${s.time}"
+            >
+              <bdi>${timeLabel(s.time)}</bdi
+              ><small><bdi>${free ? `${faDigits(free)} میز` : "پر"}</bdi></small>
+            </button>`;
+          })}`,
   );
   byId("floorParty").textContent = `${faDigits(party())} نفر`;
   const present = Object.keys(ZONES).filter((k) => tables().some((t) => zoneOf(layout, t) === k));
@@ -240,16 +248,8 @@ function renderTop() {
         )}`
       : "",
   );
-  const all = tables().filter((t) => t.reservable !== false),
-    free = all.filter((t) => freeAt(t, state.time)).length;
-  setHtml(
-    byId("floorStats"),
-    state.time
-      ? html`<div>
-          میز آزاد ${timeLabel(state.time)}<b>${faDigits(free)} از ${faDigits(all.length)}</b>
-        </div>`
-      : "",
-  );
+  const free = tables().filter((t) => suits(t) && freeAt(t, state.time)).length;
+  byId("floorStats").textContent = state.time ? `${faDigits(free)} میز آزاد` : "";
   const notice = byId("floorNotice"),
     message = !bookingOpen()
       ? "رزرو آنلاین این کافه موقتاً متوقف است."
@@ -740,9 +740,21 @@ function renderEditTools() {
       <button type="button" class="chip pri" data-et="save">
         ذخیره و انتشار${dirty() ? html`<span class="dot"></span>` : ""}
       </button>
-      <button type="button" class="chip" data-et="json">خروجی / ورودی JSON</button>
-      <button type="button" class="chip" data-et="preview">پیش‌نمایش برای مشتری</button>
-      <button type="button" class="chip" data-et="undo">برگشت به آخرین ذخیره</button>
+      <span class="more">
+        <button
+          type="button"
+          class="chip ${moreOpen ? "on" : ""}"
+          data-et="more"
+          aria-expanded="${moreOpen}"
+        >
+          بیشتر ▾
+        </button>
+        <span class="more-menu" ${moreOpen ? "" : html`hidden`}>
+          <button type="button" data-et="preview">پیش‌نمایش برای مشتری</button>
+          <button type="button" data-et="undo">برگشت به آخرین ذخیره</button>
+          <button type="button" data-et="json">خروجی / ورودی JSON</button>
+        </span>
+      </span>
       <span class="lbl"
         >${faDigits(tables().length)} میز ·
         ${faDigits(tables().reduce((s, t) => s + seatsOf(t), 0))} صندلی</span
@@ -1048,11 +1060,38 @@ export async function startFloor() {
   setTimeout(() => byId("floorHint").classList.add("gone"), 7000);
 }
 
+/** Opens one of the day and time pickers, closing the other. @param {"floorDays" | "floorHours" | null} id */
+function openPop(id) {
+  for (const [pop, button] of /** @type {const} */ ([
+    ["floorDays", "floorDayBtn"],
+    ["floorHours", "floorTimeBtn"],
+  ])) {
+    const open = pop === id;
+    byId(pop).hidden = !open;
+    byId(button).setAttribute("aria-expanded", String(open));
+    byId(button).classList.toggle("on", open);
+  }
+}
+
 export function wireFloor() {
+  byId("floorDayBtn").onclick = () => openPop(byId("floorDays").hidden ? "floorDays" : null);
+  byId("floorTimeBtn").onclick = () => openPop(byId("floorHours").hidden ? "floorHours" : null);
+  document.addEventListener("pointerdown", (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (!target.closest(".floor-pop, .when-pill")) openPop(null);
+    if (moreOpen && !target.closest(".more")) {
+      moreOpen = false;
+      renderEditTools();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") openPop(null);
+  });
   byId("floorDays").onclick = (e) => {
     const b = /** @type {HTMLElement} */ (e.target).closest("[data-d]");
     if (!(b instanceof HTMLElement)) return;
     state.date = b.dataset.d || state.date;
+    openPop(null);
     state.time = "";
     state.availability = null;
     renderTop();
@@ -1064,6 +1103,7 @@ export function wireFloor() {
     if (state.hold) releaseHold();
     panelNote = "";
     state.time = b.dataset.h || "";
+    openPop(null);
     state.availableTableIds = new Set(slotAt(state.time)?.tableIds || []);
     repaint();
     if (selected && panelMode === "table") tablePanel(selected);
@@ -1112,6 +1152,13 @@ export function wireFloor() {
     const b = /** @type {HTMLElement} */ (e.target).closest("[data-et]");
     if (!(b instanceof HTMLElement)) return;
     const k = b.dataset.et;
+    if (k === "more") {
+      moreOpen = !moreOpen;
+      renderEditTools();
+      return;
+    }
+    moreOpen = false;
+    renderEditTools();
     if (k === "view") {
       topView = !topView;
       scene?.home(topView);

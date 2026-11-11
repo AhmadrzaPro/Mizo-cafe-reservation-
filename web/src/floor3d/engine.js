@@ -395,7 +395,9 @@ export function createFloor(container, hooks) {
     const dot = document.createElement("i"),
       name = document.createElement("span");
     name.textContent = t.name || "";
-    el.append(dot, name, `، ${fa(seats)} نفره`);
+    const count = document.createElement("small");
+    count.textContent = `${fa(seats)} نفر`;
+    el.append(dot, name, count);
     el.setAttribute(
       "aria-label",
       `${/^میز/.test(t.name || "") ? t.name : `میز ${t.name}`}، ${fa(seats)} نفره`,

@@ -63,6 +63,8 @@ export interface ElementIds {
   "floorBranch": HTMLSelectElement;
   "floorCafeName": HTMLElement;
   "floorCafePlace": HTMLElement;
+  "floorDayBtn": HTMLButtonElement;
+  "floorDayLabel": HTMLElement;
   "floorDays": HTMLElement;
   "floorEditTools": HTMLElement;
   "floorFallback": HTMLElement;
@@ -81,6 +83,8 @@ export interface ElementIds {
   "floorRotate": HTMLButtonElement;
   "floorScene": HTMLElement;
   "floorStats": HTMLElement;
+  "floorTimeBtn": HTMLButtonElement;
+  "floorTimeLabel": HTMLElement;
   "floorToast": HTMLElement;
   "floorTrack": HTMLButtonElement;
   "floorZones": HTMLElement;

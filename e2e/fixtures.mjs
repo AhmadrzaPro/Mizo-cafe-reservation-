@@ -91,7 +91,7 @@ export async function signInOwner(page, cafe) {
 export async function openFloor(page, cafe) {
   await page.goto(cafe.url);
   await expect(page.locator("#floorApp")).toBeVisible();
-  await expect(page.locator("#floorHours .chip").first()).toBeVisible();
+  await expect(page.locator("#floorTimeLabel")).toHaveText(/[۰-۹]/);
 }
 
 /**

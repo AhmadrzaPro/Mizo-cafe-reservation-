@@ -149,24 +149,11 @@ body[data-mode="cafe"] > main {
   color: var(--f-brand);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
-.floor-stats {
-  margin-inline-start: auto;
-  display: flex;
-  gap: 14px;
-  font-size: 11px;
-  color: var(--f-mute);
-}
-.floor-stats b {
-  display: block;
-  font-size: 16px;
-  color: var(--f-ink);
-}
 .floor-links {
   display: flex;
   gap: 6px;
 }
-.floor-app[data-mode="edit"] .floor-links,
-.floor-bar > .floor-stats:empty + .floor-links {
+.floor-links {
   margin-inline-start: auto;
 }
 .floor-link {
@@ -277,26 +264,6 @@ body[data-mode="cafe"] > main {
   min-width: 44px;
   text-align: center;
 }
-.floor-legend {
-  display: flex;
-  gap: 10px;
-  font-size: 11px;
-  color: var(--f-mute);
-  background: var(--f-card);
-  padding: 6px 10px;
-  border-radius: 9px;
-  white-space: nowrap;
-}
-.floor-legend span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.floor-legend i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
 .floor-legend .lg-free {
   background: var(--f-free);
 }
@@ -305,6 +272,148 @@ body[data-mode="cafe"] > main {
 }
 .floor-legend .lg-off {
   background: #cfc5bb;
+}
+
+/* One compact row for the booking: day, time (with the free tables), party, zones and the list. */
+.floor-when {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  pointer-events: none;
+}
+.floor-when::-webkit-scrollbar {
+  display: none;
+}
+.floor-when > *,
+.floor-when > .floor-zones > * {
+  pointer-events: auto;
+}
+.when-pill {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid var(--f-line);
+  background: var(--f-card);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 7px 12px;
+  box-shadow: var(--f-shadow);
+  color: var(--f-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.when-pill::after {
+  content: "▾";
+  font-size: 10px;
+  color: var(--f-mute);
+}
+.when-pill small {
+  font-size: 11px;
+  color: var(--f-mute);
+}
+.when-pill b {
+  font-size: 13px;
+}
+.when-pill em {
+  font-style: normal;
+  font-size: 11px;
+  color: #1d8a59;
+}
+.when-pill em:empty {
+  display: none;
+}
+.when-pill.on {
+  border-color: var(--f-brand);
+}
+.floor-pop {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(560px, 100%);
+  max-height: 46vh;
+  overflow: auto;
+  padding: 10px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--f-shadow);
+}
+.floor-pop[hidden] {
+  display: none;
+}
+.floor-pop .chip.full {
+  opacity: 0.55;
+}
+.pop-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--f-mute);
+}
+
+/* The colour key, small, at the bottom. */
+.floor-legend {
+  bottom: 14px;
+  right: 50%;
+  transform: translateX(50%);
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--f-mute);
+  background: var(--f-card);
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: var(--f-shadow);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.floor-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.floor-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* The editor's less-used tools, under "بیشتر". */
+.floor-app .more {
+  position: relative;
+  flex: 0 0 auto;
+}
+.more-menu {
+  position: fixed;
+  z-index: 9;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 6px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--f-shadow);
+}
+.more-menu[hidden] {
+  display: none;
+}
+.more-menu button {
+  border: 0;
+  background: none;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  text-align: right;
+  color: var(--f-ink);
+  cursor: pointer;
+}
+.more-menu button:hover {
+  background: #f5f1ec;
 }
 
 /* Labels over the tables: real buttons in booking mode. */
@@ -334,6 +443,14 @@ body[data-mode="cafe"] > main {
 }
 .tlabel.off {
   opacity: 0.4;
+}
+.tlabel small {
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--f-mute);
+}
+.tlabel.warn small {
+  color: #fff;
 }
 .tlabel i {
   width: 7px;
@@ -864,18 +981,21 @@ body[data-mode="cafe"] > main {
   bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+  padding: 3px;
+  background: var(--f-card);
+  border-radius: 12px;
+  box-shadow: var(--f-shadow);
 }
 .floor-app[data-mode="edit"] .floor-ctrl {
   bottom: 112px;
 }
 .floor-ctrl button {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border: 0;
-  border-radius: 11px;
-  background: var(--f-card);
-  box-shadow: var(--f-shadow);
+  border-radius: 9px;
+  background: none;
   cursor: pointer;
   font-size: 17px;
   color: var(--f-ink);
@@ -885,7 +1005,7 @@ body[data-mode="cafe"] > main {
 }
 .floor-hint {
   pointer-events: none;
-  bottom: 14px;
+  bottom: 52px;
   right: 50%;
   transform: translateX(50%);
   background: rgba(42, 33, 27, 0.88);
@@ -939,7 +1059,6 @@ body[data-mode="cafe"] > main {
     gap: 7px;
   }
   .floor-cafe,
-  .floor-stats,
   .floor-logo span {
     display: none;
   }
@@ -978,7 +1097,8 @@ body[data-mode="cafe"] > main {
   .floor-panel .input {
     font-size: 16px;
   }
-  .floor-app.sheet .legend-row {
+  .floor-app.sheet .floor-legend,
+  .floor-app.sheet .floor-when {
     display: none;
   }
   .floor-list {
@@ -990,13 +1110,11 @@ body[data-mode="cafe"] > main {
     max-height: 40%;
   }
   .floor-ctrl {
-    bottom: auto;
-    top: 200px;
+    bottom: 8px;
     left: 8px;
   }
   .floor-app[data-mode="edit"] .floor-ctrl {
-    top: 110px;
-    bottom: auto;
+    bottom: 104px;
   }
   .floor-app.sheet .floor-ctrl {
     display: none;

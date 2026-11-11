@@ -22,20 +22,21 @@
         <div class="floor-cafe"><span id="floorCafeName"></span><b id="floorCafePlace"></b></div>
         <select id="floorBranch" class="floor-branch" aria-label="انتخاب شعبه" hidden></select>
         <div class="floor-seg" id="floorMode" hidden><button type="button" data-m="book" class="on">رزرو</button><button type="button" data-m="edit">چینش کافه</button></div>
-        <div class="floor-stats book-only" id="floorStats"></div>
         <div class="floor-links"><button type="button" class="floor-link" id="floorTrack">پیگیری رزرو</button><button type="button" class="floor-link" data-open-demo>پنل مدیر کافه</button></div>
       </div>
       <p class="floor-notice book-only" id="floorNotice" hidden></p>
-      <div class="floor-row book-only" id="floorDays"></div>
-      <div class="floor-row book-only" id="floorHours"></div>
-      <div class="floor-row book-only legend-row">
+      <div class="floor-when book-only">
+        <button type="button" class="when-pill" id="floorDayBtn" aria-expanded="false" aria-controls="floorDays"><small>روز</small><b id="floorDayLabel">—</b></button>
+        <button type="button" class="when-pill" id="floorTimeBtn" aria-expanded="false" aria-controls="floorHours"><small>ساعت</small><b id="floorTimeLabel">—</b><em id="floorStats"></em></button>
         <div class="floor-party"><button type="button" id="floorPlus" aria-label="افزایش تعداد">+</button><b id="floorParty"></b><button type="button" id="floorMinus" aria-label="کاهش تعداد">−</button></div>
         <span id="floorZones" class="floor-zones"></span>
         <button type="button" class="chip" id="floorListToggle">فهرست میزها</button>
-        <div class="floor-legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-busy"></i>رزرو شده</span><span><i class="lg-off"></i>نامناسب</span></div>
       </div>
+      <div class="floor-pop book-only" id="floorDays" hidden></div>
+      <div class="floor-pop book-only" id="floorHours" hidden></div>
       <div class="floor-row edit-only" id="floorEditTools"></div>
     </div>
+    <div class="floor-ui floor-legend book-only"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-busy"></i>رزرو شده</span><span><i class="lg-off"></i>نامناسب</span></div>
     <aside id="floorPanel" class="floor-ui floor-panel" aria-live="polite"></aside>
     <div id="floorList" class="floor-ui floor-list" hidden></div>
     <div id="floorPalette" class="floor-ui floor-palette edit-only"></div>
