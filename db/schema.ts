@@ -262,6 +262,8 @@ export const cafeTables = sqliteTable("cafe_tables", {
   capacity: integer("capacity").notNull().default(2),
   positionX: real("position_x").notNull().default(0),
   positionY: real("position_y").notNull().default(0),
+  rotation: real("rotation").notNull().default(0),
+  tags: text("tags").notNull().default("[]"),
   reservable: integer("reservable", { mode: "boolean" }).notNull().default(true),
   operationalStatus: text("operational_status").notNull().default("available"),
   updatedAt: text("updated_at").notNull(),

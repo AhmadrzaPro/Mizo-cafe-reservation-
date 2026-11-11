@@ -1,7 +1,7 @@
 import { cafeBaseUrl } from "./api.js";
 import { adminDialog, smsDialog } from "./dialogs.js";
 import { byId, html, setHtml, required } from "./dom.js";
-import { switchBranch } from "./editor-nav.js";
+import { switchBranch } from "./branch-switch.js";
 import { faDigits, formatPersianDate, formatTehranTime } from "./format.js";
 import { store } from "./state.js";
 

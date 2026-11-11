@@ -41,11 +41,11 @@ test("the owner names the café and a branch, and the branch's link opens that b
   const context = await browser.newContext({ baseURL }),
     customer = await context.newPage();
   await customer.goto(`/${cafeLink}/${branchLink}`);
-  await expect(customer.locator(".cafe-meta")).toContainText("شعبه ونک");
-  await expect(customer.locator("#customerBranchRow")).toBeVisible();
+  await expect(customer.locator("#floorCafePlace")).toContainText("شعبه ونک");
+  await expect(customer.locator("#floorBranch")).toBeVisible();
   await expect(customer).toHaveURL(new RegExp(`/${cafeLink}/${branchLink}$`));
-  await customer.locator("#customerBranch").selectOption({ label: "مرکزی" });
-  await expect(customer.locator(".cafe-meta")).toContainText("مرکزی");
+  await customer.locator("#floorBranch").selectOption({ label: "مرکزی" });
+  await expect(customer.locator("#floorCafePlace")).toContainText("مرکزی");
   await expect(customer).toHaveURL(new RegExp(`/${cafeLink}/main$`));
   await context.close();
 });
@@ -56,10 +56,10 @@ test("an old ?cafe= link still opens the café and shows its readable link", asy
 }) => {
   const cafe = await createCafe(request);
   await page.goto(cafe.url);
-  await expect(page.locator(".cafe-meta")).toContainText("مرکزی");
+  await expect(page.locator("#floorCafePlace")).toContainText("مرکزی");
   await expect(page).toHaveURL(new RegExp(`/${cafe.slug}/main$`));
   // One branch: no branch picker for the customer.
-  await expect(page.locator("#customerBranchRow")).toBeHidden();
+  await expect(page.locator("#floorBranch")).toBeHidden();
 });
 
 test("an unknown café's link answers 404 and shows the page without any café", async ({
@@ -77,7 +77,7 @@ test("an unknown café's link answers 404 and shows the page without any café",
   });
   const response = await page.goto("/no-such-cafe-here/main");
   expect(response?.status()).toBe(404);
-  await expect(page.locator("#continueBtn")).toBeAttached();
+  await expect(page.locator("#floorApp")).toBeAttached();
   await expect(page.locator("body")).not.toHaveAttribute("data-mode", "cafe");
   expect(problems).toEqual([]);
   await context.close();

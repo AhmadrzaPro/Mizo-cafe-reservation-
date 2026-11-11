@@ -26,8 +26,8 @@ test("a deposit is paid through ZarinPal and the customer returns to a confirmed
     });
   });
   await bookThroughPage(page, cafe);
-  await expect(page.locator("#payDeposit")).toHaveText("پرداخت آنلاین بیعانه");
-  await page.locator("#payDeposit").click();
+  await expect(page.locator("#floorPanel [data-pay]")).toHaveText("پرداخت آنلاین بیعانه");
+  await page.locator("#floorPanel [data-pay]").click();
   await expect(page.locator("#paymentReturn")).toContainText("پرداخت با موفقیت انجام شد");
   await page.locator("#trackingMobile").fill("09121110000");
   await page.locator("#trackingForm button[type=submit]").click();

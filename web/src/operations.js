@@ -1,11 +1,8 @@
 import { cafeBaseUrl } from "./api.js";
-import { fetchAvailability } from "./booking.js";
+import { refreshFloor as fetchAvailability } from "./floor3d/view.js";
 import { adminDialog } from "./dialogs.js";
 import { byId, html, setHtml, required } from "./dom.js";
-import { tableSize } from "./editor.js";
-import { switchBranch } from "./editor-nav.js";
-import { tableFurniture } from "./floor/furniture.js";
-import { applyFloorViewport, areaBounds } from "./floor/zoom.js";
+import { switchBranch } from "./branch-switch.js";
 import { faDigits, isoDate, isoValue, latinDigits, setJalaliInput } from "./format.js";
 import { applyManagerAccess, hasManagerPermission } from "./manager.js";
 import { store } from "./state.js";
@@ -66,7 +63,6 @@ export function renderOperations() {
     ? `رزرو بعدی: ${store.opsData.nextReservation.customerName}، ساعت ${faDigits(store.opsData.nextReservation.time)}`
     : "رزرو فعال دیگری باقی نمانده";
   renderOperationalReservations();
-  renderOpsAreas();
   renderOpsMap();
   renderWaitlist();
   fillOpsTables();
@@ -112,61 +108,22 @@ export function renderOperationalReservations() {
     list.appendChild(row);
   });
 }
-export function renderOpsAreas() {
-  const data = store.opsData;
-  if (!data) return;
-  const tabs = byId("opsAreaTabs"),
-    areas = [
-      ...new Map(
-        data.tables.map((table) => [table.areaId, { id: table.areaId, name: table.areaName }]),
-      ).values(),
-    ];
-  if (!areas.some((area) => area.id === store.opsAreaId)) store.opsAreaId = areas[0]?.id || "";
-  tabs.replaceChildren();
-  tabs.hidden = areas.length < 2;
-  areas.forEach((area) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = area.id === store.opsAreaId ? "active" : "";
-    button.textContent = area.name;
-    button.onclick = () => {
-      store.opsAreaId = area.id;
-      store.opsMapZoom = 1;
-      byId("opsMapViewport").scrollTo(0, 0);
-      renderOpsAreas();
-      renderOpsMap();
-    };
-    tabs.appendChild(button);
-  });
-}
+/** The branch's tables as cards: live status, a tap to lock a free one for a walk-in. */
 export function renderOpsMap() {
   const data = store.opsData;
   if (!data) return;
   document.querySelector("#opsMapViewport .table-popover")?.remove();
   const floor = byId("opsFloor");
   floor.replaceChildren();
-  const tables = data.tables.filter(
-      (table) => !store.opsAreaId || table.areaId === store.opsAreaId,
-    ),
-    area = { width: tables[0]?.areaWidth, height: tables[0]?.areaHeight };
-  applyFloorViewport(floor, byId("opsMapStage"), areaBounds(area), store.opsMapZoom);
-  tables.forEach((t) => {
+  data.tables.forEach((t) => {
     const b = document.createElement("button"),
-      size = tableSize(t);
-    b.className = `ops-table ${t.shape} ${t.liveStatus}`;
-    b.style.left = `${t.x}px`;
-    b.style.top = `${t.y}px`;
-    b.style.width = `${size.w}px`;
-    b.style.height = `${size.h}px`;
-    const reservationLabel = t.reservation
-      ? `${t.reservation.customerName ? t.reservation.customerName + " · " : ""}${faDigits(t.reservation.time)}`
-      : `${faDigits(t.capacity)} نفره`;
-    setHtml(
-      b,
-      html`${tableFurniture(t)}<span class="table-surface"
-          ><b>${t.name}</b><small>${reservationLabel}</small></span
-        >`,
-    );
+      reservationLabel = t.reservation
+        ? `${t.reservation.customerName ? t.reservation.customerName + " · " : ""}${faDigits(t.reservation.time)}`
+        : `${faDigits(t.capacity)} نفره`;
+    b.type = "button";
+    b.className = `ops-table ${t.liveStatus}`;
+    b.dataset.table = t.id;
+    setHtml(b, html`<b>${t.name}</b><small>${reservationLabel}</small>`);
     b.onclick = (e) => {
       if (t.canQuickLock && hasManagerPermission("reservations.write")) quickLockTable(t, b);
       else openTablePopover(e, t);

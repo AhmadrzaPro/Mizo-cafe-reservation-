@@ -6,11 +6,14 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 
 ### Upgrade
 
-- Apply migrations `0015` to `0021` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
+- Apply migrations `0015` to `0022` together with the new Worker, and do not run the old Worker against the migrated database: it would misread session and sign-in code expiry. See [docs/deployment.md](docs/deployment.md#upgrading-an-existing-database).
   - `0015_payment_attempts.sql` and `0016_subscription_payments.sql` add tables.
   - `0017_required_subscription.sql` gives cafés without a subscription, or with it off, a 14-day trial.
   - `0018_iso_instants.sql` stores sign-in codes, sessions and reminder times as ISO UTC text.
   - `0021_booking_links.sql` adds optional café and branch link names.
+  - `0022_floor_3d.sql` adds each table's turn and features. Existing floors are read as one room in 3D, with the same table ids; they are stored that way once the owner saves the floor.
+- `OPENAI_API_KEY` and `MAP_VISION_MODEL` are no longer read; remove them if set.
+- API clients: `GET …/map` answers `{ room, items }` and `PUT …/map` takes `{ layout: { room, items } }`; `…/map/analyze` is gone. See `docs/openapi.yaml`.
   - `0019_virtual_cafe_phase_2.sql` adds table holds (a table and a trigger) and each room's door/window/counter layout. It also added a Virtual Cafe switch to `branch_settings`, which `0020_remove_virtual_cafe.sql` drops again.
 - Sites deployments must set `SAAS_ADMIN_AUTH=oai-header` to keep the SaaS console.
 - Set `SUBSCRIPTION_CARD_NUMBER` for subscription payments, and `PAYMENT_GATEWAY` and `ZARINPAL_MERCHANT_ID` for online deposits. Make one ZarinPal sandbox payment first.
@@ -28,6 +31,18 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - `docs/` with configuration, deployment, payments, architecture and testing guides, and `docs/openapi.yaml`, an OpenAPI 3.1 reference of every API route. A test fails when the routes and the reference disagree.
 - `wrangler.toml` and `.env.example`.
 
+### Changed: the booking page is the café's 3D floor
+
+- A café's page is an isometric 3D view of its floor. Customers choose the day, time and party on top, see free tables in green, booked ones in amber and unsuitable ones dimmed, filter by hall, VIP or terrace, open a table's schedule, features and alternatives, and book it in the side panel (a bottom sheet on phones). The table is held while they fill in the form, and a deposit is paid from the same panel.
+- A list of tables does the same job for anyone who prefers it, and wherever the 3D view cannot run.
+- Staff with map rights switch the view to «چینش کافه»: room and terrace size, six table types, a bar, plants and a VIP area, drag to move, turn, label, features, online booking on or off per table, JSON export and import, and one «ذخیره و انتشار».
+- three.js is in its own bundle, `/floor3d.js`, loaded only on a café's page; the scene draws on demand and drops shadows without a GPU.
+- The operations dashboard's quick table control is a grid of table cards.
+
+### Removed
+
+- The booking card, the 2D table map and booking dialogs, and the 2D map editor with its photo tracing, OpenAI floor-plan analysis, separate indoor and outdoor areas, door/window/counter walls and drafts.
+
 ### Added: booking links per branch
 
 - Each branch has its own booking link, `/<café>/<branch>`. The owner names the café and each branch in the branches panel, for example `/lamiz/vanak`, and copies a branch's link from its card. Without names the links use the internal slugs.
@@ -35,10 +50,9 @@ Notable changes, newest first. Each entry lists what a deploy needs under **Upgr
 - Old `/?cafe=<slug>` links keep working and show the readable link. After a ZarinPal payment, the customer returns to the reservation's own branch link.
 - `PATCH /api/cafe/link` sets the café's link name; branches take `link` when created or edited.
 
-### Added: table holds and room layouts
+### Added: table holds
 
 - The chosen table is held for 5 minutes while the customer fills in the booking form. Nobody else can hold or book it meanwhile (a conditional insert and a database trigger), the form shows a countdown, and going back releases it. Staff walk-ins respect holds too.
-- Owners choose which wall holds each room's door, full-height window and counter in the map editor. The editor and the customer's map both draw them there.
 - `app.js` and the SaaS console's script are minified.
 - A booking refused with `409` now refreshes availability and the map, and clears the taken table.
 - Fixed: saving settings returned only stored fields, so the page lost `onlineBookingPaused` and the payment mode until it reloaded.

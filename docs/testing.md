@@ -28,9 +28,8 @@ New API tests should use the shared fixture in `tests/helpers/worker.mjs`: `setu
 | `configuration-docs.test.mjs` | Every environment variable the Worker reads is in `docs/configuration.md` and `.env.example` |
 | `table-holds.test.mjs` | Table holds: hidden from availability, single under concurrent requests, used by the holder's booking and refused to others by the trigger, release, expiry and cleanup, per-client cap and rate limit, and a settings save answering with the computed fields |
 | `booking-links.test.mjs` | Link names: their rules and reserved words, setting and clearing them, refusal when taken by another café or branch, resolving either name, the page at `/<café>/<branch>` with 404 for an unknown café, and old `?cafe=` links |
-| `venue-layout.test.mjs` | Each room's door, window and counter: defaults, unknown values, conflicts between walls, and the map API saving and reading back a clean layout |
+| `floor-3d.test.mjs` | The 3D floor: zones from position, overlaps, which tables suit a party, the layout the server stores and cleans, and three.js only in `/floor3d.js` |
 | `html.test.mjs` | Escaping in the `html` tag, and `required()` |
-| `floor-studio.test.mjs` | Floor-studio furniture, undo and redo, zoom and gestures, without a browser |
 | `static-assets.test.mjs` | Hashed asset URLs, caching headers and the CSP |
 
 ## Browser tests
@@ -51,7 +50,7 @@ npm run test:e2e
 - **Payments:** a ZarinPal deposit through to the return page.
 - **Subscriptions:** a card-to-card payment approved in the SaaS console, booking paused after the grace period, and the console showing café names as text and saving a café's subscription.
 - **Booking links:** the owner names the café and a branch in the panel, the branch's link opens that branch with a branch picker, an old `?cafe=` link shows the readable one, and an unknown café answers 404.
-- **Holds and layout:** the 2D form holding the table and releasing it on going back; the door, window and counter chosen in the editor reaching the customer's map.
+- **3D floor:** booking from the table list and by tapping a table in 3D, the table held while the form is filled in and given back on closing, a held table refused to others and a late booking refused, the owner adding, labelling and publishing a table customers then see, and the editor asking before leaving unsaved changes.
 
 Any script error, console error or CSP violation fails a test.
 

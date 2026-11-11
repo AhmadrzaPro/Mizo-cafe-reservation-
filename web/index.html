@@ -10,8 +10,39 @@
   <link rel="preload" href="/fonts/vazirmatn.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="editor.css">
+  <!-- The 3D floor engine: loaded only on a café's page (web/src/floor3d/loader.js). -->
+  <meta name="floor3d-src" content="floor3d.js">
 </head>
 <body>
+  <section id="floorApp" class="floor-app" hidden aria-label="رزرو میز روی نقشه‌ی کافه">
+    <div id="floorScene" class="floor-scene"><p id="floorFallback" class="floor-fallback" hidden>نمای سه‌بعدی روی این دستگاه باز نشد؛ میز را از فهرست انتخاب کنید.</p></div>
+    <div class="floor-ui floor-top">
+      <div class="floor-bar">
+        <div class="floor-logo"><i>م</i><span>میزو</span></div>
+        <div class="floor-cafe"><span id="floorCafeName"></span><b id="floorCafePlace"></b></div>
+        <select id="floorBranch" class="floor-branch" aria-label="انتخاب شعبه" hidden></select>
+        <div class="floor-seg" id="floorMode" hidden><button type="button" data-m="book" class="on">رزرو</button><button type="button" data-m="edit">چینش کافه</button></div>
+        <div class="floor-stats book-only" id="floorStats"></div>
+        <div class="floor-links"><button type="button" class="floor-link" id="floorTrack">پیگیری رزرو</button><button type="button" class="floor-link" data-open-demo>پنل مدیر کافه</button></div>
+      </div>
+      <p class="floor-notice book-only" id="floorNotice" hidden></p>
+      <div class="floor-row book-only" id="floorDays"></div>
+      <div class="floor-row book-only" id="floorHours"></div>
+      <div class="floor-row book-only legend-row">
+        <div class="floor-party"><button type="button" id="floorPlus" aria-label="افزایش تعداد">+</button><b id="floorParty"></b><button type="button" id="floorMinus" aria-label="کاهش تعداد">−</button></div>
+        <span id="floorZones" class="floor-zones"></span>
+        <button type="button" class="chip" id="floorListToggle">فهرست میزها</button>
+        <div class="floor-legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-busy"></i>رزرو شده</span><span><i class="lg-off"></i>نامناسب</span></div>
+      </div>
+      <div class="floor-row edit-only" id="floorEditTools"></div>
+    </div>
+    <aside id="floorPanel" class="floor-ui floor-panel" aria-live="polite"></aside>
+    <div id="floorList" class="floor-ui floor-list" hidden></div>
+    <div id="floorPalette" class="floor-ui floor-palette edit-only"></div>
+    <div class="floor-ui floor-ctrl"><button type="button" id="floorZoomIn" title="بزرگ‌نمایی" aria-label="بزرگ‌نمایی">+</button><button type="button" id="floorZoomOut" title="کوچک‌نمایی" aria-label="کوچک‌نمایی">−</button><button type="button" id="floorRotate" title="چرخش" aria-label="چرخش خودکار">⟳</button><button type="button" id="floorHome" title="نمای کلی" aria-label="نمای کلی">⌂</button></div>
+    <div id="floorHint" class="floor-ui floor-hint">روز، ساعت و تعداد نفرات را انتخاب کنید، بعد روی یک میز سبز بزنید</div>
+    <div id="floorToast" class="floor-ui floor-toast" role="status"></div>
+  </section>
   <header class="topbar">
     <a class="brand" href="#" aria-label="صفحه اصلی میزو">
       <span class="brand-mark">م</span><span>میزو</span>
@@ -27,34 +58,15 @@
       <img class="hero-photo" src="assets/cafe-hero.webp" alt="فضای گرم و مدرن یک کافه در تهران">
       <div class="hero-shade"></div>
       <div class="hero-copy">
-        <span class="eyebrow"><i></i> <span class="cafe-only">رزرو آنلاین میز</span><span class="platform-only">میزو · رزرو آنلاین میز کافه‌ها</span></span>
+        <span class="eyebrow"><i></i> میزو · رزرو آنلاین میز کافه‌ها</span>
         <h1>میزت منتظرته.</h1>
         <p>برای یک قرار دو نفره یا دورهمی دوستانه، بهترین میز کافه را در کمتر از یک دقیقه انتخاب کن.</p>
-        <div class="cafe-meta cafe-only"><span></span><span></span></div>
       </div>
 
-      <section class="booking-card" aria-label="فرم رزرو میز">
-        <div class="booking-head">
-          <div><span class="step-label">رزرو آنلاین</span><h2>انتخاب زمان</h2></div>
-          <span class="booking-live">انتخاب میز روی نقشه</span>
-        </div>
-        <div class="progress"><span class="active"></span><span></span><span></span></div>
-        <div class="customer-notice" id="customerNoticeBanner" hidden></div>
-        <label class="customer-branch" id="customerBranchRow" hidden><span class="field-label">شعبه</span><select id="customerBranch" aria-label="انتخاب شعبه"></select></label>
-
-        <label class="field-label">تعداد مهمان‌ها</label>
-        <div class="guest-picker" role="group" aria-label="تعداد مهمان‌ها">
-          <button id="plus" aria-label="افزایش تعداد">+</button><strong id="guestCount">۲</strong><span>نفر</span><button id="minus" aria-label="کاهش تعداد">−</button>
-        </div>
-
-        <label class="field-label">روز مورد نظر</label>
-        <div class="dates" id="dates"></div>
-
-        <div class="time-title"><label class="field-label">ساعت ورود</label><span id="durationLabel">مدت رزرو: ۹۰ دقیقه</span></div>
-        <div class="times" id="times"></div>
-
-        <button class="primary-btn" id="continueBtn">ادامه و انتخاب میز <span>←</span></button>
-        <p class="microcopy">پس از ثبت، کد پیگیری رزرو دریافت می‌کنید.</p>
+      <section class="booking-card platform-card" aria-label="رزرو در میزو">
+        <div class="booking-head"><div><span class="step-label">رزرو آنلاین</span><h2>میز را روی نقشه‌ی سه‌بعدی کافه انتخاب کن</h2></div></div>
+        <p class="microcopy">هر کافه لینک رزرو خودش را دارد؛ آن را باز کن، روز و ساعت را بزن و میز سبز را انتخاب کن.</p>
+        <a class="primary-btn" href="/?new=1">راه‌اندازی کافه جدید <span>←</span></a>
       </section>
     </section>
 
@@ -73,21 +85,6 @@
       </div>
     </section>
   </main>
-
-  <dialog id="tableDialog">
-    <button class="dialog-close back-btn" aria-label="بازگشت">→ بازگشت</button>
-    <div class="dialog-head"><span class="step-label">مرحله دوم</span><h2>میز دلخواهت را انتخاب کن</h2><p id="selectionSummary"></p></div>
-    <div class="customer-area-tabs" id="customerAreaTabs" aria-label="انتخاب فضای کافه"></div>
-    <p class="floor-swipe-hint">برای دیدن تمام میزها، نقشه را به چپ و راست بکشید.</p>
-    <div class="floor-navigation" data-floor-controls="customer"><button type="button" data-zoom="out" aria-label="کوچک‌نمایی نقشه">−</button><button type="button" data-zoom="fit">نمایش کامل</button><button type="button" data-zoom="in" aria-label="بزرگ‌نمایی نقشه">+</button><small>برای دیدن بخش‌های دیگر نقشه را بکشید</small></div><div class="floor-viewport" id="customerMapViewport"><div id="customerMapStage"><div class="floor-plan" id="customerFloorPlan" aria-label="نقشه میزها"></div></div></div>
-    <div class="legend"><span><i class="lg-free"></i>آزاد</span><span><i class="lg-selected"></i>انتخاب شما</span><span><i class="lg-busy"></i>رزرو شده</span></div>
-    <p class="form-error" id="tableHoldError" role="alert" hidden></p>
-    <button class="primary-btn" id="confirmBtn" disabled>یک میز را انتخاب کنید</button>
-  </dialog>
-
-  <dialog id="customerDialog" class="form-dialog"><button class="dialog-close back-btn" data-back-to="tableDialog" aria-label="بازگشت به انتخاب میز">→ بازگشت</button><span class="step-label">مرحله سوم</span><h2>اطلاعات رزرو</h2><p id="customerSummary"></p><p class="hold-countdown" id="holdCountdown" role="status" hidden></p><form id="reservationForm"><label>نام و نام خانوادگی<input id="customerName" autocomplete="name" maxlength="70" required placeholder="مثلاً نیلوفر رضایی"></label><label>شماره موبایل<input id="customerMobile" inputmode="tel" autocomplete="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><label>یادداشت برای کافه <small>اختیاری</small><textarea id="customerNotes" maxlength="240" placeholder="مثلاً میز نزدیک پنجره باشد"></textarea></label><p class="form-error" id="reservationError" hidden></p><button class="primary-btn" id="submitReservation" type="submit">ثبت نهایی رزرو</button></form></dialog>
-
-  <dialog id="successDialog" class="success-dialog"><div class="success-icon">✓</div><h2>میزت رزرو شد!</h2><p id="successText"></p><div class="booking-code"><span>کد پیگیری رزرو</span><strong id="successCode">—</strong></div><div id="depositPayment" class="deposit-payment" hidden><span>بیعانه قابل پرداخت</span><strong id="successDepositAmount">—</strong><small id="depositDeadline">—</small><p id="depositPolicy"></p><button class="primary-btn" id="payDeposit" type="button">پرداخت آزمایشی و تأیید رزرو</button></div><button class="primary-btn" id="doneBtn">بازگشت به صفحه اصلی</button></dialog>
 
   <dialog id="trackingDialog" class="form-dialog"><button class="dialog-close back-btn" aria-label="بازگشت">→ بازگشت</button><span class="step-label">پیگیری رزرو</span><h2>وضعیت رزروت را ببین</h2><p class="payment-return" id="paymentReturn" role="status" hidden></p><form id="trackingForm"><label>کد پیگیری<input id="trackingCode" maxlength="20" required placeholder="RMA-XXXXXX" dir="ltr"></label><label>شماره موبایل<input id="trackingMobile" inputmode="tel" maxlength="14" required placeholder="۰۹۱۲۱۲۳۴۵۶۷"></label><p class="form-error" id="trackingError" hidden></p><button class="primary-btn" type="submit">نمایش رزرو</button></form><div class="tracking-result" id="trackingResult" hidden></div></dialog>
 
@@ -162,7 +159,7 @@
       <section class="ops-kpis" id="opsKpis"><article><span>رزرو امروز</span><strong>—</strong></article><article><span>مهمان‌ها</span><strong>—</strong></article><article><span>میزهای مشغول</span><strong>—</strong></article><article><span>ظرفیت باقی‌مانده</span><strong>—</strong></article><article class="alert"><span>نیازمند توجه</span><strong>—</strong></article></section>
       <section class="ops-grid">
         <article class="ops-card ops-reservation-card" data-permission="reservations.read"><header><div><span class="ops-live-dot"></span><div><h3>جریان رزروها</h3><small id="opsNextReservation">رزرو بعدی در حال محاسبه</small></div></div><button id="opsAddQuick" data-permission="reservations.write">+ ثبت تلفنی / حضوری</button></header><div class="ops-filters"><input id="opsSearch" type="search" placeholder="جست‌وجوی نام، موبایل یا کد رزرو"><select id="opsStatusFilter"><option value="all">همه وضعیت‌ها</option><option value="pending">در انتظار</option><option value="confirmed">تأیید شده</option><option value="arrived">حاضر</option><option value="completed">تکمیل شده</option><option value="cancelled">لغو شده</option><option value="no_show">عدم مراجعه</option></select></div><div class="ops-reservation-list" id="opsReservationList"></div></article>
-        <article class="ops-card ops-map-card"><header class="ops-map-head"><div><h3>کنترل سریع سالن</h3><small id="opsFloorHint">روی میز آزاد بزنید تا همان ساعت قفل شود</small></div><div class="ops-floor-time"><label>ساعت<input id="opsFloorTime" type="time" step="1800" aria-label="ساعت کنترل سالن"></label><button id="opsFloorNow" type="button">همین حالا</button></div></header><div class="ops-area-tabs" id="opsAreaTabs" aria-label="انتخاب بخش سالن"></div><div class="ops-quick-note"><span>قفل سریع فعال</span><small>میز سبز با یک لمس برای مشتری حضوری ثبت می‌شود.</small></div><div class="floor-navigation" data-floor-controls="ops"><button type="button" data-zoom="out" aria-label="کوچک‌نمایی سالن">−</button><button type="button" data-zoom="fit">نمایش کامل</button><button type="button" data-zoom="in" aria-label="بزرگ‌نمایی سالن">+</button><small>نقشه را بکشید یا با دو انگشت زوم کنید</small></div><div class="floor-viewport" id="opsMapViewport"><div id="opsMapStage"><div class="ops-floor" id="opsFloor"></div></div></div><div class="ops-map-legend"><span class="free">آزاد</span><span class="soon">رزرو آینده</span><span class="occupied">قفل‌شده</span><span class="dirty">نظافت</span></div></article>
+        <article class="ops-card ops-map-card"><header class="ops-map-head"><div><h3>کنترل سریع سالن</h3><small id="opsFloorHint">روی میز آزاد بزنید تا همان ساعت قفل شود</small></div><div class="ops-floor-time"><label>ساعت<input id="opsFloorTime" type="time" step="1800" aria-label="ساعت کنترل سالن"></label><button id="opsFloorNow" type="button">همین حالا</button></div></header><div class="ops-quick-note"><span>قفل سریع فعال</span><small>میز سبز با یک لمس برای مشتری حضوری ثبت می‌شود.</small></div><div class="ops-table-grid" id="opsMapViewport"><div class="ops-floor" id="opsFloor"></div></div><div class="ops-map-legend"><span class="free">آزاد</span><span class="soon">رزرو آینده</span><span class="occupied">قفل‌شده</span><span class="dirty">نظافت</span></div></article>
         <aside class="ops-card ops-wait-card" data-permission="waitlist.read"><header><div><h3>لیست انتظار</h3><small id="waitCount">بدون مشتری منتظر</small></div><button id="addWaitlist" data-permission="waitlist.write">+</button></header><div id="opsWaitlist" class="ops-waitlist"></div></aside>
       </section>
     </main>
@@ -174,46 +171,6 @@
 
   <dialog id="paymentsDialog" class="payments-dialog"><button class="dialog-close back-btn" data-back-to="adminDialog" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><header class="insight-head"><div><span class="step-label">رزرو مطمئن</span><h2>پرداخت و بیعانه</h2><p>قوانین بیعانه هر شعبه و تراکنش‌ها را یک‌جا کنترل کنید.</p></div><select id="paymentsBranch" aria-label="انتخاب شعبه"></select></header><div class="payment-mode" id="paymentMode"><span></span><div><b>درگاه آزمایشی</b><small>جریان کامل پرداخت شبیه‌سازی می‌شود و پول واقعی جابه‌جا نمی‌شود.</small></div></div><section class="deposit-settings" data-permission="payments.write"><label class="sms-toggle"><span><b>دریافت بیعانه</b><small>رزرو تا پرداخت در انتظار می‌ماند</small></span><input id="depositEnabled" type="checkbox"></label><div class="deposit-grid"><label>نوع بیعانه<select id="depositMode"><option value="fixed">مبلغ ثابت</option><option value="per_person">به‌ازای هر نفر</option></select></label><label>مبلغ (تومان)<input id="depositAmount" type="number" min="10000" step="10000"></label><label>مهلت پرداخت<select id="paymentDeadline"><option value="10">۱۰ دقیقه</option><option value="15">۱۵ دقیقه</option><option value="30">۳۰ دقیقه</option></select></label><label class="sms-toggle compact"><span><b>فقط ساعات شلوغ</b></span><input id="depositPeakOnly" type="checkbox"></label><label>شروع ساعت شلوغ<input id="depositPeakStart" type="time"></label><label>پایان ساعت شلوغ<input id="depositPeakEnd" type="time"></label><label class="wide">قانون بازپرداخت<textarea id="refundPolicy" maxlength="240"></textarea></label></div><button id="savePaymentSettings" class="publish-btn" type="button">ذخیره قوانین بیعانه</button></section><section class="payment-kpis"><article><span>دریافت‌شده</span><strong id="paymentsPaid">—</strong></article><article><span>در انتظار</span><strong id="paymentsPending">—</strong></article><article><span>بازپرداخت</span><strong id="paymentsRefunded">—</strong></article></section><div class="payment-list-head"><h3>آخرین تراکنش‌ها</h3><button id="refreshPayments" type="button">↻ تازه‌سازی</button></div><div id="paymentsList" class="payments-list"></div><p id="paymentsError" class="form-error"></p></dialog>
 
-  <dialog id="mapEditorDialog" class="map-editor-dialog">
-    <header class="editor-header">
-      <div><button class="editor-exit editor-back-btn" id="editorExit" aria-label="بازگشت به پنل مدیریت">→ بازگشت</button><span class="brand-mark small">م</span><div><b>چیدمان کافه</b><small id="saveStatus">در حال اتصال به دیتابیس…</small></div><select id="branchSelect" class="branch-select" aria-label="انتخاب شعبه"></select></div>
-      <div class="editor-actions"><button class="secondary-btn" id="resetMap">چیدمان پیش‌فرض</button><button class="publish-btn" id="publishMap">انتشار نقشه</button></div>
-    </header>
-    <div class="editor-shell">
-      <aside class="editor-sidebar">
-        <button class="sidebar-mobile-close" id="closeMapTools" type="button">بستن ابزارها ×</button>
-        <div class="sidebar-section compact"><div class="sidebar-label-row"><label>نوع فضای شعبه</label><small>برای مشتری نمایش داده می‌شود</small></div><div class="space-mode" role="group" aria-label="نوع فضای شعبه"><button type="button" data-space-mode="indoor">داخلی</button><button type="button" data-space-mode="outdoor">بیرونی</button><button type="button" data-space-mode="both">هر دو</button></div></div>
-        <div class="sidebar-section"><div class="sidebar-label-row"><label>بخش‌های نقشه</label><button class="area-add-toggle" id="areaAddToggle" type="button" aria-expanded="false">+ بخش جدید</button></div><div class="area-list" id="areaList"></div><div class="area-add-panel" id="areaAddPanel" hidden><select id="areaPreset" aria-label="انتخاب بخش"><option value="سالن اصلی|indoor">سالن اصلی</option><option value="سالن VIP|indoor">سالن VIP</option><option value="نیم‌طبقه|indoor">نیم‌طبقه</option><option value="تراس|outdoor">تراس</option><option value="حیاط|outdoor">حیاط</option><option value="روف‌گاردن|outdoor">روف‌گاردن</option><option value="custom|indoor">نام سفارشی…</option></select><div class="custom-area-fields" id="customAreaFields" hidden><input id="customAreaName" type="text" maxlength="60" placeholder="نام بخش"><select id="customAreaKind" aria-label="نوع بخش"><option value="indoor">داخلی</option><option value="outdoor">بیرونی</option></select></div><button class="add-area" id="addArea" type="button">افزودن به نقشه</button></div></div>
-        <div class="sidebar-section"><label>افزودن به نقشه</label><div class="object-tools"><button data-add-shape="round"><i class="shape-round"></i><span>میز گرد</span></button><button data-add-shape="square"><i class="shape-square"></i><span>میز مربع</span></button><button data-add-shape="rect"><i class="shape-rect"></i><span>میز گروهی</span></button></div></div>
-        <div class="sidebar-section image-import-entry"><button id="openImageImport" type="button">ساخت از تصویر <span>←</span></button><small>پلان یا عکس از بالا را به پیش‌نویس میزها تبدیل کنید.</small></div>
-        <div class="sidebar-tip"><b>راهنما</b><p>میزها را بکشید و در جای دلخواه رها کنید. فضای خالی نقشه را بکشید تا حرکت کنید. با دو انگشت زوم کنید. مشخصات میز از دکمهٔ مربوط باز می‌شود.</p></div>
-      </aside>
-      <main class="editor-main">
-        <div class="editor-toolbar"><div><button id="zoomOut" aria-label="کوچک‌نمایی">−</button><span id="zoomValue">۱۰۰٪</span><button id="zoomIn" aria-label="بزرگ‌نمایی">+</button></div><span class="editor-hint">برای جابه‌جایی، میز را بکشید</span><button class="map-tools-toggle" id="mapToolsToggle" type="button">فضاها و میزها</button><button class="preview-toggle" id="previewMap">پیش‌نمایش مشتری</button></div>
-        <section id="imageImportPanel" class="image-import-panel" hidden aria-label="ساخت نقشه از تصویر">
-          <header><div><span>پیش‌نویس نقشه</span><h3>ساخت میزها از تصویر</h3></div><button id="closeImageImport" type="button" aria-label="بازگشت به ویرایشگر">→ بازگشت</button></header>
-          <p>برای بخش «<b id="importAreaName"></b>» یک پلان یا عکس واضح از بالا انتخاب کنید. میزهای شناسایی‌شده را بررسی و سپس به نقشه اضافه کنید.</p>
-          <label class="image-upload">انتخاب تصویر <input id="mapImageFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="انتخاب پلان یا عکس کافه"><small>JPG، PNG یا WebP · حداکثر ۸ مگابایت</small></label>
-          <div id="imageImportPreview" class="image-import-preview" hidden><img id="mapImagePreview" alt="تصویر انتخاب‌شده از چیدمان کافه"><div id="importMarkers"></div></div>
-          <div id="imageImportStatus" class="image-import-status" role="status">تصویر را انتخاب کنید.</div>
-          <div class="image-import-actions"><button id="analyzeMapImage" type="button" disabled hidden>شناسایی میزها</button><button id="markMapImage" type="button" disabled>مشخص کردن میز با لمس عکس</button><button id="applyMapImage" type="button" disabled>افزودن میزهای انتخاب‌شده</button></div>
-        </section>
-        <div class="studio-caption"><div><small>استودیوی چیدمان</small><h3 id="studioAreaName">سالن اصلی</h3></div><span id="studioCounts"></span></div><div class="studio-tools"><button id="mapUndo" title="برگشت تغییر" disabled>↶</button><button id="mapRedo" title="انجام دوباره" disabled>↷</button><button id="fitMap">نمایش کامل</button><button id="areaSizeToggle" aria-expanded="false">ابعاد فضا</button><button id="snapMap" aria-pressed="true">تراز شبکه</button><button id="materialMap" aria-pressed="true">نمای واقعی</button><button id="editSelectedTable" disabled>مشخصات میز</button></div><section id="areaSizePanel" class="area-dimensions" hidden><label>عرض فضا (متر)<input id="areaWidth" type="number" min="5" max="100" step="0.1" inputmode="decimal"></label><label>طول فضا (متر)<input id="areaHeight" type="number" min="5" max="100" step="0.1" inputmode="decimal"></label><button id="applyAreaSize" type="button">اعمال ابعاد</button><p id="areaSizeError" role="alert"></p><div class="venue-layout" role="group" aria-label="جای در، پنجره و پیشخوان"><label>در ورودی<select id="areaDoor"><option value="bottom">پایین</option><option value="top">بالا</option><option value="right">راست</option><option value="left">چپ</option></select></label><label>پنجره سرتاسری<select id="areaWindow"><option value="none">ندارد</option><option value="bottom">پایین</option><option value="top">بالا</option><option value="right">راست</option><option value="left">چپ</option></select></label><label>پیشخوان<select id="areaCounter"><option value="none">ندارد</option><option value="bottom">پایین</option><option value="top">بالا</option><option value="right">راست</option><option value="left">چپ</option></select></label><small>این‌ها در نقشه مشتری و کافه مجازی هم همین‌جا نمایش داده می‌شوند.</small></div></section><div class="canvas-wrap"><div id="mapStage"><div class="map-canvas" id="mapCanvas"><span class="canvas-window">پنجره سرتاسری</span><div class="canvas-bar">بار و صندوق</div><div class="canvas-door">ورودی</div></div></div></div>
-      </main>
-      <aside class="property-panel" id="propertyPanel"><button id="closeInspector" type="button" class="close-inspector">بستن مشخصات ×</button>
-        <div class="empty-properties"><span>⌁</span><b>یک میز را انتخاب کنید</b><p>مشخصات میز انتخاب‌شده اینجا نمایش داده می‌شود.</p></div>
-        <div class="table-properties" hidden>
-          <div class="property-head"><b>مشخصات میز</b><button id="duplicateTable" title="کپی میز">⧉</button></div>
-          <label>نام میز<input id="tableName" type="text" maxlength="24"></label>
-          <label>تعداد صندلی<div class="capacity-control"><button id="capacityMinus">−</button><strong id="capacityValue">۲</strong><button id="capacityPlus">+</button></div></label>
-          <label>شکل میز<select id="tableShape"><option value="round">گرد</option><option value="square">مربع</option><option value="rect">گروهی</option></select></label>
-          <label class="switch-row"><span><b>قابل رزرو</b><small>مشتری می‌تواند این میز را انتخاب کند</small></span><input id="tableReservable" type="checkbox" checked></label>
-          <button class="delete-table" id="deleteTable">حذف میز</button>
-        </div>
-      </aside>
-    </div>
-    <div class="editor-toast" id="editorToast">نقشه با موفقیت منتشر شد</div>
-  </dialog>
   <dialog id="jalaliPicker" class="jalali-picker"><header><button type="button" id="jalaliNext" aria-label="ماه بعد">‹</button><strong id="jalaliMonthTitle"></strong><button type="button" id="jalaliPrev" aria-label="ماه قبل">›</button></header><div class="jalali-weekdays"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div><div class="jalali-days" id="jalaliDays"></div><footer><button type="button" id="jalaliToday">امروز</button><button type="button" id="jalaliCancel">→ بازگشت</button></footer></dialog>
   <script src="app.js"></script>
 </body>

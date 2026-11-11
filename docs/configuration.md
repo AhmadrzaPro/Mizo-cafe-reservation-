@@ -19,8 +19,6 @@ Every setting is an environment variable. `.env.example` lists them all; copy it
 | `SUBSCRIPTION_CARD_NUMBER` | — | The platform's 16-digit card, shown to café owners paying their subscription. |
 | `SUBSCRIPTION_CARD_HOLDER` | — | The card holder's name shown beside it. |
 | `SAAS_ADMIN_AUTH` | — | `oai-header` opens the SaaS console. See [SaaS console](#saas-console). |
-| `OPENAI_API_KEY` | — | Enables floor-plan photo analysis in the map editor (secret). Manual tracing works without it. |
-| `MAP_VISION_MODEL` | `gpt-4.1-mini` | The model used for that analysis. |
 | `CLIENT_IP_HEADER` | `CF-Connecting-IP` | The request header holding the client IP. See [Client IP](#client-ip). |
 | `RATE_LIMIT_…`, `MAX_…`, `SMS_DAILY_CAP_PER_CAFE` | see below | [Abuse protection](#abuse-protection) limits. |
 

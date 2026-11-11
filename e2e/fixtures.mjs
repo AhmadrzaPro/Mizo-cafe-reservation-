@@ -87,17 +87,24 @@ export async function signInOwner(page, cafe) {
   });
 }
 
-/** Books the latest free time tomorrow on the first free table; returns the tracking code. */
-export async function bookThroughPage(page, cafe, { name = "مهمان آزمون", mobile = GUEST } = {}) {
+/** Opens the café's floor and waits until its tables and free times are drawn. */
+export async function openFloor(page, cafe) {
   await page.goto(cafe.url);
-  await page.locator("#dates button").nth(1).click();
-  await page.locator("#times button:not([disabled])").last().click();
-  await page.locator("#continueBtn").click();
-  await page.locator("#customerFloorPlan .table.available:not([disabled])").first().click();
-  await page.locator("#confirmBtn").click();
-  await page.locator("#customerName").fill(name);
-  await page.locator("#customerMobile").fill(mobile);
-  await page.locator("#customerDialog button[type=submit]").click();
-  await expect(page.locator("#successCode")).toHaveText(/^RMA-/);
-  return (await page.locator("#successCode").textContent()).trim();
+  await expect(page.locator("#floorApp")).toBeVisible();
+  await expect(page.locator("#floorHours .chip").first()).toBeVisible();
+}
+
+/**
+ * Books the first free table at the first free time on the floor; returns the tracking code.
+ * Tables are picked from the table list, the same booking path as tapping one in 3D.
+ */
+export async function bookThroughPage(page, cafe, { name = "مهمان آزمون", mobile = GUEST } = {}) {
+  await openFloor(page, cafe);
+  await page.locator("#floorListToggle").click();
+  await page.locator("#floorList .list-table.free").first().click();
+  await page.locator("#f-name").fill(name);
+  await page.locator("#f-phone").fill(mobile);
+  await page.locator("#floorPanel [data-book]").click();
+  await expect(page.locator("#floorTrackingCode")).toHaveText(/^RMA-/);
+  return (await page.locator("#floorTrackingCode").textContent()).trim();
 }

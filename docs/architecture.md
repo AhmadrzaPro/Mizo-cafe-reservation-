@@ -15,13 +15,13 @@
 | `web/src/saas-console.js` | The SaaS console (`/saas-admin`), bundled on its own as `/saas-admin.js` |
 | `web/src/state.js` | Shared frontend state: the booking `state` and the mutable `store` |
 | `web/src/dom.js` | `byId()`, typed from `web/index.html`; and the `html` tag and `setHtml()`, the only way markup reaches the page |
-| `web/src/floor/` | The floor studio: furniture, undo and redo, geometry, zoom and gestures |
+| `web/src/floor3d/` | The café's booking page and floor editor in 3D: `view.js` (booking, holds, payments, editing), `model.js` (table types, zones, overlaps; pure), `engine.js` (the three.js scene), bundled on its own as `/floor3d.js` and loaded by `loader.js` only on a café's page |
 | `web/css/main/`, `editor/`, `saas/` | Stylesheets by feature. Each folder is served as one file (`/styles.css`, `/editor.css`, `/saas-admin.css`), its files joined in name order |
 | `db/schema.ts`, `drizzle/` | The schema and D1 migrations, applied in order |
 
 The build (`scripts/build.sh`):
 
-1. `scripts/embed-assets.mjs` bundles `web/src/main.js` (`/app.js`) and `web/src/saas-console.js` (`/saas-admin.js`) with esbuild, each into one minified IIFE script, then writes them, the HTML, CSS, images and font into `dist/server/site-content.js` with a content hash per asset.
+1. `scripts/embed-assets.mjs` bundles `web/src/main.js` (`/app.js`) `web/src/saas-console.js` (`/saas-admin.js`) and `web/src/floor3d/engine-entry.js` (`/floor3d.js`, three.js) with esbuild, each into one minified IIFE script, then writes them, the HTML, CSS, images and font into `dist/server/site-content.js` with a content hash per asset.
 2. `scripts/bundle.mjs` bundles `worker/src/index.js` into one ESM file, `dist/server/index.js`.
 3. The hosting manifest and migrations are copied into `dist/.openai/`.
 
@@ -32,11 +32,11 @@ The build (`scripts/build.sh`):
 - Setup records the owner's mobile together with the café, its first branch and map. From then on, only invited mobiles sign in, with a code bound to the café and used once.
 - Staff APIs check both the café and the branch: only the owner reaches every branch.
 - Database triggers (`0012_tenant_booking_integrity.sql`) reject overlapping reservations, buffer time included, whatever the start time. Availability applies the same interval rules.
-- Dates, opening hours, closures, table status and indoor/outdoor visibility are checked on the server. Moving a reservation onto a taken interval keeps it where it was.
+- Dates, opening hours, closures, table status are checked on the server. Moving a reservation onto a taken interval keeps it where it was.
 - Payment, cancellation and refund are conditional writes: a cancelled reservation cannot be paid, and a repeated payment or refund request records nothing twice.
 - The owner reviews a floor map before it is published. A table with reservations cannot be deleted.
 - While a customer fills in the booking form, their table is **held** for 5 minutes (`worker/src/holds.js`). A hold is created by one conditional insert that checks overlapping holds and reservations, the trigger `reservation_table_held` refuses anyone else's booking on it, and availability leaves it out. The holder's booking, sent with `holdToken`, deletes the hold in the same transaction; going back releases it; expiry needs nothing.
-- Each room's door, full-height window and counter are on the walls the owner chose (`areas.layout`). `web/src/venue-layout.js` turns that into one geometry for the editor and the customer's map.
+- A branch's floor is one room in metres with an optional terrace in front (`worker/src/map.js`): tables in `cafe_tables` (type, position, turn, features), the room and decor as JSON in the branch's one area row. A table's zone (hall, VIP, terrace) follows from where it stands. Floors saved before the 3D editor are read as one room, with the same table ids, until the owner saves.
 
 ## Times
 

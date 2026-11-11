@@ -13,7 +13,6 @@ export const adminDialog = dialog("#adminDialog"),
   paymentsDialog = dialog("#paymentsDialog"),
   branchesDialog = dialog("#branchesDialog"),
   branchFormDialog = dialog("#branchFormDialog"),
-  editor = dialog("#mapEditorDialog"),
   controlDialog = dialog("#controlDialog"),
   scheduleDialog = dialog("#scheduleDialog");
 export const paymentsCard = document.createElement("button");

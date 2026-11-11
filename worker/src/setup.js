@@ -1,4 +1,5 @@
 import { reply } from "./http.js";
+import { layoutStatements, starterLayout } from "./map.js";
 import { randomId, safeSlug } from "./util/ids.js";
 import { normalizeMobile } from "./util/mobile.js";
 export const defaultHours = () =>
@@ -8,62 +9,6 @@ export const defaultHours = () =>
     closeTime: "23:00",
     closed: false,
   }));
-export const starterMap = {
-  spaceMode: "indoor",
-  areas: [{ id: "main", name: "سالن اصلی", kind: "indoor" }],
-  tables: [
-    {
-      id: "t1",
-      area: "main",
-      name: "میز ۱",
-      shape: "round",
-      capacity: 2,
-      x: 655,
-      y: 62,
-      reservable: true,
-    },
-    {
-      id: "t2",
-      area: "main",
-      name: "میز ۲",
-      shape: "round",
-      capacity: 2,
-      x: 505,
-      y: 60,
-      reservable: true,
-    },
-    {
-      id: "t3",
-      area: "main",
-      name: "میز ۳",
-      shape: "rect",
-      capacity: 4,
-      x: 345,
-      y: 68,
-      reservable: true,
-    },
-    {
-      id: "t4",
-      area: "main",
-      name: "میز ۴",
-      shape: "square",
-      capacity: 2,
-      x: 620,
-      y: 230,
-      reservable: true,
-    },
-    {
-      id: "t5",
-      area: "main",
-      name: "میز ۵",
-      shape: "round",
-      capacity: 2,
-      x: 430,
-      y: 235,
-      reservable: true,
-    },
-  ],
-};
 /**
  * @param {D1Database} db
  * @param {string | null} [cafeSlug]
@@ -198,29 +143,7 @@ export async function writeSetup(db, body, session = null) {
       )
       .bind(randomId("subevent"), cafeId, now),
   ];
-  for (const area of starterMap.areas)
-    statements.push(
-      db
-        .prepare("INSERT INTO areas (id,branch_id,name,kind,sort_order) VALUES (?,?,?,'indoor',0)")
-        .bind(`${branchId}:${area.id}`, branchId, area.name),
-    );
-  for (const t of starterMap.tables)
-    statements.push(
-      db
-        .prepare(
-          "INSERT INTO cafe_tables (id,area_id,name,shape,capacity,position_x,position_y,reservable,operational_status,updated_at) VALUES (?,?,?,?,?,?,?,1,'available',?)",
-        )
-        .bind(
-          `${branchId}:${t.id}`,
-          `${branchId}:${t.area}`,
-          t.name,
-          t.shape,
-          t.capacity,
-          t.x,
-          t.y,
-          now,
-        ),
-    );
+  statements.push(...layoutStatements(db, branchId, starterLayout, now));
   for (const h of defaultHours())
     statements.push(
       db

@@ -56,6 +56,7 @@ Migrations with effects beyond adding tables:
 | `0019_virtual_cafe_phase_2.sql` | Adds `table_holds` and the `reservation_table_held` trigger, which refuses a booking on a table someone else holds. Adds each room's layout (NULL keeps the classic one), and a Virtual Cafe switch that 0020 drops. |
 | `0020_remove_virtual_cafe.sql` | Drops `branch_settings.virtual_cafe_enabled`, left by the removed 3D Virtual Cafe. |
 | `0021_booking_links.sql` | Adds the optional link names `cafes.link_slug` and `branches.link_slug`, each unique. Existing links keep working. |
+| `0022_floor_3d.sql` | Adds each table's turn and features for the 3D floor. Existing floors keep working and become one room when first saved in the 3D editor. |
 
 A café created before owners were recorded (before `0012`) has no staff. Provision its verified owner's mobile in `staff_members` through a trusted administrative migration; public sign-in deliberately cannot claim it.
 

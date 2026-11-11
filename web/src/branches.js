@@ -1,15 +1,14 @@
 import { fetchAvailability } from "./booking.js";
-import { adminDialog, branchFormDialog, branchesDialog, editor } from "./dialogs.js";
+import { adminDialog, branchFormDialog, branchesDialog } from "./dialogs.js";
 import { byId, html, setHtml } from "./dom.js";
-import { renderEditor } from "./editor.js";
-import { switchBranch } from "./editor-nav.js";
+import { switchBranch } from "./branch-switch.js";
+import { loadFloor, openFloorEditor } from "./floor3d/view.js";
 import { faDigits } from "./format.js";
 import {
   activeBranchProfile,
   activeBranches,
   applyCafeProfile,
   bookingPath,
-  fetchMap,
   fetchSettings,
 } from "./profile.js";
 import { store } from "./state.js";
@@ -121,8 +120,7 @@ export function renderBranches() {
     card.querySelector(".branch-map")?.addEventListener("click", async () => {
       await switchBranch(branch.slug);
       branchesDialog.close();
-      renderEditor();
-      editor.showModal();
+      openFloorEditor();
     });
     list.appendChild(card);
   });
@@ -208,7 +206,7 @@ export function wireBranches() {
       applyCafeProfile(profile);
       renderBranches();
       branchFormDialog.close();
-      await Promise.all([fetchMap(), fetchSettings()]);
+      await Promise.all([loadFloor(), fetchSettings()]);
       await fetchAvailability();
     } catch (err) {
       error.textContent = err.message;

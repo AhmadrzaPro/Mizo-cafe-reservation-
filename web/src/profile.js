@@ -1,22 +1,12 @@
-import { apiUrl, readableError, safeResponseJson, settingsUrl } from "./api.js";
-import { renderCustomerMap } from "./booking.js";
+import { settingsUrl } from "./api.js";
 import { renderControls } from "./controls.js";
-import { byId, html, setHtml, required } from "./dom.js";
-import { renderEditor, showPublishedToast } from "./editor.js";
-import { recordMapHistory, resetMapHistory } from "./floor/history.js";
-import { faDigits } from "./format.js";
-import { cloneDefault } from "./map-defaults.js";
-import { visibleAreas } from "./map-model.js";
-import { pagePath, pageParams, state, store, studioDemo } from "./state.js";
+import { repaintFloor } from "./floor3d/view.js";
+import { byId, required } from "./dom.js";
+import { pagePath, pageParams, state, store } from "./state.js";
 
 // The branch the page was opened for (its slug or link name), applied once the profile loads.
 let requestedBranch = pageParams.get("branch") || pagePath.branch;
 
-export function markDirty() {
-  recordMapHistory();
-  store.dirty = true;
-  byId("saveStatus").textContent = "تغییرات منتشر نشده";
-}
 export function activeBranches() {
   return store.cafeProfile.branches.filter(
     (branch) =>
@@ -40,7 +30,7 @@ export function syncBranchSelectors() {
     "opsBranch",
     "smsBranch",
     "paymentsBranch",
-    "customerBranch",
+    "floorBranch",
   ].forEach((id) => {
     const select = /** @type {HTMLSelectElement} */ (document.querySelector(`#${id}`));
     if (!select) return;
@@ -54,7 +44,7 @@ export function syncBranchSelectors() {
     select.value = store.currentBranch;
     select.classList.toggle("single-branch", single);
   });
-  byId("customerBranchRow").hidden = single;
+  byId("floorBranch").hidden = single;
 }
 /**
  * A branch's booking link path: /<café>/<branch>, with the owner's link names where set.
@@ -89,16 +79,13 @@ export function applyCafeProfile(profile) {
   ["cafe", "branch", "new"].forEach((name) => url.searchParams.delete(name));
   history.replaceState(null, "", url);
   pageParams.delete("new");
-  required(".cafe-meta span:first-child").textContent = profile.cafe.name;
-  required(".cafe-meta span:nth-child(2)").textContent = [branch.city, branch.name]
-    .filter(Boolean)
-    .join("، ");
+  byId("floorCafeName").textContent = profile.cafe.name;
+  byId("floorCafePlace").textContent = [branch.city, branch.name].filter(Boolean).join("، ");
   document.body.dataset.mode = "cafe";
   document.title = `${profile.cafe.name} — رزرو میز`;
   byId("adminCafeName").textContent = profile.cafe.name;
   byId("adminCafeLocation").textContent = `${branch.city} · ${branch.name}`;
   required(".ops-brand b").textContent = `عملیات ${profile.cafe.name}`;
-  required(".editor-header b").textContent = `چیدمان ${profile.cafe.name}`;
 }
 export async function loadCafeProfile() {
   if (pageParams.get("new") === "1") return { configured: false };
@@ -115,24 +102,9 @@ export async function loadCafeProfile() {
   }
 }
 export function applySettingsToCustomer() {
-  const notice = /** @type {HTMLElement} */ (byId("customerNoticeBanner")),
-    continueBtn = /** @type {HTMLButtonElement} */ (byId("continueBtn"));
-  notice.textContent = store.cafeSettings.customerNotice;
-  notice.hidden = !store.cafeSettings.customerNotice;
-  byId("durationLabel").textContent =
-    `مدت رزرو: ${faDigits(store.cafeSettings.reservationDuration)} دقیقه`;
-  // Paused by the café, or by an unpaid subscription past its grace period.
-  const open = store.cafeSettings.reservationsEnabled && !store.cafeSettings.onlineBookingPaused;
-  continueBtn.disabled = !open;
-  setHtml(
-    continueBtn,
-    open ? html`ادامه و انتخاب میز <span>←</span>` : html`رزرو موقتاً متوقف است`,
-  );
-  required(".booking-card").classList.toggle("booking-paused", !open);
-  if (state.guests > store.cafeSettings.maxPartySize) {
+  // Paused by the café, or by an unpaid subscription past its grace period: the floor says so.
+  if (state.guests > store.cafeSettings.maxPartySize)
     state.guests = store.cafeSettings.maxPartySize;
-    byId("guestCount").textContent = faDigits(state.guests);
-  }
 }
 export async function fetchSettings() {
   try {
@@ -141,69 +113,10 @@ export async function fetchSettings() {
       store.cafeSettings = await response.json();
       applySettingsToCustomer();
       renderControls();
+      repaintFloor();
       return true;
     }
   } catch {}
   byId("controlSaveStatus").textContent = "دریافت تنظیمات ممکن نیست";
   return false;
-}
-export async function fetchMap() {
-  if (studioDemo) return;
-  byId("saveStatus").textContent = "در حال دریافت از دیتابیس…";
-  const requestedBranch = store.currentBranch,
-    requestedCafe = store.currentCafeSlug;
-  try {
-    const response = await fetch(apiUrl());
-    if (requestedBranch !== store.currentBranch || requestedCafe !== store.currentCafeSlug) return;
-    if (response.status === 404) {
-      store.cafeMap = cloneDefault();
-      store.dirty = true;
-      byId("saveStatus").textContent = "شعبه جدید؛ آماده انتشار";
-    } else if (response.ok) {
-      store.cafeMap = await response.json();
-      store.dirty = false;
-      byId("saveStatus").textContent = "همگام با دیتابیس";
-    } else throw new Error("load");
-    store.activeArea = visibleAreas()[0]?.id || store.cafeMap.areas[0]?.id || "main";
-    store.customerArea = store.activeArea;
-    store.selectedId = null;
-    resetMapHistory();
-    renderEditor();
-    renderCustomerMap();
-  } catch {
-    if (requestedBranch !== store.currentBranch) return;
-    byId("saveStatus").textContent = "اتصال برقرار نشد؛ دوباره تلاش کنید";
-    showPublishedToast("خطا در دریافت نقشه");
-  }
-}
-export async function saveMap() {
-  if (studioDemo) {
-    showPublishedToast("این یک دمو است؛ اطلاعات کافه تغییر نمی‌کند.");
-    return false;
-  }
-  byId("saveStatus").textContent = "در حال ذخیره در دیتابیس…";
-  const branch = activeBranchProfile();
-  try {
-    const response = await fetch(apiUrl(), {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          cafeName: store.cafeProfile.cafe.name,
-          branchName: branch.name,
-          city: branch.city,
-          address: branch.address,
-          map: store.cafeMap,
-        }),
-      }),
-      data = await safeResponseJson(response, "ذخیره نقشه انجام نشد.");
-    if (!response.ok) throw new Error(data.message || "ذخیره نقشه انجام نشد.");
-    store.cafeMap = data;
-    store.dirty = false;
-    byId("saveStatus").textContent = "همگام با دیتابیس";
-    return true;
-  } catch (error) {
-    byId("saveStatus").textContent = "ذخیره نشد؛ تغییرات حفظ شده‌اند";
-    showPublishedToast(readableError(error, "خطا در ذخیره نقشه"));
-    return false;
-  }
 }

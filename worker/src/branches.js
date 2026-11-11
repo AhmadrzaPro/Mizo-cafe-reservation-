@@ -1,8 +1,8 @@
 import { reply } from "./http.js";
 import { branchLinkProblem, invalidLink, linkName } from "./links.js";
-import { writeMap } from "./map.js";
+import { layoutStatements, starterLayout } from "./map.js";
 import { defaultSettings, writeSchedule, writeSettings } from "./settings.js";
-import { defaultHours, readSetup, starterMap } from "./setup.js";
+import { defaultHours, readSetup } from "./setup.js";
 export async function branchRow(db, cafeSlug, branchSlug) {
   return db
     .prepare(
@@ -29,13 +29,16 @@ export async function createBranch(db, body, session) {
   const linkProblem = link && (await branchLinkProblem(db, current.cafe.id, link, null));
   if (linkProblem) return linkProblem;
   const slug = `branch-${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
-  await writeMap(db, current.cafe.slug, slug, {
-    cafeName: current.cafe.name,
-    branchName: name,
-    city,
-    address,
-    map: starterMap,
-  });
+  const branchId = `branch:${current.cafe.slug}:${slug}`,
+    now = new Date().toISOString();
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO branches (id,cafe_id,slug,name,city,address,space_mode,updated_at) VALUES (?,?,?,?,?,?,'indoor',?)",
+      )
+      .bind(branchId, current.cafe.id, slug, name, city, address, now),
+    ...layoutStatements(db, branchId, starterLayout, now),
+  ]);
   await writeSettings(db, current.cafe.slug, slug, {
     ...defaultSettings,
     cafeName: current.cafe.name,

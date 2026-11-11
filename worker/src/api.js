@@ -16,7 +16,7 @@ import { branchRow, createBranch, updateBranch } from "./branches.js";
 import { updateCafeLink } from "./links.js";
 import { clientIp, InvalidJsonError, readJson, reply } from "./http.js";
 import { adjustLoyalty, readLoyalty } from "./loyalty.js";
-import { analyzeMapImage, readMap, writeMap } from "./map.js";
+import { readMap, writeMap } from "./map.js";
 import {
   processDueReminders,
   readNotifications,
@@ -398,13 +398,6 @@ for (const path of [
   "/operations/:section{reservations|waitlist|tables}/:id",
 ])
   app.all(BRANCH + path, opsAccess, methodNotAllowed);
-
-const mapWrite = requireBranch("map.write", "به ویرایش نقشه این شعبه دسترسی ندارید.");
-app.get(`${BRANCH}/map/analyze`, mapWrite, (c) =>
-  reply({ enabled: Boolean(c.env.OPENAI_API_KEY) }),
-);
-app.post(`${BRANCH}/map/analyze`, mapWrite, (c) => analyzeMapImage(c.req.raw, c.env));
-app.all(`${BRANCH}/map/analyze`, methodNotAllowed);
 
 // Map, settings, schedule, availability and reservations of one branch. Writes and the
 // reservation list need staff with the matching permission; the rest is public.

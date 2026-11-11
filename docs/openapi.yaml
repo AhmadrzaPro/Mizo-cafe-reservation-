@@ -634,8 +634,11 @@ paths:
     get:
       operationId: getMap
       tags: [Branch settings]
-      summary: The published floor map
-      description: Public; the booking page draws tables from it.
+      summary: The branch's floor
+      description: |
+        Public; the booking page draws it in 3D. One room in metres with an optional terrace in
+        front, and its tables and decor. A floor saved before the 3D editor (areas in pixels) is
+        read as one room: indoor areas side by side, outdoor ones on the terrace, same table ids.
       parameters:
         - $ref: "#/components/parameters/cafe"
         - $ref: "#/components/parameters/branch"
@@ -649,10 +652,11 @@ paths:
     put:
       operationId: publishMap
       tags: [Branch settings]
-      summary: Publish the floor map
+      summary: Save and publish the floor
       description: |
-        Replaces areas and tables. A table referenced by existing reservations cannot be deleted.
-        At most 150 kB.
+        Replaces the room, tables and decor at once. Positions are kept inside the room and its
+        terrace; a table's seats follow its type. A table referenced by reservations cannot be
+        removed: make it unreservable instead. At most 150 kB.
       security: [{ staffSession: [map.write] }]
       parameters:
         - $ref: "#/components/parameters/cafe"
@@ -663,62 +667,16 @@ paths:
           application/json:
             schema:
               type: object
+              required: [layout]
               properties:
-                cafeName: { type: string }
-                branchName: { type: string }
-                city: { type: string }
-                address: { type: string }
-                map: { $ref: "#/components/schemas/FloorMap" }
+                layout: { $ref: "#/components/schemas/FloorMap" }
       responses:
         "200": { $ref: "#/components/responses/Object" }
-        "400": { $ref: "#/components/responses/Error", description: "`invalid_map`, `map_limit`, `invalid_area_dimensions`, `table_outside_area`" }
+        "400": { $ref: "#/components/responses/Error", description: "`invalid_map`, `map_limit`, `duplicate_table_name`" }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error", description: "`branch_not_found`" }
         "409": { $ref: "#/components/responses/Error", description: "`table_has_reservations`" }
         "413": { $ref: "#/components/responses/Error", description: "`payload_too_large`" }
-  /api/cafes/{cafe}/branches/{branch}/map/analyze:
-    get:
-      operationId: getMapAnalysis
-      tags: [Branch settings]
-      summary: Whether image analysis is available
-      security: [{ staffSession: [map.write] }]
-      parameters:
-        - $ref: "#/components/parameters/cafe"
-        - $ref: "#/components/parameters/branch"
-      responses:
-        "200":
-          description: "`enabled` is true when `OPENAI_API_KEY` is set."
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  enabled: { type: boolean }
-        "403": { $ref: "#/components/responses/Error" }
-    post:
-      operationId: analyzeMapImage
-      tags: [Branch settings]
-      summary: Suggest tables from a floor-plan photo
-      description: The suggestion is a draft for the owner to review; nothing is published.
-      security: [{ staffSession: [map.write] }]
-      parameters:
-        - $ref: "#/components/parameters/cafe"
-        - $ref: "#/components/parameters/branch"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                image: { type: string, description: "A JPEG, PNG or WebP `data:image/…;base64,` URL, at most about 2 MB." }
-      responses:
-        "200": { $ref: "#/components/responses/Object" }
-        "400": { $ref: "#/components/responses/Error", description: "`invalid_image`" }
-        "403": { $ref: "#/components/responses/Error" }
-        "422": { $ref: "#/components/responses/Error", description: "`analysis_empty`: no tables found" }
-        "502": { $ref: "#/components/responses/Error", description: "`analysis_failed`, `analysis_invalid`" }
-        "413": { $ref: "#/components/responses/Error", description: "`image_too_large`" }
-        "503": { $ref: "#/components/responses/Error", description: "`image_analysis_unavailable`" }
   /api/cafes/{cafe}/branches/{branch}/settings:
     get:
       operationId: getSettings
@@ -1293,37 +1251,44 @@ components:
     FloorMap:
       type: object
       properties:
-        spaceMode: { type: string, enum: [indoor, outdoor, both] }
-        areas:
+        room:
+          type: object
+          description: Metres. The terrace, if any, runs along the front of the hall.
+          properties:
+            w: { type: integer, minimum: 8, maximum: 40 }
+            d: { type: integer, minimum: 6, maximum: 30 }
+            terrace: { type: integer, minimum: 0, maximum: 12 }
+        items:
           type: array
+          maxItems: 260
           items:
-            type: object
-            properties:
-              id: { type: string }
-              name: { type: string }
-              kind: { type: string, enum: [indoor, outdoor] }
-              width: { type: number }
-              height: { type: number }
-              layout:
-                type: object
-                description: Which wall holds the door, the full-height window and the counter.
+            oneOf:
+              - type: object
+                description: A table. Its zone (hall, VIP or terrace) follows from where it stands.
+                required: [kind, id, type, x, z]
                 properties:
-                  door: { type: string, enum: [top, right, bottom, left], default: bottom }
-                  window: { type: string, enum: [top, right, bottom, left, none], description: "Default right indoors, none outdoors." }
-                  counter: { type: string, enum: [top, right, bottom, left, none], description: "Default left indoors, none outdoors." }
-        tables:
-          type: array
-          items:
-            type: object
-            properties:
-              id: { type: string }
-              name: { type: string }
-              area: { type: string }
-              shape: { type: string, enum: [round, square, rect] }
-              capacity: { type: integer, minimum: 1, maximum: 20 }
-              x: { type: number }
-              y: { type: number }
-              reservable: { type: boolean }
+                  kind: { const: table }
+                  id: { type: string, description: "Stable; availability and reservations use `branch:<cafe>:<branch>:<id>`." }
+                  name: { type: string, maxLength: 12, description: The label customers see; unique in the branch. }
+                  type: { type: string, enum: [round2, round4, square4, long6, booth4, booth6] }
+                  seats: { type: integer, readOnly: true }
+                  x: { type: number, description: Metres from the centre of the hall. }
+                  z: { type: number, description: Metres towards the terrace. }
+                  rot: { type: number, description: Degrees, -180 to 180. }
+                  tags: { type: array, maxItems: 6, items: { type: string, enum: ["کنار پنجره", "دنج", "مناسب جمع", "نزدیک بار", "مبل راحتی", "فضای خصوصی", "مناسب تولد", "سیگار آزاد", "سایبان"] } }
+                  reservable: { type: boolean, default: true }
+                  operationalStatus: { type: string, enum: [available, dirty, inactive], readOnly: true }
+              - type: object
+                description: Decor. A VIP area puts the tables inside it in the VIP zone.
+                required: [kind, type, x, z]
+                properties:
+                  kind: { const: decor }
+                  type: { type: string, enum: [bar, plant, vip] }
+                  x: { type: number }
+                  z: { type: number }
+                  rot: { type: number }
+                  w: { type: integer, minimum: 3, maximum: 14, description: VIP only. }
+                  d: { type: integer, minimum: 3, maximum: 14, description: VIP only. }
     Settings:
       type: object
       properties:

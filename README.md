@@ -1,14 +1,15 @@
 # Mizo — Café Table Reservation
 
-A Persian, right-to-left table reservation platform for cafés, built as a Cloudflare Worker with D1 persistence. Each café gets a customer booking page, a floor-map editor, a live operations dashboard and a staff panel; the platform owner runs a console for subscriptions.
+A Persian, right-to-left table reservation platform for cafés, built as a Cloudflare Worker with D1 persistence. Each café gets a 3D booking page where customers pick a real table on the café's floor, a 3D floor editor, a live operations dashboard and a staff panel; the platform owner runs a console for subscriptions.
 
 ## Highlights
 
-- **Customers:** a booking link per branch, Jalali dates, free time slots, table choice on the floor map (held for them while they fill in the form), tracking and cancellation, and deposits through ZarinPal.
+- **Customers:** a booking link per branch, Jalali dates, free time slots, tracking and cancellation, and deposits through ZarinPal.
 - **Operations:** reservations, walk-ins, waitlist, table status, opening hours and closures.
-- **Floor editor:** indoor and outdoor areas, draggable tables, the door, window and counter on the walls the owner picks, tracing from a photo, and a draft reviewed before publication.
+- **3D floor:** customers choose the day, time and party over an isometric 3D view of the café, see free tables in green, a table's schedule and features, and book it in a side panel; the table is held for them while they fill it in.
+- **Floor editor:** in the same view ("چینش کافه"), the owner sets the hall and terrace size, drags tables (six types), a bar, plants and a VIP area into place, gives tables features, and publishes with one save.
 - **Team:** owner, branch manager, reception and barista, each limited to their branch and permissions.
-- **Integrations:** Kavenegar SMS for sign-in codes, confirmations and reminders; optional OpenAI floor-plan analysis.
+- **Integrations:** Kavenegar SMS for sign-in codes, confirmations and reminders.
 - **Platform:** a required monthly subscription per café, paid card to card and approved in the SaaS console.
 
 ## Quick start

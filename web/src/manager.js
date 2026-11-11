@@ -1,11 +1,11 @@
 import { fetchAvailability } from "./booking.js";
 import { adminDialog, authDialog, paymentsCard, setupDialog } from "./dialogs.js";
+import { loadFloor } from "./floor3d/view.js";
 import { byId, html, setHtml, required } from "./dom.js";
 import { faDigits, latinDigits } from "./format.js";
 import {
   activeBranchProfile,
   applyCafeProfile,
-  fetchMap,
   fetchSettings,
   loadCafeProfile,
 } from "./profile.js";
@@ -109,7 +109,7 @@ export async function openManager() {
     const own = await loadCafeProfile();
     if (own.configured) {
       applyCafeProfile(own);
-      await Promise.all([fetchMap(), fetchSettings()]);
+      await Promise.all([loadFloor(), fetchSettings()]);
       await fetchAvailability();
       adminDialog.showModal();
       return;
@@ -173,7 +173,7 @@ export function wireManager() {
         profile = await response.json();
       if (!response.ok) throw new Error(profile.message || "ذخیره اطلاعات انجام نشد.");
       applyCafeProfile(profile);
-      await Promise.all([fetchMap(), fetchSettings()]);
+      await Promise.all([loadFloor(), fetchSettings()]);
       await fetchAvailability();
       setupDialog.close();
       if (editing) adminDialog.showModal();

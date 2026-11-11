@@ -48,8 +48,9 @@ test("after the grace period the café's online booking pauses and the owner is 
 
   const customer = await page.context().browser().newPage();
   await customer.goto(cafe.url);
-  await expect(customer.locator("#continueBtn")).toBeDisabled();
-  await expect(customer.locator("#continueBtn")).toHaveText("رزرو موقتاً متوقف است");
+  await expect(customer.locator("#floorNotice")).toHaveText(
+    "رزرو آنلاین این کافه موقتاً متوقف است.",
+  );
   await customer.close();
 });
 

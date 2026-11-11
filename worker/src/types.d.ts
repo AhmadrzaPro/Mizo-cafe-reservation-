@@ -8,8 +8,6 @@ export interface Env {
   KAVENEGAR_TEMPLATE?: string;
   KAVENEGAR_CONFIRMATION_TEMPLATE?: string;
   KAVENEGAR_REMINDER_TEMPLATE?: string;
-  OPENAI_API_KEY?: string;
-  MAP_VISION_MODEL?: string;
   CLIENT_IP_HEADER?: string;
   /** "oai-header" only on a host that sets oai-authenticated-user-* itself. */
   SAAS_ADMIN_AUTH?: string;
